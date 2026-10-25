@@ -1,0 +1,1327 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d2427">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="数独支援">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<script>window.TESS_BASE = "tesseract/";
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
+<style>[hidden]{display:none!important} body{margin:0}</style>
+<title>数独支援アプリ</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=IBM+Plex+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: one centered square board; thick lines = outer frame and 3x3 boxes, medium = cells, hairline = candidate sub-cells */
+:root {
+  --bg: #f3f4f1;
+  --paper: #fdfdfb;
+  --ink: #1d2427;
+  --line-cell: #5b666b;
+  --line-sub: #d9ddd8;
+  --hover: #e6ebe7;
+  --given-bg: #eceee9;
+  --answer: #2f5fa8;
+  --error: #c62828;
+  --pick-bg: #e3ebf7;
+  --bad-bg: #f8e4e2;
+  --brown: #8a5a2b;
+  --brown-bg: #f1e6d8;
+  --sel: #d98c00;
+  --sel-bg: #ffd75e;
+  --peer-bg: #fdeeb8;
+  --cand: #6f7b80;
+  --muted: #6a7478;
+  --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --thick: 3px;
+  --cell: 1.5px;
+  --sub: 1px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
+    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
+  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+}
+/* 盤は画面の高さに収め、表示とボタンは右側に置く */
+main {
+  --side: 280px;
+  display: grid;
+  grid-template-columns: auto var(--side);
+  justify-content: center;
+  align-items: start;
+  gap: 24px;
+}
+.side { display: grid; gap: 16px; min-width: 0; }
+@media (max-width: 760px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+}
+h1 { font-size: 1.35rem; font-weight: 700; margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
+p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+
+.board {
+  width: min(calc(100vh - 32px), calc(100vw - 32px - var(--side) - 24px));
+  aspect-ratio: 1;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: var(--thick);
+  padding: var(--thick);
+  background: var(--ink);
+  box-sizing: border-box;
+}
+@media (max-width: 760px) {
+  .board { width: 100%; }
+}
+.box {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  min-height: 0;
+  gap: var(--cell);
+  background: var(--line-cell);
+  min-width: 0;
+}
+.cell {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  min-height: 0;
+  overflow: hidden;
+  gap: var(--sub);
+  background: var(--line-sub);
+  min-width: 0;
+}
+.cand {
+  background: var(--paper);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-num);
+  font-weight: 500;
+  font-size: clamp(7px, 1.9vw, 13px);
+  color: var(--cand);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  user-select: none;
+  cursor: pointer;
+}
+.cand:hover { background: var(--hover); color: var(--ink); }
+.cand:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.cell.fixed { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 0; background: var(--paper); }
+.cell.fixed .cand { display: none; }
+.big {
+  display: grid; place-items: center;
+  font-family: var(--font-num); font-weight: 500;
+  font-size: clamp(18px, 6.2vw, 40px);
+  line-height: 1;
+  min-height: 0;
+  color: var(--ink); cursor: pointer; user-select: none;
+}
+.cell:not(.fixed):not(.tent) .big { display: none; }
+.cell.given { background: var(--given-bg); }
+.cell.fixed .big { font-weight: 700; }
+.cell.given .big { cursor: default; }
+.cand.pick { color: var(--answer); font-weight: 700; background: var(--pick-bg); }
+.cell.tent { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 0; background: var(--paper); }
+.cell.tent .cand { display: none; }
+.cell.tent .big { display: grid; color: var(--answer); font-weight: 700; }
+.cell.tent.tent-bad .big { color: var(--error); }
+.cand.shadow, .cand.pick.shadow { color: var(--brown); font-weight: 700; }
+.cand.pick.shadow { background: var(--brown-bg); }
+.cand.pick.bad { color: var(--error); background: var(--bad-bg); }
+.cand.off, .cand.off.shadow { color: var(--line-sub); font-weight: 500; text-decoration: line-through; }
+.key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
+.cell.conflict .big { color: var(--error); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.bar .prompt { flex: 1 1 240px; }
+button#done, button#edit, button#reset {
+  font: 700 1rem var(--font-ui);
+  padding: 10px 20px; border: 2px solid var(--ink); border-radius: 4px;
+  background: var(--ink); color: var(--paper); cursor: pointer;
+}
+button#edit, button#reset { background: var(--paper); color: var(--ink); }
+button#done:hover, button#edit:hover, button#reset:hover { opacity: 0.85; }
+button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+.confirm {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 12px 14px; background: var(--bad-bg); border-left: 4px solid var(--error);
+}
+.confirm[hidden] { display: none; }
+.confirm p { margin: 0; flex: 1 1 160px; font-weight: 700; }
+.confirm button {
+  font: 700 1rem var(--font-ui); padding: 8px 18px; border-radius: 4px; cursor: pointer;
+  border: 2px solid var(--error); background: var(--paper); color: var(--error);
+}
+.confirm button#reset-yes { background: var(--error); color: var(--paper); }
+.confirm button:hover { opacity: 0.85; }
+.confirm button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+/* スマホ用: 選んだマスの候補を盤の下に大きく表示する数字パッド */
+.cell.sel { box-shadow: 0 0 0 4px var(--sel); position: relative; z-index: 2; }
+.cell.sel:is(.fixed, .tent), .cell.sel .cand:not(.pick):not(.shadow) { background: var(--sel-bg); }
+.cell.peer:is(.fixed, .tent):not(.given), .cell.peer .cand:not(.pick):not(.shadow) { background: var(--peer-bg); }
+.pad { border: 3px solid var(--sel); border-radius: 10px; padding: 10px; background: var(--peer-bg); width: min(100%, 340px); box-sizing: border-box; justify-self: center; }
+.pad #pad-title { font-weight: 700; font-size: 1rem; }
+.pad { display: grid; gap: 10px; justify-items: center; touch-action: manipulation; }
+.pad[hidden] { display: none; }
+.pad p { margin: 0; font-size: 0.9rem; text-align: center; }
+.pad .note { font-size: 0.8rem; }
+.keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(100%, 300px); }
+.key {
+  aspect-ratio: 1; font: 700 2rem var(--font-num); border-radius: 8px; cursor: pointer;
+  border: 2px solid var(--line-cell); background: var(--paper); color: var(--cand);
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+.key.pick { color: var(--answer); background: var(--pick-bg); border-color: var(--answer); }
+.key.shadow { color: var(--brown); background: var(--brown-bg); }
+.key.pick.bad { color: var(--error); background: var(--bad-bg); border-color: var(--error); }
+.key.sure { color: var(--paper); background: var(--answer); border-color: var(--answer); }
+.key.sure.bad { background: var(--error); border-color: var(--error); }
+.key.val { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.key:disabled { cursor: default; opacity: 0.45; }
+.key.val:disabled { opacity: 1; }
+.key:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+/* 写真の盤面の四隅を合わせる画面（端末内での読み取り用） */
+.crop {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+  background: rgba(10, 14, 16, 0.6);
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.crop[hidden] { display: none; }
+.crop-inner { background: var(--paper); color: var(--ink); border-radius: 8px; padding: 14px; display: grid; gap: 10px; max-width: 100%; justify-items: center; }
+.crop-inner p { margin: 0; font-size: 0.9rem; line-height: 1.6; }
+#crop-canvas { touch-action: none; max-width: 100%; cursor: grab; border: 1px solid var(--line-cell); }
+.start, .work { display: grid; gap: 14px; }
+.start[hidden], .work[hidden] { display: none; }
+h2 { margin: 0; font-size: 1rem; font-weight: 700; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 55vh; overflow-y: auto; }
+.list li { display: flex; gap: 6px; }
+.list button { font: 500 0.95rem var(--font-ui); border-radius: 4px; cursor: pointer; background: var(--paper); color: var(--ink); border: 1.5px solid var(--line-cell); }
+.list .open { flex: 1; min-width: 0; text-align: left; padding: 8px 12px; overflow-wrap: anywhere; }
+.list .open small { display: block; margin-top: 2px; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.list .del, .list .share { padding: 0 10px; font-size: 0.8rem; color: var(--muted); }
+.share-box, .import { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
+.share-box[hidden] { display: none; }
+.share-box p, .import p { margin: 0; font-size: 0.85rem; line-height: 1.6; }
+.share-box textarea, .import textarea { font: 500 0.85rem var(--font-num); padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 4px; background: var(--bg); color: var(--ink); resize: vertical; min-width: 0; overflow-wrap: anywhere; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filepick { position: relative; }
+.filepick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.filepick:focus-within { outline: 3px solid var(--answer); outline-offset: 2px; }
+p.msg { margin: 0; font-size: 0.85rem; }
+p.msg:empty { display: none; }
+.btn.small { font-size: 0.9rem; padding: 6px 14px; }
+.msg { color: var(--muted); }
+.msg.err { color: var(--error); }
+.list .del.armed { border-color: var(--error); background: var(--error); color: var(--paper); }
+.list button:hover { background: var(--hover); }
+.list .del.armed:hover { background: var(--error); opacity: 0.85; }
+.list button:focus-visible, .btn:focus-visible, #pname:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+.btn {
+  font: 700 1rem var(--font-ui); padding: 10px 20px; border-radius: 4px; cursor: pointer;
+  border: 2px solid var(--ink); background: var(--ink); color: var(--paper); justify-self: start;
+}
+.btn.sub { background: var(--paper); color: var(--ink); }
+.btn:hover { opacity: 0.85; }
+.photo { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px dashed var(--line-cell); border-radius: 4px; }
+.photo[hidden] { display: none; }
+.photo input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.photo label.btn { display: inline-block; }
+.photo label.btn:focus-within { outline: 3px solid var(--answer); outline-offset: 2px; }
+.photo.busy label.btn { opacity: 0.5; pointer-events: none; }
+.photo p b { color: var(--ink); }
+.photo p { margin: 0; font-size: 0.85rem; line-height: 1.6; color: var(--muted); }
+.photo p.err { color: var(--error); }
+.name { display: grid; gap: 6px; }
+.name[hidden] { display: none; }
+.name label { font-size: 0.85rem; font-weight: 700; }
+#pname { font: 500 1rem var(--font-ui); padding: 8px 10px; border: 1.5px solid var(--line-cell); border-radius: 4px; background: var(--paper); color: var(--ink); min-width: 0; }
+.board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"]) .cand { cursor: default; }
+.board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"]) .cand:not(.pick):hover { background: var(--paper); color: var(--cand); }
+.board[data-mode="paused"] .cell { background: var(--paper); }
+.board[data-mode="paused"] :is(.cand, .big) { visibility: hidden; }
+.timer { margin: 0; font: 700 2.2rem var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; line-height: 1; }
+.timer[hidden] { display: none; }
+.timer.paused { color: var(--muted); }
+.prompt {
+  margin: 0; padding: 10px 14px;
+  background: var(--paper); border-left: 4px solid var(--ink);
+  font-size: 1rem; font-weight: 700;
+}
+</style>
+</head>
+<body>
+
+<main>
+  <div class="board" id="board" role="grid" aria-label="数独の盤面"></div>
+  <div class="pad" id="pad" hidden>
+    <p id="pad-title"></p>
+    <div class="keys" id="keys"></div>
+    <p class="note" id="pad-note"></p>
+  </div>
+  <aside class="side">
+  <h1>数独支援アプリ</h1>
+  <section class="start" id="start">
+    <h2>保存した問題</h2>
+    <ul class="list" id="list"></ul>
+    <p class="note" id="empty">保存した問題はまだありません。</p>
+    <p class="msg" id="file-msg" aria-live="polite"></p>
+    <div class="row">
+      <button type="button" class="btn" id="new">新しい問題を作る</button>
+      <label class="btn sub filepick">問題を選択して開く
+        <input type="file" id="import-file">
+      </label>
+      <label class="btn sub filepick">回答中のファイルを開く
+        <input type="file" id="progress-file">
+      </label>
+    </div>
+  </section>
+  <div class="work" id="work" hidden>
+  <div class="name" id="name-field">
+    <label for="pname">問題の名前</label>
+    <input type="text" id="pname" maxlength="40" placeholder="例：新聞 10月24日" autocomplete="off">
+  </div>
+  <p class="timer" id="timer" role="timer" aria-label="経過時間" hidden>00:00</p>
+  <div class="photo" id="photo-box" hidden>
+    <p><b>写真から問題を読み取る</b></p>
+    <div class="row">
+      <label class="btn sub small">カメラで撮影
+        <input type="file" id="photo-input" accept="image/*" capture="environment">
+      </label>
+      <label class="btn sub small">画像ファイルを選ぶ
+        <input type="file" id="photo-file" accept="image/*">
+      </label>
+    </div>
+    <p id="photo-status">問題の盤面全体がまっすぐ写っている写真を使ってください。</p>
+  </div>
+  <div class="bar">
+    <p class="prompt" id="prompt" aria-live="polite">問題を登録してください</p>
+    <button type="button" id="done">問題登録完了</button>
+    <button type="button" id="edit" hidden>問題修正</button>
+    <button type="button" class="btn" id="go" hidden>回答スタート</button>
+    <button type="button" class="btn" id="pause" hidden>一時停止</button>
+    <button type="button" id="reset" hidden>リセット</button>
+    <button type="button" class="btn sub" id="export-cur" hidden>問題を書き出す</button>
+    <button type="button" class="btn sub" id="save-progress" hidden>この状態をファイルに保存</button>
+  </div>
+  <p class="msg" id="work-msg" aria-live="polite"></p>
+  <div class="confirm" id="confirm" role="alertdialog" aria-labelledby="confirm-msg" hidden>
+    <p id="confirm-msg">リセットしますか？選んだ候補と確定候補がすべて消えます。</p>
+    <button type="button" id="reset-yes">リセットする</button>
+    <button type="button" id="reset-no">キャンセル</button>
+  </div>
+  <p class="note" id="note">小さな数字をクリックすると、そのマスにその数字を大きく表示します。大きな数字をクリックすると元に戻ります。</p>
+  <button type="button" class="btn sub" id="back">問題一覧へ</button>
+  </div>
+  </aside>
+</main>
+<div class="crop" id="crop" role="dialog" aria-modal="true" aria-labelledby="crop-msg" hidden>
+  <div class="crop-inner">
+    <p id="crop-msg">オレンジの丸をドラッグして、盤面の四隅に合わせてください。線がマス目に重なれば OK です。</p>
+    <canvas id="crop-canvas" width="300" height="300"></canvas>
+    <div class="row">
+      <button type="button" class="btn" id="crop-ok">読み取る</button>
+      <button type="button" class="btn sub" id="crop-cancel">やめる</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const board = document.getElementById("board");
+  // 小マスの表示順（行ごと）: 1 2 3 / 4 5 6 / 7 8 9
+  const order = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  for (let b = 0; b < 9; b++) {
+    const box = document.createElement("div");
+    box.className = "box";
+    for (let c = 0; c < 9; c++) {
+      const row = Math.floor(b / 3) * 3 + Math.floor(c / 3);
+      const col = (b % 3) * 3 + (c % 3);
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.dataset.row = row;
+      cell.dataset.col = col;
+      cell.setAttribute("role", "gridcell");
+      for (const n of order) {
+        const s = document.createElement("span");
+        s.className = "cand";
+        s.dataset.n = n;
+        s.textContent = n;
+        s.tabIndex = 0;
+        cell.appendChild(s);
+      }
+      const big = document.createElement("span");
+      big.className = "big";
+      big.tabIndex = 0;
+      cell.appendChild(big);
+      box.appendChild(cell);
+    }
+    board.appendChild(box);
+  }
+
+  // 同じ行・列・3x3ブロックに同じ数字があるマスを赤くする
+  function markConflicts() {
+    const cells = [...board.querySelectorAll(".cell")];
+    const fixed = cells.filter((c) => c.dataset.value);
+    cells.forEach((c) => c.classList.remove("conflict"));
+    for (const a of fixed) {
+      const ar = +a.dataset.row, ac = +a.dataset.col;
+      for (const b of fixed) {
+        if (a === b || a.dataset.value !== b.dataset.value) continue;
+        const br = +b.dataset.row, bc = +b.dataset.col;
+        const sameBox = Math.floor(ar / 3) === Math.floor(br / 3) && Math.floor(ac / 3) === Math.floor(bc / 3);
+        if (ar === br || ac === bc || sameBox) { a.classList.add("conflict"); break; }
+      }
+    }
+    // 候補に選んだ数字が同じ行・列・ブロックで確定済みなら赤くする
+    board.querySelectorAll(".cand.pick").forEach((s) => {
+      const cell = s.closest(".cell");
+      const r = +cell.dataset.row, c = +cell.dataset.col;
+      const bad = fixed.some((f) => {
+        if (f === cell || f.dataset.value !== s.dataset.n) return false;
+        const fr = +f.dataset.row, fc = +f.dataset.col;
+        return fr === r || fc === c || (Math.floor(fr / 3) === Math.floor(r / 3) && Math.floor(fc / 3) === Math.floor(c / 3));
+      });
+      s.classList.toggle("bad", bad);
+      if (s.classList.contains("sure")) cell.classList.toggle("tent-bad", bad);
+    });
+    // 確定候補と同じ数字が同じ行・列・ブロックの候補にあれば茶色にする
+    const tents = !["register", "start"].includes(board.dataset.mode) ? cells.filter((c) => c.classList.contains("tent")) : [];
+    board.querySelectorAll(".cand").forEach((s) => {
+      const cell = s.closest(".cell");
+      const r = +cell.dataset.row, c = +cell.dataset.col;
+      const hit = tents.some((t) => {
+        if (t === cell || t.querySelector(".big").textContent !== s.dataset.n) return false;
+        const tr = +t.dataset.row, tc = +t.dataset.col;
+        return tr === r || tc === c || (Math.floor(tr / 3) === Math.floor(r / 3) && Math.floor(tc / 3) === Math.floor(c / 3));
+      });
+      s.classList.toggle("shadow", hit);
+    });
+    // 確定候補どうしが同じ行・列・ブロックで重なっていたら両方赤くする
+    for (const a of tents) {
+      const ar = +a.dataset.row, ac = +a.dataset.col, av = a.querySelector(".big").textContent;
+      const dup = tents.some((b) => {
+        if (a === b || b.querySelector(".big").textContent !== av) return false;
+        const br = +b.dataset.row, bc = +b.dataset.col;
+        return ar === br || ac === bc || (Math.floor(ar / 3) === Math.floor(br / 3) && Math.floor(ac / 3) === Math.floor(bc / 3));
+      });
+      if (dup) a.classList.add("tent-bad");
+    }
+    if (typeof renderPad === "function") renderPad();
+  }
+
+  // 保存した問題（このブラウザに保存）: [{name, givens: 81文字(0=空き), saved}]
+  const KEY = "sudoku-problems";
+  function loadAll() {
+    try { return JSON.parse(localStorage.getItem(KEY)) || []; } catch (e) { return []; }
+  }
+  function saveAll(list) {
+    try { localStorage.setItem(KEY, JSON.stringify(list)); return true; } catch (e) { return false; }
+  }
+  const cellAt = (r, c) => board.querySelector(`.cell[data-row="${r}"][data-col="${c}"]`);
+
+  // 盤面を空にする
+  function clearBoard() {
+    if (typeof selectCell === "function") selectCell(null);
+    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off"));
+    board.querySelectorAll(".cell").forEach((c) => {
+      c.className = "cell";
+      delete c.dataset.value;
+      const big = c.querySelector(".big");
+      big.textContent = "";
+      big.tabIndex = 0;
+    });
+  }
+
+  // 問題作成モード: 小さな数字で確定（大きく表示）、大きな数字で元に戻す
+  // 回答モード: 小さな数字をそのマスの候補として選ぶ（青字）、もう一度クリックで解除
+  function act(target, fromPad) {
+    const cell = target.closest(".cell");
+    if (!cell || !["register", "solve"].includes(board.dataset.mode)) return;
+    if (board.dataset.mode === "solve") {
+      // 確定候補はシングルクリックでは変えない（ダブルクリックで戻す）
+      if (target.classList.contains("cand") && !target.classList.contains("sure")) {
+        target.classList.toggle("pick");
+        target.classList.remove("bad");
+        markConflicts();
+      }
+      return;
+    }
+    if (target.classList.contains("cand")) {
+      cell.querySelector(".big").textContent = target.dataset.n;
+      cell.dataset.value = target.dataset.n;
+      cell.classList.add("fixed");
+      if (!fromPad) cell.querySelector(".big").focus();
+    } else if (target.classList.contains("big")) {
+      cell.classList.remove("fixed");
+      delete cell.dataset.value;
+    }
+    markConflicts();
+  }
+  // スマホではマスのタップでマスを選び、数字は下のパッドで操作する
+  const phoneMQ = window.matchMedia("(max-width: 760px)");
+  const isPhone = () => phoneMQ.matches;
+  board.addEventListener("click", (e) => {
+    const cell = e.target.closest(".cell");
+    if (isPhone()) { if (cell) selectCell(cell); return; }
+    if (board.dataset.mode === "solve" && cell) return countTap(e.target, cell);
+    act(e.target);
+  });
+
+  // 回答モードのタップ回数: 1回=候補の選択/解除、2回=確定候補、3回=グレーアウト
+  // （同じ数字への連続タップを少し待って数えてから実行する）
+  let tap = { target: null, cell: null, n: 0, timer: null };
+  function countTap(target, cell) {
+    if (tap.target !== target) flushTap();
+    tap.target = target;
+    tap.cell = cell;
+    tap.n++;
+    clearTimeout(tap.timer);
+    tap.timer = setTimeout(flushTap, 350);
+  }
+  function flushTap() {
+    clearTimeout(tap.timer);
+    const { target, cell, n } = tap;
+    tap = { target: null, cell: null, n: 0, timer: null };
+    if (target && board.dataset.mode === "solve") runTap(target, cell, Math.min(n, 3));
+  }
+  function runTap(target, cell, n) {
+    if (cell.classList.contains("tent")) {
+      if (n === 2) toggleSure(cell, target);
+      return;
+    }
+    if (!target.classList.contains("cand")) return;
+    if (n === 3) {
+      target.classList.remove("pick", "bad");
+      target.classList.toggle("off");
+    } else if (target.classList.contains("off")) {
+      return;
+    } else if (n === 1) {
+      target.classList.toggle("pick");
+      target.classList.remove("bad");
+    } else {
+      target.classList.add("pick");
+      toggleSure(cell, target);
+    }
+    markConflicts();
+  }
+
+  // 回答モード: 選んだ候補をダブルクリックで確定候補にする（大きく表示）、もう一度で元に戻す
+  function toggleSure(cell, target) {
+    if (board.dataset.mode !== "solve" || cell.classList.contains("fixed")) return;
+    if (cell.classList.contains("tent")) {
+      // 大きな確定候補をダブルクリック: 元の3x3の候補表示に戻す
+      cell.querySelectorAll(".cand.sure").forEach((o) => o.classList.remove("sure"));
+      cell.classList.remove("tent", "tent-bad");
+      cell.querySelector(".big").textContent = "";
+    } else if (target.classList.contains("pick")) {
+      target.classList.add("sure");
+      cell.querySelector(".big").textContent = target.dataset.n;
+      cell.classList.add("tent");
+    }
+    markConflicts();
+  }
+
+  // 数字パッド（スマホ）: 選んだマスの候補を同じ色で大きく表示する
+  const pad = document.getElementById("pad");
+  const padTitle = document.getElementById("pad-title");
+  const padNote = document.getElementById("pad-note");
+  const keys = order.map((n) => {
+    const k = document.createElement("button");
+    k.type = "button";
+    k.className = "key";
+    k.dataset.n = n;
+    k.textContent = n;
+    document.getElementById("keys").appendChild(k);
+    return k;
+  });
+  let sel = null;
+  function selectCell(cell) {
+    if (sel) sel.classList.remove("sel");
+    sel = cell;
+    if (!cell) {
+      pad.hidden = true;
+      board.querySelectorAll(".cell.peer").forEach((c) => c.classList.remove("peer"));
+      return;
+    }
+    renderPad();
+  }
+  function renderPad() {
+    const mode = board.dataset.mode;
+    const show = !!sel && isPhone() && (mode === "register" || mode === "solve");
+    pad.hidden = !show;
+    if (sel) sel.classList.toggle("sel", show);
+    // 選んだマスと同じ行・列・ブロックを薄く色付けする
+    board.querySelectorAll(".cell").forEach((c) => {
+      const peer = show && c !== sel && (c.dataset.row === sel.dataset.row || c.dataset.col === sel.dataset.col
+        || (Math.floor(c.dataset.row / 3) === Math.floor(sel.dataset.row / 3) && Math.floor(c.dataset.col / 3) === Math.floor(sel.dataset.col / 3)));
+      c.classList.toggle("peer", peer);
+    });
+    if (!show) return;
+    const given = mode === "solve" && sel.classList.contains("fixed");
+    padTitle.textContent = `黄色のマス：${+sel.dataset.row + 1}行目・${+sel.dataset.col + 1}列目` + (given ? "（問題の数字）" : sel.classList.contains("tent") ? "（確定候補）" : "");
+    for (const k of keys) {
+      const cand = sel.querySelector(`.cand[data-n="${k.dataset.n}"]`);
+      k.className = "key";
+      for (const c of ["pick", "sure", "bad", "shadow", "off"]) if (cand.classList.contains(c)) k.classList.add(c);
+      k.classList.toggle("val", sel.dataset.value === k.dataset.n);
+      k.disabled = given;
+    }
+    padNote.textContent = mode === "register"
+      ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
+      : given ? "問題の数字は変えられません。"
+      : "1回タップ：候補（青）の選択・解除　2回：確定候補にする・戻す　3回：グレーにして選べなくする・戻す";
+  }
+  let lastTap = { key: null, t: 0 };
+  pad.addEventListener("click", (e) => {
+    const k = e.target.closest(".key");
+    if (!k || !sel || k.disabled) return;
+    const cand = sel.querySelector(`.cand[data-n="${k.dataset.n}"]`);
+    if (board.dataset.mode === "register") {
+      act(sel.dataset.value === k.dataset.n ? sel.querySelector(".big") : cand, true);
+      return;
+    }
+    countTap(cand, sel);
+  });
+  phoneMQ.addEventListener?.("change", renderPad);
+
+  // 問題登録完了: この時点で入っている数字を問題（変更不可）として確定する
+  const done = document.getElementById("done");
+  const prompt = document.getElementById("prompt");
+  const note = document.getElementById("note");
+  const registerNote = note.textContent;
+  const pname = document.getElementById("pname");
+  const nameField = document.getElementById("name-field");
+  let currentName = "";
+  done.addEventListener("click", () => {
+    const givens = board.querySelectorAll(".cell.fixed");
+    if (givens.length === 0) {
+      prompt.textContent = "数字が1つも登録されていません。問題の数字を入れてから押してください";
+      return;
+    }
+    // 名前を付けて保存（同じ名前なら上書き、未入力なら日時で名前を付ける）
+    let name = pname.value.trim();
+    if (!name) {
+      const d = new Date(), p2 = (n) => String(n).padStart(2, "0");
+      name = `問題 ${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())} ${p2(d.getHours())}:${p2(d.getMinutes())}`;
+      pname.value = name;
+    }
+    let digits = "";
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) digits += cellAt(r, c).dataset.value || "0";
+    const list = loadAll().filter((p) => p.name !== name && p.name !== currentName);
+    list.push({ name, givens: digits, saved: new Date().toISOString() });
+    const ok = saveAll(list);
+    currentName = name;
+    givens.forEach((c) => {
+      c.classList.add("given");
+      c.querySelector(".big").tabIndex = -1;
+    });
+    board.querySelectorAll(".cell.tent-off").forEach((c) => {
+      c.classList.remove("tent-off");
+      const sure = c.querySelector(".cand.sure");
+      if (!c.classList.contains("fixed") && sure) {
+        c.querySelector(".big").textContent = sure.dataset.n;
+        c.classList.add("tent");
+      }
+    });
+    markConflicts();
+    showReady(givens.length);
+    if (!ok) prompt.textContent += "。このブラウザでは保存できませんでした";
+  });
+
+  // 経過時間タイマー
+  const timerEl = document.getElementById("timer");
+  let elapsed = 0, startedAt = null, tick = null;
+  function fmt(ms) {
+    const s = Math.floor(ms / 1000), p2 = (n) => String(n).padStart(2, "0");
+    const h = Math.floor(s / 3600), m = Math.floor(s / 60) % 60;
+    return (h ? h + ":" + p2(m) : p2(m)) + ":" + p2(s % 60);
+  }
+  function drawTimer() {
+    timerEl.textContent = fmt(elapsed + (startedAt ? Date.now() - startedAt : 0));
+  }
+  function timerStart() {
+    if (startedAt) return;
+    startedAt = Date.now();
+    tick = setInterval(drawTimer, 250);
+    timerEl.classList.remove("paused");
+    drawTimer();
+  }
+  function timerStop() {
+    if (startedAt) elapsed += Date.now() - startedAt;
+    startedAt = null;
+    clearInterval(tick);
+    timerEl.classList.add("paused");
+    drawTimer();
+  }
+  function timerReset() {
+    timerStop();
+    elapsed = 0;
+    drawTimer();
+  }
+
+  // 登録済み（回答前）: 「回答スタート」を待つ
+  let currentCount = 0;
+  const go = document.getElementById("go");
+  const pause = document.getElementById("pause");
+  function showReady(count) {
+    currentCount = count;
+    board.dataset.mode = "ready";
+    timerReset();
+    timerEl.hidden = false;
+    prompt.textContent = `問題を登録しました：${currentName}（問題 ${count} マス）`;
+    nameField.hidden = true;
+    note.textContent = "「回答スタート」を押すと回答モードになり、タイマーが動き始めます。";
+    done.hidden = true;
+    go.hidden = false;
+    pause.hidden = true;
+    edit.hidden = false;
+    reset.hidden = true;
+    exportCur.hidden = false;
+    saveProgress.hidden = true;
+    workMsg.textContent = "";
+    confirmBox.hidden = true;
+    updatePhoto();
+  }
+  function showSolve() {
+    board.dataset.mode = "solve";
+    prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
+    note.textContent = "小さな数字を 1回クリック：候補（青）の選択・解除　2回：確定候補にする（大きな数字を2回で戻す）　3回：グレーにして選べなくする・戻す";
+    go.hidden = true;
+    pause.hidden = false;
+    pause.textContent = "一時停止";
+    reset.hidden = false;
+    exportCur.hidden = true;
+    saveProgress.hidden = false;
+    timerStart();
+    markConflicts();
+  }
+  go.addEventListener("click", showSolve);
+  // 一時停止中はタイマーを止め、盤を薄くして操作できなくする
+  pause.addEventListener("click", () => {
+    if (board.dataset.mode === "solve") {
+      board.dataset.mode = "paused";
+      timerStop();
+      pause.textContent = "再開";
+      renderPad();
+      prompt.textContent = `一時停止中：${currentName}`;
+      note.textContent = "「再開」を押すと回答を続けられます。";
+      confirmBox.hidden = true;
+    } else {
+      showSolve();
+    }
+  });
+
+  // リセット: 問題は残し、回答（候補・確定候補）をすべて消す
+  const reset = document.getElementById("reset");
+  const confirmBox = document.getElementById("confirm");
+  reset.addEventListener("click", () => {
+    confirmBox.hidden = false;
+    document.getElementById("reset-no").focus();
+  });
+  document.getElementById("reset-no").addEventListener("click", () => {
+    confirmBox.hidden = true;
+    reset.focus();
+  });
+  document.getElementById("reset-yes").addEventListener("click", () => {
+    confirmBox.hidden = true;
+    showReady(currentCount);
+    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off"));
+    board.querySelectorAll(".cell").forEach((c) => {
+      c.classList.remove("tent", "tent-bad", "tent-off");
+      if (!c.classList.contains("fixed")) c.querySelector(".big").textContent = "";
+    });
+    markConflicts();
+  });
+
+  // 問題修正: 問題作成モードに戻す（選んだ候補はそのまま残す）
+  const edit = document.getElementById("edit");
+  edit.addEventListener("click", () => {
+    timerReset();
+    timerEl.hidden = true;
+    go.hidden = true;
+    pause.hidden = true;
+    board.querySelectorAll(".cell.given").forEach((c) => {
+      c.classList.remove("given");
+      c.querySelector(".big").tabIndex = 0;
+    });
+    // 確定候補の大きな表示は問題作成中は隠し、回答モードに戻ったら復元する
+    board.querySelectorAll(".cell.tent").forEach((c) => c.classList.replace("tent", "tent-off"));
+    board.dataset.mode = "register";
+    markConflicts();
+    showRegister();
+  });
+
+  // 写真から問題を読み取る（Claude が写真を読む。使えない環境ではボタンを出さない）
+  const photoBox = document.getElementById("photo-box");
+  const photoInput = document.getElementById("photo-input");
+  const photoFile = document.getElementById("photo-file");
+  const photoStatus = document.getElementById("photo-status");
+  const photoHint = photoStatus.textContent;
+  let sampleFn = null;
+  function updatePhoto() {
+    photoBox.hidden = board.dataset.mode !== "register";
+    renderPad();
+  }
+  (async () => {
+    try {
+      const s = await window.claude?.use?.("sample");
+      if (!s) return;
+      const lim = await s.limits().catch(() => null);
+      if (!lim?.images) return;
+      sampleFn = s;
+      photoInput.accept = photoFile.accept = lim.images.mediaTypes.join(",");
+      updatePhoto();
+    } catch (e) { /* 使えない環境 */ }
+  })();
+  const PHOTO_PROMPT = "この写真には数独（9x9）の問題が写っています。最初から印刷されている数字を、上の行から順に読み取ってください。書き込みや小さなメモ数字は無視します。"
+    + "空きマスは 0 にします。JSON だけを返してください。形式: {\"grid\": [\"530070000\", \"600195000\", ...]}（9文字の文字列を9行分）。"
+    + "数独の盤面が見つからなければ {\"grid\": null} を返してください。";
+  const PHOTO_ERRORS = {
+    not_granted: "Claude の利用が許可されていないため読み取れません。数字は手で入れてください。",
+    rate_limited: "利用が混み合っています。少し待ってからもう一度試してください。",
+    image_rejected: "この画像は使えません。JPEG や PNG の写真を選んでください。",
+    session_expired: "サインインの有効期限が切れました。サインインし直してから試してください。",
+  };
+  // カメラ撮影でも画像ファイルでも同じように読み取る
+  photoInput.addEventListener("change", () => readPhoto(photoInput));
+  photoFile.addEventListener("change", () => readPhoto(photoFile));
+  async function readPhoto(input) {
+    const file = input.files[0];
+    input.value = "";
+    if (!file) return;
+    // Claude が使えないところ（ダウンロードしたファイルなど）では、端末の中で読み取る
+    if (!sampleFn) return startCrop(file);
+    photoBox.classList.add("busy");
+    photoStatus.classList.remove("err");
+    photoStatus.textContent = "読み取り中です…（数十秒かかることがあります）";
+    try {
+      const res = await sampleFn.json(PHOTO_PROMPT, { images: file });
+      const rows = res && Array.isArray(res.grid) ? res.grid.map((r) => String(r).replace(/[^0-9]/g, "")) : null;
+      if (!rows || rows.length !== 9 || rows.some((r) => r.length !== 9)) {
+        throw { code: "no_grid" };
+      }
+      if (board.dataset.mode !== "register") return;
+      clearBoard();
+      let n = 0;
+      rows.forEach((r, ri) => [...r].forEach((v, ci) => {
+        if (v === "0") return;
+        const c = cellAt(ri, ci);
+        c.dataset.value = v;
+        c.querySelector(".big").textContent = v;
+        c.classList.add("fixed");
+        n++;
+      }));
+      markConflicts();
+      photoStatus.textContent = `${n} マスを読み取りました。写真と見比べて、間違いがあれば直してから「問題登録完了」を押してください。`;
+    } catch (e) {
+      photoStatus.classList.add("err");
+      if (e && e.code === "cancelled") photoStatus.textContent = photoHint;
+      else if (e && e.code === "no_grid") photoStatus.textContent = "数独の盤面を読み取れませんでした。盤面全体がまっすぐ写るように撮り直してください。";
+      else photoStatus.textContent = PHOTO_ERRORS[e && e.code] || "読み取りに失敗しました。もう一度試してください。";
+    } finally {
+      photoBox.classList.remove("busy");
+    }
+  }
+
+  // ---- 端末の中での読み取り（登録不要・無料。Tesseract.js を使うため初回はインターネット接続が必要）----
+  // アプリ版（PWA）では window.TESS_BASE に同梱の読み取りファイルの場所が入り、ネットなしで動く
+  const TESS_BASE = window.TESS_BASE ? new URL(window.TESS_BASE, location.href).href : null;
+  const TESS_URL = TESS_BASE ? TESS_BASE + "tesseract.min.js" : "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
+  const TESS_OPTS = TESS_BASE ? { workerPath: TESS_BASE + "worker.min.js", corePath: TESS_BASE, langPath: TESS_BASE } : {};
+  const cropEl = document.getElementById("crop");
+  const cropCanvas = document.getElementById("crop-canvas");
+  const cropCtx = cropCanvas.getContext("2d");
+  let ocrImg = null, corners = null, cropScale = 1, dragIdx = -1, ocrWorker = null;
+
+  // 単位正方形の四隅 → 写真上の四隅 への射影変換
+  function homography(dst) {
+    const src = [[0, 0], [1, 0], [1, 1], [0, 1]];
+    const A = [];
+    for (let i = 0; i < 4; i++) {
+      const [x, y] = src[i], [u, v] = dst[i];
+      A.push([x, y, 1, 0, 0, 0, -u * x, -u * y, u]);
+      A.push([0, 0, 0, x, y, 1, -v * x, -v * y, v]);
+    }
+    for (let c = 0; c < 8; c++) {
+      let p = c;
+      for (let r = c + 1; r < 8; r++) if (Math.abs(A[r][c]) > Math.abs(A[p][c])) p = r;
+      [A[c], A[p]] = [A[p], A[c]];
+      for (let r = 0; r < 8; r++) {
+        if (r === c) continue;
+        const f = A[r][c] / A[c][c];
+        for (let k = c; k < 9; k++) A[r][k] -= f * A[c][k];
+      }
+    }
+    const h = A.map((row, i) => row[8] / row[i]);
+    return (x, y) => {
+      const w = h[6] * x + h[7] * y + 1;
+      return [(h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w];
+    };
+  }
+
+  async function startCrop(file) {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.src = url;
+    try { await img.decode(); } catch (e) { /* 下で判定 */ }
+    if (!img.naturalWidth) {
+      photoStatus.classList.add("err");
+      photoStatus.textContent = "この画像は開けませんでした。JPEG や PNG の画像を選んでください。";
+      return;
+    }
+    ocrImg = img;
+    const w = img.naturalWidth, h = img.naturalHeight;
+    corners = [[w * 0.08, h * 0.08], [w * 0.92, h * 0.08], [w * 0.92, h * 0.92], [w * 0.08, h * 0.92]];
+    cropEl.hidden = false;
+    const maxW = Math.min(window.innerWidth - 64, 900), maxH = window.innerHeight * 0.68;
+    cropScale = Math.min(maxW / w, maxH / h, 1);
+    cropCanvas.width = Math.round(w * cropScale);
+    cropCanvas.height = Math.round(h * cropScale);
+    drawCrop();
+  }
+  function drawCrop() {
+    const s = cropScale;
+    cropCtx.drawImage(ocrImg, 0, 0, cropCanvas.width, cropCanvas.height);
+    const H = homography(corners);
+    const line = (a, b, wide) => {
+      const p = H(...a), q = H(...b);
+      cropCtx.beginPath();
+      cropCtx.moveTo(p[0] * s, p[1] * s);
+      cropCtx.lineTo(q[0] * s, q[1] * s);
+      cropCtx.lineWidth = wide ? 2.5 : 1;
+      cropCtx.strokeStyle = "rgba(224,120,0,0.9)";
+      cropCtx.stroke();
+    };
+    for (let i = 0; i <= 9; i++) {
+      line([i / 9, 0], [i / 9, 1], i % 3 === 0);
+      line([0, i / 9], [1, i / 9], i % 3 === 0);
+    }
+    for (const [x, y] of corners) {
+      cropCtx.beginPath();
+      cropCtx.arc(x * s, y * s, 11, 0, Math.PI * 2);
+      cropCtx.fillStyle = "rgba(255,170,0,0.55)";
+      cropCtx.fill();
+      cropCtx.lineWidth = 2.5;
+      cropCtx.strokeStyle = "#c26a00";
+      cropCtx.stroke();
+    }
+  }
+  function canvasPos(e) {
+    const r = cropCanvas.getBoundingClientRect();
+    return [(e.clientX - r.left) * (cropCanvas.width / r.width), (e.clientY - r.top) * (cropCanvas.height / r.height)];
+  }
+  cropCanvas.addEventListener("pointerdown", (e) => {
+    const [x, y] = canvasPos(e);
+    let best = -1, bd = 45 * (cropCanvas.width / cropCanvas.getBoundingClientRect().width);
+    corners.forEach(([cx, cy], i) => {
+      const d = Math.hypot(cx * cropScale - x, cy * cropScale - y);
+      if (d < bd) { bd = d; best = i; }
+    });
+    dragIdx = best;
+    if (best >= 0) cropCanvas.setPointerCapture(e.pointerId);
+  });
+  cropCanvas.addEventListener("pointermove", (e) => {
+    if (dragIdx < 0) return;
+    const [x, y] = canvasPos(e);
+    corners[dragIdx] = [
+      Math.max(0, Math.min(ocrImg.naturalWidth, x / cropScale)),
+      Math.max(0, Math.min(ocrImg.naturalHeight, y / cropScale)),
+    ];
+    drawCrop();
+  });
+  cropCanvas.addEventListener("pointerup", () => { dragIdx = -1; });
+  document.getElementById("crop-cancel").addEventListener("click", () => {
+    cropEl.hidden = true;
+    photoStatus.classList.remove("err");
+    photoStatus.textContent = photoHint;
+  });
+
+  function loadTesseract() {
+    if (window.Tesseract) return Promise.resolve();
+    return new Promise((ok, ng) => {
+      const s = document.createElement("script");
+      s.src = TESS_URL;
+      s.onload = ok;
+      s.onerror = ng;
+      document.head.appendChild(s);
+    });
+  }
+
+  document.getElementById("crop-ok").addEventListener("click", async () => {
+    cropEl.hidden = true;
+    photoBox.classList.add("busy");
+    photoStatus.classList.remove("err");
+    photoStatus.textContent = "読み取りの準備中です…（初回は少し時間がかかります）";
+    try {
+      // 写真をまっすぐな正方形に変換して、グレーの濃さにする
+      const k = Math.min(1, 2000 / Math.max(ocrImg.naturalWidth, ocrImg.naturalHeight));
+      const src = document.createElement("canvas");
+      src.width = Math.round(ocrImg.naturalWidth * k);
+      src.height = Math.round(ocrImg.naturalHeight * k);
+      const sctx = src.getContext("2d", { willReadFrequently: true });
+      sctx.drawImage(ocrImg, 0, 0, src.width, src.height);
+      const px = sctx.getImageData(0, 0, src.width, src.height).data;
+      const H = homography(corners.map(([x, y]) => [x * k, y * k]));
+      const N = 450, CS = N / 9;
+      const gray = new Uint8Array(N * N);
+      for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+        const [sx, sy] = H((i + 0.5) / N, (j + 0.5) / N);
+        const xi = Math.min(src.width - 1, Math.max(0, Math.round(sx)));
+        const yi = Math.min(src.height - 1, Math.max(0, Math.round(sy)));
+        const o = (yi * src.width + xi) * 4;
+        gray[j * N + i] = 0.299 * px[o] + 0.587 * px[o + 1] + 0.114 * px[o + 2];
+      }
+      // 大津の方法で「文字」と「紙」の境を決める
+      const hist = new Array(256).fill(0);
+      for (const g of gray) hist[g]++;
+      let sum = 0;
+      for (let t = 0; t < 256; t++) sum += t * hist[t];
+      let sB = 0, wB = 0, best = 0, thr = 128;
+      for (let t = 0; t < 256; t++) {
+        wB += hist[t];
+        if (!wB || wB === gray.length) continue;
+        sB += t * hist[t];
+        const mB = sB / wB, mF = (sum - sB) / (gray.length - wB);
+        const v = wB * (gray.length - wB) * (mB - mF) ** 2;
+        if (v > best) { best = v; thr = t; }
+      }
+      // 各マスの中央に文字があるか調べ、あれば数字だけを切り出す
+      const jobs = [];
+      for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+        const x0 = Math.round(c * CS + CS * 0.15), x1 = Math.round(c * CS + CS * 0.85);
+        const y0 = Math.round(r * CS + CS * 0.15), y1 = Math.round(r * CS + CS * 0.85);
+        let n = 0, bx0 = 1e9, by0 = 1e9, bx1 = -1, by1 = -1;
+        for (let y = y0; y < y1; y++) for (let x = x0; x < x1; x++) {
+          if (gray[y * N + x] < thr) {
+            n++;
+            if (x < bx0) bx0 = x; if (x > bx1) bx1 = x;
+            if (y < by0) by0 = y; if (y > by1) by1 = y;
+          }
+        }
+        if (n < (x1 - x0) * (y1 - y0) * 0.04 || by1 - by0 < CS * 0.25) continue;
+        const bw = bx1 - bx0 + 1, bh = by1 - by0 + 1;
+        const dig = document.createElement("canvas");
+        dig.width = bw; dig.height = bh;
+        const dctx = dig.getContext("2d");
+        const im = dctx.createImageData(bw, bh);
+        for (let y = 0; y < bh; y++) for (let x = 0; x < bw; x++) {
+          const v = gray[(by0 + y) * N + bx0 + x] < thr ? 0 : 255;
+          const o = (y * bw + x) * 4;
+          im.data[o] = im.data[o + 1] = im.data[o + 2] = v;
+          im.data[o + 3] = 255;
+        }
+        dctx.putImageData(im, 0, 0);
+        jobs.push({ r, c, dig, bw, bh });
+      }
+      // 数字を白い余白の中に指定の高さで置いた画像を作る
+      const render = (job, h) => {
+        const W = h * 2;
+        const out = document.createElement("canvas");
+        out.width = out.height = W;
+        const octx = out.getContext("2d");
+        octx.fillStyle = "#fff";
+        octx.fillRect(0, 0, W, W);
+        const sc = h / job.bh;
+        octx.drawImage(job.dig, (W - job.bw * sc) / 2, (W - h) / 2, job.bw * sc, h);
+        return out;
+      };
+      await loadTesseract();
+      if (!ocrWorker) ocrWorker = await Tesseract.createWorker("eng", 1, TESS_OPTS);
+      const result = new Array(81).fill("0");
+      // 読めなかったマスは、大きさと読み方を変えてもう一度試す
+      let todo = jobs;
+      const tries = [{ h: 56, psm: "10" }, { h: 40, psm: "8" }, { h: 72, psm: "7" }, { h: 32, psm: "10" }];
+      for (let t = 0; t < tries.length && todo.length; t++) {
+        await ocrWorker.setParameters({ tessedit_char_whitelist: "123456789", tessedit_pageseg_mode: tries[t].psm });
+        const left = [];
+        for (let i = 0; i < todo.length; i++) {
+          photoStatus.textContent = t === 0
+            ? `読み取り中です…（${i + 1} / ${todo.length}）`
+            : `読みにくいマスを読み直しています…（${i + 1} / ${todo.length}）`;
+          const { data } = await ocrWorker.recognize(render(todo[i], tries[t].h));
+          const d = (data.text || "").replace(/[^1-9]/g, "")[0];
+          if (d) result[todo[i].r * 9 + todo[i].c] = d; else left.push(todo[i]);
+        }
+        todo = left;
+      }
+      const miss = todo.length;
+      if (board.dataset.mode !== "register") return;
+      clearBoard();
+      let n = 0;
+      result.forEach((v, i) => {
+        if (v === "0") return;
+        const c = cellAt(Math.floor(i / 9), i % 9);
+        c.dataset.value = v;
+        c.querySelector(".big").textContent = v;
+        c.classList.add("fixed");
+        n++;
+      });
+      markConflicts();
+      photoStatus.textContent = `${n} マスを読み取りました` + (miss ? `（読めなかったマスが ${miss} か所あります）` : "") + "。写真と見比べて、間違いがあれば直してから「問題登録完了」を押してください。";
+    } catch (e) {
+      photoStatus.classList.add("err");
+      photoStatus.textContent = "読み取りの準備ができませんでした。インターネットにつながっているか確かめて、もう一度試してください。";
+    } finally {
+      photoBox.classList.remove("busy");
+    }
+  });
+
+  function showRegister() {
+    photoStatus.classList.remove("err");
+    photoStatus.textContent = photoHint;
+    prompt.textContent = "問題を登録してください";
+    note.textContent = registerNote;
+    nameField.hidden = false;
+    pname.value = currentName;
+    edit.hidden = true;
+    reset.hidden = true;
+    confirmBox.hidden = true;
+    done.hidden = false;
+    exportCur.hidden = true;
+    saveProgress.hidden = true;
+    workMsg.textContent = "";
+    updatePhoto();
+  }
+
+  // 起動画面: 保存した問題の一覧から選ぶか、新しい問題を作る
+  const startPanel = document.getElementById("start");
+  const workPanel = document.getElementById("work");
+  const listEl = document.getElementById("list");
+  function showStart() {
+    timerReset();
+    clearBoard();
+    board.dataset.mode = "start";
+    currentName = "";
+    workPanel.hidden = true;
+    startPanel.hidden = false;
+    say("");
+    renderList();
+    updatePhoto();
+  }
+  function renderList() {
+    const list = loadAll().sort((a, b) => (b.saved || "").localeCompare(a.saved || ""));
+    listEl.innerHTML = "";
+    document.getElementById("empty").hidden = list.length > 0;
+    for (const p of list) {
+      const li = document.createElement("li");
+      const open = document.createElement("button");
+      open.type = "button";
+      open.className = "open";
+      open.textContent = p.name;
+      const meta = document.createElement("small");
+      const d = new Date(p.saved);
+      meta.textContent = `問題 ${p.givens.replace(/0/g, "").length} マス・${isNaN(d) ? "" : d.toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}`;
+      open.appendChild(meta);
+      open.addEventListener("click", () => openProblem(p));
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "del";
+      del.textContent = "削除";
+      del.setAttribute("aria-label", `${p.name} を削除`);
+      // 1回目で「削除する」に変わり、2回目で削除
+      del.addEventListener("click", () => {
+        if (!del.classList.contains("armed")) {
+          del.classList.add("armed");
+          del.textContent = "削除する";
+          setTimeout(() => { del.classList.remove("armed"); del.textContent = "削除"; }, 3000);
+          return;
+        }
+        saveAll(loadAll().filter((q) => q.name !== p.name));
+        renderList();
+      });
+      const share = document.createElement("button");
+      share.type = "button";
+      share.className = "share";
+      share.textContent = "書き出し";
+      share.setAttribute("aria-label", `${p.name} をファイルに書き出し`);
+      share.addEventListener("click", () => exportProblem(p));
+      li.append(open, share, del);
+      listEl.appendChild(li);
+    }
+  }
+  // 問題ファイル: {app, version, name, givens(81桁, 0=空き)} の JSON
+  const fileMsg = document.getElementById("file-msg");
+  let msgTarget = null;
+  function say(text, isErr) {
+    const el = msgTarget || fileMsg;
+    el.textContent = text;
+    el.classList.toggle("err", !!isErr);
+  }
+  // 登録済みの問題を、回答画面からそのまま書き出す
+  const exportCur = document.getElementById("export-cur");
+  const workMsg = document.getElementById("work-msg");
+  exportCur.addEventListener("click", async () => {
+    let givens = "";
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) givens += cellAt(r, c).dataset.value || "0";
+    msgTarget = workMsg;
+    try { await exportProblem({ name: currentName, givens }); } finally { msgTarget = null; }
+  });
+  const safeName = (s) => s.replace(/[\\/:*?"<>|]/g, "_");
+  function exportProblem(p) {
+    const data = JSON.stringify({ app: "sudoku-board", version: 1, name: p.name, givens: p.givens }, null, 2);
+    return saveFile(`数独_${safeName(p.name)}.json`, data, `「${p.name}」をファイルに書き出しました`);
+  }
+  async function saveFile(filename, data, okText) {
+    // claude.ai 上では保存の確認を出して保存、単体のファイルでは普通にダウンロード
+    const dl = await window.claude?.use?.("downloads").catch(() => null);
+    if (dl) {
+      try {
+        await dl.save({ filename, data });
+        say(okText);
+      } catch (e) {
+        if (e && e.code === "cancelled") say("");
+        else say("書き出せませんでした。もう一度試してください", true);
+      }
+      return;
+    }
+    const url = URL.createObjectURL(new Blob([data], { type: "application/json" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    say(okText);
+  }
+
+  // 回答途中の状態（問題・候補・確定候補・経過時間）をファイルに保存する
+  const saveProgress = document.getElementById("save-progress");
+  saveProgress.addEventListener("click", async () => {
+    let givens = "", sure = "";
+    const picks = [], offs = [];
+    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
+      const cell = cellAt(r, c);
+      givens += cell.dataset.value || "0";
+      picks.push([...cell.querySelectorAll(".cand.pick")].map((s) => s.dataset.n).sort().join(""));
+      sure += cell.querySelector(".cand.sure")?.dataset.n || "0";
+      offs.push([...cell.querySelectorAll(".cand.off")].map((s) => s.dataset.n).sort().join(""));
+    }
+    const ms = elapsed + (startedAt ? Date.now() - startedAt : 0);
+    const data = JSON.stringify({ app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, saved: new Date().toISOString() }, null, 2);
+    msgTarget = workMsg;
+    try {
+      await saveFile(`数独_${safeName(currentName)}_回答中.json`, data, `この状態を保存しました（経過時間 ${fmt(ms)}）`);
+    } finally { msgTarget = null; }
+  });
+
+  // 回答中のファイルを開く: 問題と回答を復元し、一時停止の状態で再開を待つ
+  const progressFile = document.getElementById("progress-file");
+  progressFile.addEventListener("change", async () => {
+    const file = progressFile.files[0];
+    progressFile.value = "";
+    if (!file) return;
+    let obj;
+    try { obj = JSON.parse(await file.text()); } catch (e) { obj = null; }
+    const ok = obj && obj.kind === "progress" && /^[0-9]{81}$/.test(obj.givens || "") && Array.isArray(obj.picks) && obj.picks.length === 81 && /^[0-9]{81}$/.test(obj.sure || "");
+    if (!ok) {
+      say(obj && /^[0-9]{81}$/.test(obj.givens || "")
+        ? "これは問題だけのファイルです。「問題を選択して開く」から開いてください"
+        : "このファイルは回答中のファイルではありません。「この状態をファイルに保存」で作ったファイルを選んでください", true);
+      return;
+    }
+    say("");
+    openProblem({ name: String(obj.name || "").trim().slice(0, 40) || file.name.replace(/\.json$/i, ""), givens: obj.givens });
+    obj.picks.forEach((p, i) => {
+      const cell = cellAt(Math.floor(i / 9), i % 9);
+      if (cell.classList.contains("fixed")) return;
+      for (const n of String(p)) cell.querySelector(`.cand[data-n="${n}"]`)?.classList.add("pick");
+      if (Array.isArray(obj.off)) for (const n of String(obj.off[i] || "")) cell.querySelector(`.cand[data-n="${n}"]`)?.classList.add("off");
+      const s = obj.sure[i];
+      const cand = s !== "0" && cell.querySelector(`.cand[data-n="${s}"]`);
+      if (cand) {
+        cand.classList.add("pick", "sure");
+        cell.querySelector(".big").textContent = s;
+        cell.classList.add("tent");
+      }
+    });
+    // 経過時間を戻して回答モードに入り、すぐ一時停止にする
+    showSolve();
+    timerStop();
+    elapsed = Math.max(0, Number(obj.elapsed) || 0);
+    drawTimer();
+    pause.click();
+    prompt.textContent = `一時停止中：${currentName}（保存した続きから）`;
+  });
+  const importFile = document.getElementById("import-file");
+  importFile.addEventListener("change", async () => {
+    const file = importFile.files[0];
+    importFile.value = "";
+    if (!file) return;
+    let obj;
+    try { obj = JSON.parse(await file.text()); } catch (e) { obj = null; }
+    const givens = obj && typeof obj.givens === "string" ? obj.givens.replace(/\./g, "0") : "";
+    if (!/^[0-9]{81}$/.test(givens) || !/[1-9]/.test(givens)) {
+      say("このファイルは問題のファイルではありません。「書き出し」で作ったファイルを選んでください", true);
+      return;
+    }
+    const base = String(obj.name || "").trim().slice(0, 40) || file.name.replace(/\.json$/i, "");
+    const list = loadAll();
+    // 同じ問題があればそれを開く。名前だけ同じなら番号を付けて追加
+    let p = list.find((q) => q.name === base && q.givens === givens);
+    if (!p) {
+      let name = base;
+      for (let i = 2; list.some((q) => q.name === name); i++) name = `${base} (${i})`;
+      p = { name, givens, saved: new Date().toISOString() };
+      list.push(p);
+      saveAll(list);
+    }
+    say("");
+    openProblem(p);
+  });
+
+  function openProblem(p) {
+    clearBoard();
+    [...p.givens].forEach((v, i) => {
+      if (v === "0") return;
+      const c = cellAt(Math.floor(i / 9), i % 9);
+      c.dataset.value = v;
+      c.querySelector(".big").textContent = v;
+      c.querySelector(".big").tabIndex = -1;
+      c.classList.add("fixed", "given");
+    });
+    currentName = p.name;
+    startPanel.hidden = true;
+    workPanel.hidden = false;
+    showReady(p.givens.replace(/0/g, "").length);
+    markConflicts();
+  }
+  document.getElementById("new").addEventListener("click", () => {
+    clearBoard();
+    currentName = "";
+    board.dataset.mode = "register";
+    startPanel.hidden = true;
+    workPanel.hidden = false;
+    timerEl.hidden = true;
+    go.hidden = true;
+    pause.hidden = true;
+    showRegister();
+    pname.focus();
+  });
+  document.getElementById("back").addEventListener("click", showStart);
+  showStart();
+  board.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(e.target); }
+  });
+})();
+</script>
+</body>
+</html>
