@@ -512,23 +512,17 @@ p.msg:empty { display: none; }
     }
     if (!target.classList.contains("cand")) return;
     if (n === 3) {
-      if (target.classList.contains("off")) {
-        target.classList.remove("off");
-      } else {
-        // 同じ行・列・ブロックにある同じ数字をすべてグレーにする（全部グレーなら元に戻す）
-        const r = +cell.dataset.row, c = +cell.dataset.col;
-        const others = [...board.querySelectorAll(`.cand[data-n="${target.dataset.n}"]`)].filter((s) => {
-          const o = s.closest(".cell");
-          if (o === cell || o.classList.contains("fixed") || o.classList.contains("tent")) return false;
-          const orow = +o.dataset.row, ocol = +o.dataset.col;
-          return orow === r || ocol === c || (Math.floor(orow / 3) === Math.floor(r / 3) && Math.floor(ocol / 3) === Math.floor(c / 3));
-        });
-        const restore = others.length > 0 && others.every((s) => s.classList.contains("off"));
-        others.forEach((s) => {
-          if (restore) s.classList.remove("off");
-          else { s.classList.remove("pick", "bad"); s.classList.add("off"); }
-        });
-      }
+      // そのマスと同じ行・列・ブロックにある同じ数字をすべてグレーにする（グレーの数字なら全部元に戻す）
+      const restore = target.classList.contains("off");
+      const r = +cell.dataset.row, c = +cell.dataset.col;
+      board.querySelectorAll(`.cand[data-n="${target.dataset.n}"]`).forEach((s) => {
+        const o = s.closest(".cell");
+        if (o !== cell && (o.classList.contains("fixed") || o.classList.contains("tent"))) return;
+        const orow = +o.dataset.row, ocol = +o.dataset.col;
+        if (!(orow === r || ocol === c || (Math.floor(orow / 3) === Math.floor(r / 3) && Math.floor(ocol / 3) === Math.floor(c / 3)))) return;
+        if (restore) s.classList.remove("off");
+        else { s.classList.remove("pick", "bad"); s.classList.add("off"); }
+      });
     } else if (target.classList.contains("off")) {
       return;
     } else if (n === 1) {
@@ -619,7 +613,7 @@ p.msg:empty { display: none; }
     padNote.textContent = mode === "register"
       ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
       : given ? "問題の数字は変えられません。"
-      : "1回タップ：候補（青）の選択・解除　2回：確定候補にする・戻す　3回：同じ行・列・ブロックのその数字をグレーにする・戻す";
+      : "1回タップ：候補（青）の選択・解除　2回：確定候補にする・戻す　3回：そのマスと同じ行・列・ブロックのその数字をグレーにする・戻す";
   }
   let lastTap = { key: null, t: 0 };
   pad.addEventListener("click", (e) => {
@@ -735,7 +729,7 @@ p.msg:empty { display: none; }
   function showSolve() {
     board.dataset.mode = "solve";
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
-    note.textContent = "小さな数字を 1回クリック：候補（青）の選択・解除　2回：確定候補にする（大きな数字を2回で戻す）　3回：同じ行・列・ブロックのその数字をグレーにする・戻す";
+    note.textContent = "小さな数字を 1回クリック：候補（青）の選択・解除　2回：確定候補にする（大きな数字を2回で戻す）　3回：そのマスと同じ行・列・ブロックのその数字をグレーにする・戻す";
     go.hidden = true;
     pause.hidden = false;
     pause.textContent = "一時停止";
