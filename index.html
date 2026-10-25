@@ -34,6 +34,7 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
   --sel-bg: #ffd75e;
   --peer-bg: #fff6d6;
   --hl-bg: #fffcee;
+  --hint-bg: #fbd9d6;
   --cand: #6f7b80;
   --muted: #6a7478;
   --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
@@ -45,12 +46,12 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; color-scheme: dark;
+    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; color-scheme: dark;
+  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; color-scheme: dark;
 }
 html, body { min-height: 100%; }
 body {
@@ -150,6 +151,8 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 .cand.shadow, .cand.pick.shadow { color: var(--brown); font-weight: 700; }
 .cand.pick.shadow { background: var(--brown-bg); }
 .cand.pick.bad { color: var(--error); background: var(--bad-bg); }
+.cell .cand.hint, .cell .cand.pick.hint { background: var(--hint-bg); color: var(--error); font-weight: 700; box-shadow: inset 0 0 0 2px var(--error); }
+.key.hint { background: var(--hint-bg); border-color: var(--error); color: var(--error); }
 .cand.off, .cand.off.shadow { color: var(--line-sub); font-weight: 500; text-decoration: line-through; }
 .key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
 .cell.conflict .big { color: var(--error); }
@@ -282,7 +285,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.48</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.49</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -323,6 +326,7 @@ p.msg:empty { display: none; }
     <button type="button" id="edit" hidden>問題修正</button>
     <button type="button" class="btn" id="go" hidden>回答スタート</button>
     <button type="button" class="btn" id="pause" hidden>一時停止</button>
+    <button type="button" class="btn sub" id="hint" hidden>ヒント</button>
     <button type="button" id="reset" hidden>リセット</button>
     <button type="button" class="btn sub" id="export-cur" hidden>問題を書き出す</button>
     <button type="button" class="btn sub" id="save-progress" hidden>この状態をファイルに保存</button>
@@ -384,6 +388,10 @@ p.msg:empty { display: none; }
 
   // 同じ行・列・3x3ブロックに同じ数字があるマスを赤くする
   function markConflicts() {
+    // 盤が変わったらヒントの表示を消す
+    const msg = document.getElementById("work-msg");
+    if (msg.textContent.startsWith("ヒント")) msg.textContent = "";
+    board.querySelectorAll(".cand.hint").forEach((s) => s.classList.remove("hint"));
     const cells = [...board.querySelectorAll(".cell")];
     const fixed = cells.filter((c) => c.dataset.value);
     cells.forEach((c) => c.classList.remove("conflict"));
@@ -446,7 +454,7 @@ p.msg:empty { display: none; }
   // 盤面を空にする
   function clearBoard() {
     if (typeof selectCell === "function") selectCell(null);
-    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off"));
+    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off", "hint"));
     board.querySelectorAll(".cell").forEach((c) => {
       c.className = "cell";
       delete c.dataset.value;
@@ -633,7 +641,7 @@ p.msg:empty { display: none; }
     for (const k of keys) {
       const cand = sel.querySelector(`.cand[data-n="${k.dataset.n}"]`);
       k.className = "key";
-      for (const c of ["pick", "sure", "bad", "shadow", "off"]) if (cand.classList.contains(c)) k.classList.add(c);
+      for (const c of ["pick", "sure", "bad", "shadow", "off", "hint"]) if (cand.classList.contains(c)) k.classList.add(c);
       k.classList.toggle("val", sel.dataset.value === k.dataset.n);
       k.disabled = given;
     }
@@ -749,6 +757,7 @@ p.msg:empty { display: none; }
     reset.hidden = true;
     exportCur.hidden = false;
     saveProgress.hidden = true;
+    hintBtn.hidden = true;
     workMsg.textContent = "";
     confirmBox.hidden = true;
     updatePhoto();
@@ -763,6 +772,7 @@ p.msg:empty { display: none; }
     reset.hidden = false;
     exportCur.hidden = true;
     saveProgress.hidden = false;
+    hintBtn.hidden = false;
     timerStart();
     markConflicts();
   }
@@ -796,7 +806,7 @@ p.msg:empty { display: none; }
   document.getElementById("reset-yes").addEventListener("click", () => {
     confirmBox.hidden = true;
     showReady(currentCount);
-    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off"));
+    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off", "hint"));
     board.querySelectorAll(".cell").forEach((c) => {
       c.classList.remove("tent", "tent-bad", "tent-off");
       if (!c.classList.contains("fixed")) c.querySelector(".big").textContent = "";
@@ -1175,6 +1185,7 @@ p.msg:empty { display: none; }
     done.hidden = false;
     exportCur.hidden = true;
     saveProgress.hidden = true;
+    hintBtn.hidden = true;
     workMsg.textContent = "";
     updatePhoto();
   }
@@ -1246,6 +1257,40 @@ p.msg:empty { display: none; }
   // 登録済みの問題を、回答画面からそのまま書き出す
   const exportCur = document.getElementById("export-cur");
   const workMsg = document.getElementById("work-msg");
+
+  // ヒント: 行・列・ブロックの中で、ある数字を入れられるマスが1つしかない所を1つだけ薄い赤で示す
+  // 入れられる = 問題の数字・確定候補で埋まっておらず、グレーにしておらず、同じ行・列・ブロックにその数字が確定していない
+  const hintBtn = document.getElementById("hint");
+  hintBtn.addEventListener("click", () => {
+    if (board.dataset.mode !== "solve") return;
+    markConflicts();
+    const cells = [...board.querySelectorAll(".cell")];
+    const val = (o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "");
+    const peers = (a, b) => a.dataset.row === b.dataset.row || a.dataset.col === b.dataset.col
+      || (Math.floor(a.dataset.row / 3) === Math.floor(b.dataset.row / 3) && Math.floor(a.dataset.col / 3) === Math.floor(b.dataset.col / 3));
+    const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
+      && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
+    const units = [];
+    for (let i = 0; i < 9; i++) units.push({ name: "ブロック", has: (o) => Math.floor(o.dataset.row / 3) * 3 + Math.floor(o.dataset.col / 3) === i });
+    for (let i = 0; i < 9; i++) units.push({ name: `${i + 1}行目`, has: (o) => +o.dataset.row === i });
+    for (let i = 0; i < 9; i++) units.push({ name: `${i + 1}列目`, has: (o) => +o.dataset.col === i });
+    for (const u of units) {
+      const inUnit = cells.filter(u.has);
+      for (let n = 1; n <= 9; n++) {
+        const d = String(n);
+        if (inUnit.some((o) => val(o) === d)) continue;
+        const spots = inUnit.filter((o) => can(o, d));
+        if (spots.length !== 1) continue;
+        spots[0].querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
+        renderPad();
+        workMsg.classList.remove("err");
+        workMsg.textContent = `ヒント：この${u.name}で「${d}」を入れられるのは、薄い赤のマスだけです。`;
+        return;
+      }
+    }
+    workMsg.classList.remove("err");
+    workMsg.textContent = "ヒント：1か所にしか入らない数字は見つかりませんでした。グレーにできる候補を減らしてから、もう一度押してみてください。";
+  });
   exportCur.addEventListener("click", async () => {
     let givens = "";
     for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) givens += cellAt(r, c).dataset.value || "0";
