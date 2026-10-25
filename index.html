@@ -156,11 +156,11 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 .cand.off, .cand.off.shadow { color: var(--line-sub); font-weight: 500; text-decoration: line-through; }
 .key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
 .cell.conflict .big { color: var(--error); }
-.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .bar .prompt { flex: 1 1 240px; }
 button#done, button#edit, button#reset {
-  font: 700 1rem var(--font-ui);
-  padding: 10px 20px; border: 2px solid var(--ink); border-radius: 4px;
+  font: 700 0.9rem var(--font-ui);
+  padding: 5px 12px; border: 2px solid var(--ink); border-radius: 4px;
   background: var(--ink); color: var(--paper); cursor: pointer;
 }
 button#edit, button#reset { background: var(--paper); color: var(--ink); }
@@ -173,7 +173,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .confirm[hidden] { display: none; }
 .confirm p { margin: 0; flex: 1 1 160px; font-weight: 700; }
 .confirm button {
-  font: 700 1rem var(--font-ui); padding: 8px 18px; border-radius: 4px; cursor: pointer;
+  font: 700 0.9rem var(--font-ui); padding: 5px 12px; border-radius: 4px; cursor: pointer;
   border: 2px solid var(--error); background: var(--paper); color: var(--error);
 }
 .confirm button#reset-yes { background: var(--error); color: var(--paper); }
@@ -235,7 +235,7 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .filepick:focus-within { outline: 3px solid var(--answer); outline-offset: 2px; }
 p.msg { margin: 0; font-size: 0.85rem; }
 p.msg:empty { display: none; }
-.btn.small { font-size: 0.9rem; padding: 6px 14px; }
+.btn.small { font-size: 0.85rem; padding: 4px 10px; }
 .msg { color: var(--muted); }
 .msg.err { color: var(--error); }
 .list .del.armed { border-color: var(--error); background: var(--error); color: var(--paper); }
@@ -243,11 +243,12 @@ p.msg:empty { display: none; }
 .list .del.armed:hover { background: var(--error); opacity: 0.85; }
 .list button:focus-visible, .btn:focus-visible, #pname:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
 .btn {
-  font: 700 1rem var(--font-ui); padding: 10px 20px; border-radius: 4px; cursor: pointer;
+  font: 700 0.9rem var(--font-ui); padding: 5px 12px; border-radius: 4px; cursor: pointer;
   border: 2px solid var(--ink); background: var(--ink); color: var(--paper); justify-self: start;
 }
 .btn.sub { background: var(--paper); color: var(--ink); }
 .btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.4; cursor: default; }
 .photo { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px dashed var(--line-cell); border-radius: 4px; }
 .photo[hidden] { display: none; }
 .photo input { position: absolute; width: 1px; height: 1px; opacity: 0; }
@@ -285,7 +286,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.50</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.51</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -322,6 +323,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="bar">
     <p class="prompt" id="prompt" aria-live="polite">問題を登録してください</p>
+    <button type="button" class="btn sub" id="undo" hidden disabled>一つ戻る</button>
     <button type="button" id="done">問題登録完了</button>
     <button type="button" id="edit" hidden>問題修正</button>
     <button type="button" class="btn" id="go" hidden>回答スタート</button>
@@ -453,6 +455,7 @@ p.msg:empty { display: none; }
 
   // 盤面を空にする
   function clearBoard() {
+    if (typeof clearUndo === "function") clearUndo();
     if (typeof selectCell === "function") selectCell(null);
     board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off", "hint"));
     board.querySelectorAll(".cell").forEach((c) => {
@@ -743,6 +746,8 @@ p.msg:empty { display: none; }
   const go = document.getElementById("go");
   const pause = document.getElementById("pause");
   function showReady(count) {
+    clearUndo();
+    undoBtn.hidden = true;
     currentCount = count;
     board.dataset.mode = "ready";
     timerReset();
@@ -773,6 +778,7 @@ p.msg:empty { display: none; }
     exportCur.hidden = true;
     saveProgress.hidden = false;
     hintBtn.hidden = false;
+    undoBtn.hidden = false;
     timerStart();
     markConflicts();
   }
@@ -1173,6 +1179,8 @@ p.msg:empty { display: none; }
   });
 
   function showRegister() {
+    clearUndo();
+    undoBtn.hidden = false;
     photoStatus.classList.remove("err");
     photoStatus.textContent = photoHint;
     prompt.textContent = "問題を登録してください";
@@ -1260,6 +1268,71 @@ p.msg:empty { display: none; }
 
   // ヒント: 入れられる数字が1つだけのマス、または行・列・ブロックで1か所にしか入らない数字を、1つだけ薄い赤で示す
   // 入れられる = 問題の数字・確定候補で埋まっておらず、グレーにしておらず、同じ行・列・ブロックにその数字が確定していない
+  // 一つ戻る: 操作の前の盤の状態を積んでおき、押すたびに1つ前に戻す（Ctrl+Z / ⌘Z でも可）
+  const undoBtn = document.getElementById("undo");
+  let undoStack = [];
+  function snapshot() {
+    return [...board.querySelectorAll(".cell")].map((c) => ({
+      value: c.classList.contains("given") ? null : c.dataset.value || "",
+      pick: [...c.querySelectorAll(".cand.pick")].map((x) => x.dataset.n).join(""),
+      sure: c.querySelector(".cand.sure")?.dataset.n || "",
+      off: [...c.querySelectorAll(".cand.off")].map((x) => x.dataset.n).join(""),
+    }));
+  }
+  function restore(snap) {
+    [...board.querySelectorAll(".cell")].forEach((c, i) => {
+      const st = snap[i];
+      c.querySelectorAll(".cand").forEach((x) => {
+        x.classList.toggle("pick", st.pick.includes(x.dataset.n));
+        x.classList.toggle("off", st.off.includes(x.dataset.n));
+        x.classList.toggle("sure", st.sure === x.dataset.n);
+        x.classList.remove("bad");
+      });
+      const big = c.querySelector(".big");
+      if (st.value !== null) {
+        c.classList.toggle("fixed", !!st.value);
+        if (st.value) { c.dataset.value = st.value; big.textContent = st.value; }
+        else delete c.dataset.value;
+      }
+      if (!c.classList.contains("fixed")) {
+        c.classList.toggle("tent", !!st.sure);
+        c.classList.remove("tent-bad");
+        big.textContent = st.sure;
+      }
+    });
+    markConflicts();
+  }
+  function clearUndo() {
+    undoStack = [];
+    undoBtn.disabled = true;
+  }
+  // 盤を変える操作を包み、変化があったときだけ前の状態を記録する
+  const recorded = (fn) => function (...args) {
+    const before = snapshot();
+    const res = fn.apply(this, args);
+    if (JSON.stringify(before) !== JSON.stringify(snapshot())) {
+      undoStack.push(before);
+      if (undoStack.length > 500) undoStack.shift();
+      undoBtn.disabled = false;
+    }
+    return res;
+  };
+  act = recorded(act);
+  runTap = recorded(runTap);
+  function undo() {
+    if (!["register", "solve"].includes(board.dataset.mode) || !undoStack.length) return;
+    flushTap();
+    restore(undoStack.pop());
+    undoBtn.disabled = undoStack.length === 0;
+  }
+  undoBtn.addEventListener("click", undo);
+  document.addEventListener("keydown", (e) => {
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "z" && e.target.tagName !== "INPUT") {
+      e.preventDefault();
+      undo();
+    }
+  });
+
   const hintBtn = document.getElementById("hint");
   hintBtn.addEventListener("click", () => {
     if (board.dataset.mode !== "solve") return;
