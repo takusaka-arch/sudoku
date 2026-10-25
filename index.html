@@ -276,6 +276,7 @@ p.msg:empty { display: none; }
 .board[data-mode="paused"] :is(.cand, .big) { visibility: hidden; }
 .timer { margin: 0; font: 700 2.2rem var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; line-height: 1; }
 .timer[hidden] { display: none; }
+.hints-used { margin: -8px 0 0; font-size: 0.85rem; font-weight: 700; color: var(--muted); }
 .timer.paused { color: var(--muted); }
 .prompt {
   margin: 0; padding: 10px 14px;
@@ -294,7 +295,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.54</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.55</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -316,6 +317,7 @@ p.msg:empty { display: none; }
     <input type="text" id="pname" maxlength="40" placeholder="例：新聞 10月24日" autocomplete="off">
   </div>
   <p class="timer" id="timer" role="timer" aria-label="経過時間" hidden>00:00</p>
+  <p class="hints-used" id="hints-used" hidden>使ったヒント：0回</p>
   <div class="photo" id="photo-box" hidden>
     <p><b>写真から問題を読み取る</b></p>
     <div class="row">
@@ -356,6 +358,7 @@ p.msg:empty { display: none; }
   <div class="crop-inner clear-inner">
     <p class="clear-title" id="clear-msg">完成です。おめでとう！</p>
     <p class="clear-time" id="clear-time"></p>
+    <p class="clear-time" id="clear-hints"></p>
     <button type="button" class="btn" id="clear-ok">閉じる</button>
   </div>
 </div>
@@ -755,6 +758,14 @@ p.msg:empty { display: none; }
     timerStop();
     elapsed = 0;
     drawTimer();
+    hintsUsed = 0;
+    drawHints();
+  }
+  // 使ったヒントの回数（ヒントを示せたときだけ数える）
+  const hintsEl = document.getElementById("hints-used");
+  let hintsUsed = 0;
+  function drawHints() {
+    hintsEl.textContent = `使ったヒント：${hintsUsed}回`;
   }
 
   // 登録済み（回答前）: 「回答スタート」を待つ
@@ -768,6 +779,7 @@ p.msg:empty { display: none; }
     board.dataset.mode = "ready";
     timerReset();
     timerEl.hidden = false;
+    hintsEl.hidden = false;
     prompt.textContent = `問題を登録しました：${currentName}（問題 ${count} マス）`;
     nameField.hidden = true;
     note.textContent = "「回答スタート」を押すと回答モードになり、タイマーが動き始めます。";
@@ -841,6 +853,7 @@ p.msg:empty { display: none; }
   edit.addEventListener("click", () => {
     timerReset();
     timerEl.hidden = true;
+    hintsEl.hidden = true;
     go.hidden = true;
     pause.hidden = true;
     board.querySelectorAll(".cell.given").forEach((c) => {
@@ -1369,6 +1382,7 @@ p.msg:empty { display: none; }
     saveProgress.hidden = true;
     confirmBox.hidden = true;
     document.getElementById("clear-time").textContent = `かかった時間 ${timerEl.textContent}`;
+    document.getElementById("clear-hints").textContent = `使ったヒント ${hintsUsed}回`;
     clearBox.hidden = false;
     document.getElementById("clear-ok").focus();
   }
@@ -1385,6 +1399,8 @@ p.msg:empty { display: none; }
     const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
       && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
     const show = (cand, text) => {
+      hintsUsed++;
+      drawHints();
       cand.classList.add("hint");
       renderPad();
       workMsg.classList.remove("err");
@@ -1415,6 +1431,8 @@ p.msg:empty { display: none; }
     // （そのペアでほかの候補をグレーにできる場合だけ）
     const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
     const showPair = (two, a, b, text) => {
+      hintsUsed++;
+      drawHints();
       for (const o of two) for (const d of [a, b]) o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
       renderPad();
       workMsg.classList.remove("err");
@@ -1489,7 +1507,7 @@ p.msg:empty { display: none; }
       offs.push([...cell.querySelectorAll(".cand.off")].map((s) => s.dataset.n).sort().join(""));
     }
     const ms = elapsed + (startedAt ? Date.now() - startedAt : 0);
-    const data = JSON.stringify({ app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, saved: new Date().toISOString() }, null, 2);
+    const data = JSON.stringify({ app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, hints: hintsUsed, saved: new Date().toISOString() }, null, 2);
     msgTarget = workMsg;
     try {
       await saveFile(`数独_${safeName(currentName)}_回答中.json`, data, `この状態を保存しました（経過時間 ${fmt(ms)}）`);
@@ -1531,6 +1549,8 @@ p.msg:empty { display: none; }
     timerStop();
     elapsed = Math.max(0, Number(obj.elapsed) || 0);
     drawTimer();
+    hintsUsed = Math.max(0, Math.floor(Number(obj.hints) || 0));
+    drawHints();
     pause.click();
     prompt.textContent = `一時停止中：${currentName}（保存した続きから）`;
   });
@@ -1584,6 +1604,7 @@ p.msg:empty { display: none; }
     startPanel.hidden = true;
     workPanel.hidden = false;
     timerEl.hidden = true;
+    hintsEl.hidden = true;
     go.hidden = true;
     pause.hidden = true;
     showRegister();
