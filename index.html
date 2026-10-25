@@ -509,6 +509,21 @@ p.msg:empty { display: none; }
     if (target && board.dataset.mode === "solve") runTap(target, cell, Math.min(n, 3));
   }
   function runTap(target, cell, n) {
+    // 問題の数字を3回: その行・列・ブロックにある同じ数字の候補をすべてグレーにする（全部グレーなら元に戻す）
+    if (cell.classList.contains("given")) {
+      if (n !== 3) return;
+      const num = cell.dataset.value, r = +cell.dataset.row, c = +cell.dataset.col;
+      const cands = [...board.querySelectorAll(".cell")].filter((o) => o !== cell && !o.classList.contains("fixed") && !o.classList.contains("tent")
+        && (+o.dataset.row === r || +o.dataset.col === c || (Math.floor(o.dataset.row / 3) === Math.floor(r / 3) && Math.floor(o.dataset.col / 3) === Math.floor(c / 3))))
+        .map((o) => o.querySelector(`.cand[data-n="${num}"]`));
+      const restore = cands.length > 0 && cands.every((s) => s.classList.contains("off"));
+      cands.forEach((s) => {
+        if (restore) s.classList.remove("off");
+        else { s.classList.remove("pick", "bad"); s.classList.add("off"); }
+      });
+      markConflicts();
+      return;
+    }
     if (cell.classList.contains("tent")) {
       if (n === 2) toggleSure(cell, target);
       return;
@@ -624,7 +639,7 @@ p.msg:empty { display: none; }
     padNote.textContent = mode === "register"
       ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
       : given ? "問題の数字は変えられません。"
-      : "1回タップ：候補（青）の選択・解除　2回：確定候補にする・戻す　3回：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す";
+      : "1回タップ：候補（青）の選択・解除　2回：確定候補にする・戻す　3回：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す（問題の数字を3回：その行・列・ブロックの同じ数字をグレーにする・戻す）";
   }
   let lastTap = { key: null, t: 0 };
   pad.addEventListener("click", (e) => {
@@ -740,7 +755,7 @@ p.msg:empty { display: none; }
   function showSolve() {
     board.dataset.mode = "solve";
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
-    note.textContent = "小さな数字を 1回クリック：候補（青）の選択・解除　2回：確定候補にする（大きな数字を2回で戻す）　3回：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す";
+    note.textContent = "小さな数字を 1回クリック：候補（青）の選択・解除　2回：確定候補にする（大きな数字を2回で戻す）　3回：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す（問題の数字を3回：その行・列・ブロックの同じ数字をグレーにする・戻す）";
     go.hidden = true;
     pause.hidden = false;
     pause.textContent = "一時停止";
