@@ -219,6 +219,10 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .crop[hidden] { display: none; }
 .crop-inner { background: var(--paper); color: var(--ink); border-radius: 8px; padding: 14px; display: grid; gap: 10px; max-width: 100%; justify-items: center; }
 .crop-inner p { margin: 0; font-size: 0.9rem; line-height: 1.6; }
+.clear-inner { padding: 28px 36px; gap: 14px; text-align: center; }
+.clear-inner .btn { justify-self: center; }
+.clear-inner .clear-title { font-size: 1.5rem; font-weight: 700; }
+.clear-inner .clear-time { font: 700 1.1rem var(--font-num); color: var(--muted); }
 #crop-canvas { touch-action: none; max-width: 100%; cursor: grab; border: 1px solid var(--line-cell); }
 .start, .work { display: grid; gap: 14px; }
 .start[hidden], .work[hidden] { display: none; }
@@ -266,7 +270,7 @@ p.msg:empty { display: none; }
 .name[hidden] { display: none; }
 .name label { font-size: 0.85rem; font-weight: 700; }
 #pname { font: 500 1rem var(--font-ui); padding: 8px 10px; border: 1.5px solid var(--line-cell); border-radius: 4px; background: var(--paper); color: var(--ink); min-width: 0; }
-.board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"]) .cand { cursor: default; }
+.board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"], [data-mode="complete"]) .cand, .board[data-mode="complete"] .big { cursor: default; }
 .board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"]) .cand:not(.pick):hover { background: var(--paper); color: var(--cand); }
 .board[data-mode="paused"] .cell { background: var(--paper); }
 .board[data-mode="paused"] :is(.cand, .big) { visibility: hidden; }
@@ -290,7 +294,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.53</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.54</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -348,6 +352,13 @@ p.msg:empty { display: none; }
   </div>
   </aside>
 </main>
+<div class="crop" id="clear" role="dialog" aria-modal="true" aria-labelledby="clear-msg" hidden>
+  <div class="crop-inner clear-inner">
+    <p class="clear-title" id="clear-msg">完成です。おめでとう！</p>
+    <p class="clear-time" id="clear-time"></p>
+    <button type="button" class="btn" id="clear-ok">閉じる</button>
+  </div>
+</div>
 <div class="crop" id="crop" role="dialog" aria-modal="true" aria-labelledby="crop-msg" hidden>
   <div class="crop-inner">
     <p id="crop-msg">オレンジの丸をドラッグして、盤面の四隅に合わせてください。線がマス目に重なれば OK です。</p>
@@ -445,6 +456,7 @@ p.msg:empty { display: none; }
       if (dup) a.classList.add("tent-bad");
     }
     if (typeof renderPad === "function") renderPad();
+    if (typeof checkComplete === "function") checkComplete();
   }
 
   // 保存した問題（このブラウザに保存）: [{name, givens: 81文字(0=空き), saved}]
@@ -1337,6 +1349,30 @@ p.msg:empty { display: none; }
       undo();
     }
   });
+
+  // 完成: 全マスが大きな数字（問題の数字か確定候補）で埋まり、赤字が無ければタイマーを止めて知らせる
+  const clearBox = document.getElementById("clear");
+  function checkComplete() {
+    if (board.dataset.mode !== "solve") return;
+    const cells = [...board.querySelectorAll(".cell")];
+    if (!cells.every((c) => c.classList.contains("fixed") || c.classList.contains("tent"))) return;
+    if (cells.some((c) => c.classList.contains("conflict") || c.classList.contains("tent-bad"))) return;
+    flushTap();
+    timerStop();
+    board.dataset.mode = "complete";
+    selectCell(null);
+    prompt.textContent = `完成：${currentName}（${timerEl.textContent}）`;
+    note.textContent = "「リセット」で最初から解き直せます。";
+    pause.hidden = true;
+    hintBtn.hidden = true;
+    undoBtn.hidden = true;
+    saveProgress.hidden = true;
+    confirmBox.hidden = true;
+    document.getElementById("clear-time").textContent = `かかった時間 ${timerEl.textContent}`;
+    clearBox.hidden = false;
+    document.getElementById("clear-ok").focus();
+  }
+  document.getElementById("clear-ok").addEventListener("click", () => { clearBox.hidden = true; });
 
   const hintBtn = document.getElementById("hint");
   hintBtn.addEventListener("click", () => {
