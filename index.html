@@ -74,6 +74,7 @@ main {
 @media (max-width: 760px) {
   main { grid-template-columns: minmax(0, 1fr); }
 }
+h1 .ver { font: 500 0.7rem var(--font-num); color: var(--muted); letter-spacing: 0; }
 h1 { font-size: 1.35rem; font-weight: 700; margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
 p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 
@@ -281,7 +282,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ</h1>
+  <h1>数独支援アプリ <small class="ver">ver.48</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
