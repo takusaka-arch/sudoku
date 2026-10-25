@@ -1,5 +1,5 @@
 // アプリ本体と読み取り用ファイルを端末に保存し、ネットなしでも開けるようにする
-const CACHE = "sudoku-v8";
+const CACHE = "sudoku-v9";
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png",
@@ -15,5 +15,14 @@ self.addEventListener("activate", (e) => {
 });
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  // アプリ本体はネットにつながっていれば常に最新を取りに行き、つながらないときだけ保存分を使う
+  if (e.request.mode === "navigate") {
+    e.respondWith(fetch(e.request).then((res) => {
+      const copy = res.clone();
+      caches.open(CACHE).then((c) => c.put("./index.html", copy));
+      return res;
+    }).catch(() => caches.match("./index.html")));
+    return;
+  }
   e.respondWith(caches.match(e.request, { ignoreSearch: true }).then((hit) => hit || fetch(e.request)));
 });
