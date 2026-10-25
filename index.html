@@ -312,8 +312,9 @@ p.msg:empty { display: none; }
       <label class="btn sub small">画像ファイルを選ぶ
         <input type="file" id="photo-file" accept="image/*">
       </label>
+      <button type="button" class="btn sub small" id="photo-paste">クリップボードから貼り付け</button>
     </div>
-    <p id="photo-status">問題の盤面全体がまっすぐ写っている写真を使ってください。</p>
+    <p id="photo-status">問題の盤面全体がまっすぐ写っている写真を使ってください。コピーした画像は Ctrl+V（Mac は ⌘V）でも貼り付けられます。</p>
   </div>
   <div class="bar">
     <p class="prompt" id="prompt" aria-live="polite">問題を登録してください</p>
@@ -839,10 +840,35 @@ p.msg:empty { display: none; }
   // カメラ撮影でも画像ファイルでも同じように読み取る
   photoInput.addEventListener("change", () => readPhoto(photoInput));
   photoFile.addEventListener("change", () => readPhoto(photoFile));
-  async function readPhoto(input) {
+  // クリップボードの画像を読み取る（ボタン、または Ctrl+V / ⌘V）
+  document.getElementById("photo-paste").addEventListener("click", async () => {
+    photoStatus.classList.remove("err");
+    try {
+      for (const item of await navigator.clipboard.read()) {
+        const type = item.types.find((t) => t.startsWith("image/"));
+        if (type) return readImage(new File([await item.getType(type)], "clipboard." + type.split("/")[1], { type }));
+      }
+      photoStatus.classList.add("err");
+      photoStatus.textContent = "クリップボードに画像がありません。画像をコピーしてからもう一度押してください。";
+    } catch (e) {
+      photoStatus.classList.add("err");
+      photoStatus.textContent = "クリップボードを読めませんでした。画像をコピーしたあと、この画面で Ctrl+V（Mac は ⌘V）を押して貼り付けてください。";
+    }
+  });
+  document.addEventListener("paste", (e) => {
+    if (board.dataset.mode !== "register" || photoBox.classList.contains("busy") || !cropEl.hidden) return;
+    const file = [...(e.clipboardData?.files || [])].find((f) => f.type.startsWith("image/"));
+    if (!file) return;
+    e.preventDefault();
+    readImage(file);
+  });
+  function readPhoto(input) {
     const file = input.files[0];
     input.value = "";
-    if (!file) return;
+    if (file) readImage(file);
+  }
+  async function readImage(file) {
+    if (photoBox.hidden || photoBox.classList.contains("busy")) return;
     // Claude が使えないところ（ダウンロードしたファイルなど）では、端末の中で読み取る
     if (!sampleFn) return startCrop(file);
     photoBox.classList.add("busy");
