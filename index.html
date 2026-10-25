@@ -33,7 +33,7 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
   --sel: #d98c00;
   --sel-bg: #ffd75e;
   --peer-bg: #fdeeb8;
-  --hl-bg: #fff6d1;
+  --hl-bg: #fffcee;
   --cand: #6f7b80;
   --muted: #6a7478;
   --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
@@ -45,12 +45,12 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #2a2820; color-scheme: dark;
+    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #2a2820; color-scheme: dark;
+  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; color-scheme: dark;
 }
 html, body { min-height: 100%; }
 body {
@@ -512,8 +512,23 @@ p.msg:empty { display: none; }
     }
     if (!target.classList.contains("cand")) return;
     if (n === 3) {
-      target.classList.remove("pick", "bad");
-      target.classList.toggle("off");
+      if (target.classList.contains("off")) {
+        target.classList.remove("off");
+      } else {
+        // 同じ行・列・ブロックにある同じ数字をすべてグレーにする（全部グレーなら元に戻す）
+        const r = +cell.dataset.row, c = +cell.dataset.col;
+        const others = [...board.querySelectorAll(`.cand[data-n="${target.dataset.n}"]`)].filter((s) => {
+          const o = s.closest(".cell");
+          if (o === cell || o.classList.contains("fixed") || o.classList.contains("tent")) return false;
+          const orow = +o.dataset.row, ocol = +o.dataset.col;
+          return orow === r || ocol === c || (Math.floor(orow / 3) === Math.floor(r / 3) && Math.floor(ocol / 3) === Math.floor(c / 3));
+        });
+        const restore = others.length > 0 && others.every((s) => s.classList.contains("off"));
+        others.forEach((s) => {
+          if (restore) s.classList.remove("off");
+          else { s.classList.remove("pick", "bad"); s.classList.add("off"); }
+        });
+      }
     } else if (target.classList.contains("off")) {
       return;
     } else if (n === 1) {
@@ -604,7 +619,7 @@ p.msg:empty { display: none; }
     padNote.textContent = mode === "register"
       ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
       : given ? "問題の数字は変えられません。"
-      : "1回タップ：候補（青）の選択・解除　2回：確定候補にする・戻す　3回：グレーにして選べなくする・戻す";
+      : "1回タップ：候補（青）の選択・解除　2回：確定候補にする・戻す　3回：同じ行・列・ブロックのその数字をグレーにする・戻す";
   }
   let lastTap = { key: null, t: 0 };
   pad.addEventListener("click", (e) => {
@@ -720,7 +735,7 @@ p.msg:empty { display: none; }
   function showSolve() {
     board.dataset.mode = "solve";
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
-    note.textContent = "小さな数字を 1回クリック：候補（青）の選択・解除　2回：確定候補にする（大きな数字を2回で戻す）　3回：グレーにして選べなくする・戻す";
+    note.textContent = "小さな数字を 1回クリック：候補（青）の選択・解除　2回：確定候補にする（大きな数字を2回で戻す）　3回：同じ行・列・ブロックのその数字をグレーにする・戻す";
     go.hidden = true;
     pause.hidden = false;
     pause.textContent = "一時停止";
