@@ -33,6 +33,7 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
   --sel: #d98c00;
   --sel-bg: #ffd75e;
   --peer-bg: #fdeeb8;
+  --hl-bg: #fff6d1;
   --cand: #6f7b80;
   --muted: #6a7478;
   --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
@@ -44,12 +45,12 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; color-scheme: dark;
+    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #2a2820; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; color-scheme: dark;
+  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #2a2820; color-scheme: dark;
 }
 html, body { min-height: 100%; }
 body {
@@ -177,6 +178,8 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .cell.sel { box-shadow: 0 0 0 4px var(--sel); position: relative; z-index: 2; }
 .cell.sel:is(.fixed, .tent), .cell.sel .cand:not(.pick):not(.shadow) { background: var(--sel-bg); }
 .cell.peer:is(.fixed, .tent):not(.given), .cell.peer .cand:not(.pick):not(.shadow) { background: var(--peer-bg); }
+/* パソコン: マウスを乗せたマスと同じ行・列・ブロックを薄い黄色にする */
+.cell.hl:is(.fixed, .tent):not(.given), .cell.hl .cand:not(.pick):not(.shadow):not(:hover) { background: var(--hl-bg); }
 .pad { border: 3px solid var(--sel); border-radius: 10px; padding: 10px; background: var(--peer-bg); width: min(100%, 340px); box-sizing: border-box; justify-self: center; }
 .pad #pad-title { font-weight: 700; font-size: 1rem; }
 .pad { display: grid; gap: 10px; justify-items: center; touch-action: manipulation; }
@@ -552,6 +555,20 @@ p.msg:empty { display: none; }
     document.getElementById("keys").appendChild(k);
     return k;
   });
+  // パソコン（マウス）用: 乗せたマスの行・列・ブロックを薄い黄色にする
+  const canHover = matchMedia("(hover: hover) and (pointer: fine)");
+  let hlCell = null;
+  function hoverCell(cell) {
+    if (cell === hlCell) return;
+    hlCell = cell;
+    const on = !!cell && canHover.matches && !isPhone() && ["register", "ready", "solve"].includes(board.dataset.mode);
+    board.querySelectorAll(".cell").forEach((c) => {
+      c.classList.toggle("hl", on && (c.dataset.row === cell.dataset.row || c.dataset.col === cell.dataset.col
+        || (Math.floor(c.dataset.row / 3) === Math.floor(cell.dataset.row / 3) && Math.floor(c.dataset.col / 3) === Math.floor(cell.dataset.col / 3))));
+    });
+  }
+  board.addEventListener("mouseover", (e) => hoverCell(e.target.closest(".cell")));
+  board.addEventListener("mouseleave", () => hoverCell(null));
   let sel = null;
   function selectCell(cell) {
     if (sel) sel.classList.remove("sel");
