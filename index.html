@@ -285,7 +285,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.49</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.50</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1258,7 +1258,7 @@ p.msg:empty { display: none; }
   const exportCur = document.getElementById("export-cur");
   const workMsg = document.getElementById("work-msg");
 
-  // ヒント: 行・列・ブロックの中で、ある数字を入れられるマスが1つしかない所を1つだけ薄い赤で示す
+  // ヒント: 入れられる数字が1つだけのマス、または行・列・ブロックで1か所にしか入らない数字を、1つだけ薄い赤で示す
   // 入れられる = 問題の数字・確定候補で埋まっておらず、グレーにしておらず、同じ行・列・ブロックにその数字が確定していない
   const hintBtn = document.getElementById("hint");
   hintBtn.addEventListener("click", () => {
@@ -1270,6 +1270,19 @@ p.msg:empty { display: none; }
       || (Math.floor(a.dataset.row / 3) === Math.floor(b.dataset.row / 3) && Math.floor(a.dataset.col / 3) === Math.floor(b.dataset.col / 3));
     const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
       && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
+    const show = (cand, text) => {
+      cand.classList.add("hint");
+      renderPad();
+      workMsg.classList.remove("err");
+      workMsg.textContent = text;
+    };
+    // まず、入れられる数字が1つしかないマス
+    for (const o of cells) {
+      if (val(o)) continue;
+      const ok = ["1", "2", "3", "4", "5", "6", "7", "8", "9"].filter((d) => can(o, d));
+      if (ok.length === 1) return show(o.querySelector(`.cand[data-n="${ok[0]}"]`), `ヒント：薄い赤のマスに入れられる数字は「${ok[0]}」だけです。`);
+    }
+    // 次に、行・列・ブロックの中で、ある数字を入れられるマスが1つしかない所
     const units = [];
     for (let i = 0; i < 9; i++) units.push({ name: "ブロック", has: (o) => Math.floor(o.dataset.row / 3) * 3 + Math.floor(o.dataset.col / 3) === i });
     for (let i = 0; i < 9; i++) units.push({ name: `${i + 1}行目`, has: (o) => +o.dataset.row === i });
@@ -1281,15 +1294,11 @@ p.msg:empty { display: none; }
         if (inUnit.some((o) => val(o) === d)) continue;
         const spots = inUnit.filter((o) => can(o, d));
         if (spots.length !== 1) continue;
-        spots[0].querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
-        renderPad();
-        workMsg.classList.remove("err");
-        workMsg.textContent = `ヒント：この${u.name}で「${d}」を入れられるのは、薄い赤のマスだけです。`;
-        return;
+        return show(spots[0].querySelector(`.cand[data-n="${d}"]`), `ヒント：この${u.name}で「${d}」を入れられるのは、薄い赤のマスだけです。`);
       }
     }
     workMsg.classList.remove("err");
-    workMsg.textContent = "ヒント：1か所にしか入らない数字は見つかりませんでした。グレーにできる候補を減らしてから、もう一度押してみてください。";
+    workMsg.textContent = "ヒント：1つの数字しか入らないマスも、1か所にしか入らない数字も見つかりませんでした。グレーにできる候補を減らしてから、もう一度押してみてください。";
   });
   exportCur.addEventListener("click", async () => {
     let givens = "";
