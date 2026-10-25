@@ -35,6 +35,8 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
   --peer-bg: #fff6d6;
   --hl-bg: #fffcee;
   --hint-bg: #fbd9d6;
+  --pair-bg: #e9def7;
+  --pair: #6a3fa8;
   --cand: #6f7b80;
   --muted: #6a7478;
   --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
@@ -46,12 +48,12 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; color-scheme: dark;
+    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; --pair-bg: #3a2d52; --pair: #c3a5f0; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; color-scheme: dark;
+  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; --pair-bg: #3a2d52; --pair: #c3a5f0; color-scheme: dark;
 }
 html, body { min-height: 100%; }
 body {
@@ -152,6 +154,8 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 .cand.pick.shadow { background: var(--brown-bg); }
 .cand.pick.bad { color: var(--error); background: var(--bad-bg); }
 .cell .cand.hint, .cell .cand.pick.hint { background: var(--hint-bg); color: var(--error); font-weight: 700; box-shadow: inset 0 0 0 2px var(--error); }
+.cell .cand.pair, .cell .cand.pick.pair { background: var(--pair-bg); color: var(--pair); font-weight: 700; box-shadow: inset 0 0 0 2px var(--pair); }
+.key.pair { background: var(--pair-bg); border-color: var(--pair); color: var(--pair); }
 .key.hint { background: var(--hint-bg); border-color: var(--error); color: var(--error); }
 .cand.off, .cand.off.shadow { color: var(--line-sub); font-weight: 500; text-decoration: line-through; }
 .key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
@@ -286,7 +290,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.51</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.52</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -393,7 +397,7 @@ p.msg:empty { display: none; }
     // 盤が変わったらヒントの表示を消す
     const msg = document.getElementById("work-msg");
     if (msg.textContent.startsWith("ヒント")) msg.textContent = "";
-    board.querySelectorAll(".cand.hint").forEach((s) => s.classList.remove("hint"));
+    board.querySelectorAll(".cand.hint, .cand.pair").forEach((s) => s.classList.remove("hint", "pair"));
     const cells = [...board.querySelectorAll(".cell")];
     const fixed = cells.filter((c) => c.dataset.value);
     cells.forEach((c) => c.classList.remove("conflict"));
@@ -457,7 +461,7 @@ p.msg:empty { display: none; }
   function clearBoard() {
     if (typeof clearUndo === "function") clearUndo();
     if (typeof selectCell === "function") selectCell(null);
-    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off", "hint"));
+    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off", "hint", "pair"));
     board.querySelectorAll(".cell").forEach((c) => {
       c.className = "cell";
       delete c.dataset.value;
@@ -644,7 +648,7 @@ p.msg:empty { display: none; }
     for (const k of keys) {
       const cand = sel.querySelector(`.cand[data-n="${k.dataset.n}"]`);
       k.className = "key";
-      for (const c of ["pick", "sure", "bad", "shadow", "off", "hint"]) if (cand.classList.contains(c)) k.classList.add(c);
+      for (const c of ["pick", "sure", "bad", "shadow", "off", "hint", "pair"]) if (cand.classList.contains(c)) k.classList.add(c);
       k.classList.toggle("val", sel.dataset.value === k.dataset.n);
       k.disabled = given;
     }
@@ -812,7 +816,7 @@ p.msg:empty { display: none; }
   document.getElementById("reset-yes").addEventListener("click", () => {
     confirmBox.hidden = true;
     showReady(currentCount);
-    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off", "hint"));
+    board.querySelectorAll(".cand").forEach((s) => s.classList.remove("pick", "sure", "bad", "shadow", "off", "hint", "pair"));
     board.querySelectorAll(".cell").forEach((c) => {
       c.classList.remove("tent", "tent-bad", "tent-off");
       if (!c.classList.contains("fixed")) c.querySelector(".big").textContent = "";
@@ -1267,6 +1271,7 @@ p.msg:empty { display: none; }
   const workMsg = document.getElementById("work-msg");
 
   // ヒント: 入れられる数字が1つだけのマス、または行・列・ブロックで1か所にしか入らない数字を、1つだけ薄い赤で示す
+  // どちらも無ければ、2つの数字が同じ2マスにしか入らないペアを薄い紫で示す
   // 入れられる = 問題の数字・確定候補で埋まっておらず、グレーにしておらず、同じ行・列・ブロックにその数字が確定していない
   // 一つ戻る: 操作の前の盤の状態を積んでおき、押すたびに1つ前に戻す（Ctrl+Z / ⌘Z でも可）
   const undoBtn = document.getElementById("undo");
@@ -1370,8 +1375,35 @@ p.msg:empty { display: none; }
         return show(spots[0].querySelector(`.cand[data-n="${d}"]`), `ヒント：この${u.name}で「${d}」を入れられるのは、薄い赤のマスだけです。`);
       }
     }
+    // その次に、行・列・ブロックの中で2つの数字が同じ2マスにしか入らない組（ペア）を薄い紫で示す
+    // （そのペアでほかの候補をグレーにできる場合だけ）
+    const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    const showPair = (two, a, b, text) => {
+      for (const o of two) for (const d of [a, b]) o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
+      renderPad();
+      workMsg.classList.remove("err");
+      workMsg.textContent = text;
+    };
+    for (const u of units) {
+      const inUnit = cells.filter(u.has);
+      const spots = {};
+      for (const d of digits) spots[d] = inUnit.filter((o) => can(o, d));
+      for (let i = 0; i < 9; i++) for (let j = i + 1; j < 9; j++) {
+        const a = digits[i], b = digits[j];
+        // どちらの数字も入れられるのが同じ2マスだけ
+        if (spots[a].length === 2 && spots[b].length === 2 && spots[a].every((o) => spots[b].includes(o))
+          && spots[a].some((o) => digits.some((d) => d !== a && d !== b && can(o, d)))) {
+          return showPair(spots[a], a, b, `ヒント：この${u.name}で「${a}」と「${b}」は、薄い紫の2マスにしか入りません。この2マスのほかの候補はグレーにできます。`);
+        }
+        // 入れられる数字が「a と b」だけのマスが2つある
+        const two = inUnit.filter((o) => !val(o) && digits.filter((d) => can(o, d)).join("") === a + b);
+        if (two.length === 2 && inUnit.some((o) => !two.includes(o) && (can(o, a) || can(o, b)))) {
+          return showPair(two, a, b, `ヒント：この${u.name}の薄い紫の2マスには「${a}」と「${b}」しか入りません。この${u.name}のほかのマスの「${a}」「${b}」はグレーにできます。`);
+        }
+      }
+    }
     workMsg.classList.remove("err");
-    workMsg.textContent = "ヒント：1つの数字しか入らないマスも、1か所にしか入らない数字も見つかりませんでした。グレーにできる候補を減らしてから、もう一度押してみてください。";
+    workMsg.textContent = "ヒント：見つかりませんでした。グレーにできる候補を減らしてから、もう一度押してみてください。";
   });
   exportCur.addEventListener("click", async () => {
     let givens = "";
