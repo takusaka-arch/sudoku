@@ -252,7 +252,8 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .splash-title { position: relative; margin: 0; will-change: transform; min-height: 1.4em; font-size: clamp(1.45rem, 6.4vw, 2rem); font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; color: #f4f8ff; text-shadow: 0 0 18px rgba(91, 155, 255, 0.6), 0 0 2px rgba(143, 184, 255, 0.8); }
 .splash-title .ch { display: inline-block; opacity: 0; will-change: opacity, transform; animation: splash-ch 0.7s cubic-bezier(.22, .61, .36, 1) calc(0.7s + var(--i) * 0.24s) both; }
 .splash-caret { position: absolute; left: 0; top: 0.2em; transition: transform 0.24s cubic-bezier(.22, .61, .36, 1); will-change: transform; width: 3px; height: 1.05em; border-radius: 2px; background: #8fb8ff; box-shadow: 0 0 10px #5b9bff; animation: splash-blink 0.9s steps(1) infinite; }
-.splash-sub { margin: 0; max-width: 22em; font-size: 0.85rem; color: #a9b8d3; text-wrap: balance; word-break: keep-all; overflow-wrap: anywhere; opacity: 0; transform: translateY(6px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.splash-sub { margin: 4px 0 0; max-width: 26em; font-size: 0.9rem; line-height: 1.8; color: #a9b8d3; text-wrap: balance; word-break: keep-all; overflow-wrap: anywhere; opacity: 0; transform: translateY(6px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.splash-sub strong { display: inline-block; margin-top: 4px; font-size: 1.05rem; color: #eef3fc; text-shadow: 0 0 12px rgba(91, 155, 255, 0.55); }
 .splash-tap { margin: 18px 0 0; font-size: 0.72rem; letter-spacing: 0.2em; color: #6f82a6; opacity: 0; transition: opacity 0.6s ease 0.4s; }
 .splash.typed .splash-sub, .splash.typed .splash-tap { opacity: 1; transform: none; }
 @keyframes splash-icon { from { opacity: 0; transform: scale(0.7) rotate(-8deg); } to { opacity: 1; transform: none; } }
@@ -364,7 +365,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.71</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.72</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -438,7 +439,7 @@ p.msg:empty { display: none; }
       <g class="sp-cells" fill="#5b9bff"><rect x="20.3" y="20.3" width="5.4" height="5.4" rx="1"/><rect x="42.3" y="42.3" width="5.4" height="5.4" rx="1"/><rect x="64.3" y="64.3" width="5.4" height="5.4" rx="1"/></g>
     </svg>
     <p class="splash-title" id="splash-title" aria-hidden="true"><span class="splash-text">数独回答支援アプリ</span><span class="splash-caret"></span></p>
-    <p class="splash-sub">このツールは、数独の問題を解くのをサポートするツールです。</p>
+    <p class="splash-sub">数独を解くのに、まだ紙と鉛筆と消しゴムを<wbr>使っているのですか？<br><strong>このツールを使って、<wbr>スマートに解きましょう！</strong></p>
     <p class="splash-tap">タップでスキップ</p>
   </div>
 </div>
