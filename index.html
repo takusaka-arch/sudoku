@@ -156,6 +156,8 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 .cell .cand.hint, .cell .cand.pick.hint { background: var(--hint-bg); color: var(--error); font-weight: 700; box-shadow: inset 0 0 0 2px var(--error); }
 .cell .cand.pair, .cell .cand.pick.pair { background: var(--pair-bg); color: var(--pair); font-weight: 700; box-shadow: inset 0 0 0 2px var(--pair); }
 .key.pair { background: var(--pair-bg); border-color: var(--pair); color: var(--pair); }
+.cell.hint-cell .cand, .cell.hint-cell .cand.pick { background: var(--hint-bg); }
+.cell.pair-cell .cand, .cell.pair-cell .cand.pick { background: var(--pair-bg); }
 .key.hint { background: var(--hint-bg); border-color: var(--error); color: var(--error); }
 .cand.off, .cand.off.shadow { color: var(--line-sub); font-weight: 500; text-decoration: line-through; }
 .key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
@@ -295,7 +297,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.55</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.56</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -411,7 +413,7 @@ p.msg:empty { display: none; }
     // 盤が変わったらヒントの表示を消す
     const msg = document.getElementById("work-msg");
     if (msg.textContent.startsWith("ヒント")) msg.textContent = "";
-    board.querySelectorAll(".cand.hint, .cand.pair").forEach((s) => s.classList.remove("hint", "pair"));
+    board.querySelectorAll(".cand.hint, .cand.pair, .cell.hint-cell, .cell.pair-cell").forEach((s) => s.classList.remove("hint", "pair", "hint-cell", "pair-cell"));
     const cells = [...board.querySelectorAll(".cell")];
     const fixed = cells.filter((c) => c.dataset.value);
     cells.forEach((c) => c.classList.remove("conflict"));
@@ -1389,7 +1391,18 @@ p.msg:empty { display: none; }
   document.getElementById("clear-ok").addEventListener("click", () => { clearBox.hidden = true; });
 
   const hintBtn = document.getElementById("hint");
+  // 1回押す: 注目するマスだけを示す　2回続けて押す: 数字と理由まで示す
+  let hintTimer = null;
   hintBtn.addEventListener("click", () => {
+    if (hintTimer) {
+      clearTimeout(hintTimer);
+      hintTimer = null;
+      runHint(true);
+    } else {
+      hintTimer = setTimeout(() => { hintTimer = null; runHint(false); }, 350);
+    }
+  });
+  function runHint(full) {
     if (board.dataset.mode !== "solve") return;
     markConflicts();
     const cells = [...board.querySelectorAll(".cell")];
@@ -1401,10 +1414,11 @@ p.msg:empty { display: none; }
     const show = (cand, text) => {
       hintsUsed++;
       drawHints();
-      cand.classList.add("hint");
+      if (full) cand.classList.add("hint");
+      else cand.closest(".cell").classList.add("hint-cell");
       renderPad();
       workMsg.classList.remove("err");
-      workMsg.textContent = text;
+      workMsg.textContent = full ? text : "ヒント：薄い赤のマスに注目してください。（ヒントを2回続けて押すと、数字と理由を表示します）";
     };
     // まず、入れられる数字が1つしかないマス
     for (const o of cells) {
@@ -1433,10 +1447,13 @@ p.msg:empty { display: none; }
     const showPair = (two, a, b, text) => {
       hintsUsed++;
       drawHints();
-      for (const o of two) for (const d of [a, b]) o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
+      for (const o of two) {
+        if (full) for (const d of [a, b]) o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
+        else o.classList.add("pair-cell");
+      }
       renderPad();
       workMsg.classList.remove("err");
-      workMsg.textContent = text;
+      workMsg.textContent = full ? text : "ヒント：薄い紫の2マスに注目してください。（ヒントを2回続けて押すと、数字と理由を表示します）";
     };
     for (const u of units) {
       const inUnit = cells.filter(u.has);
@@ -1458,7 +1475,7 @@ p.msg:empty { display: none; }
     }
     workMsg.classList.remove("err");
     workMsg.textContent = "ヒント：見つかりませんでした。グレーにできる候補を減らしてから、もう一度押してみてください。";
-  });
+  }
   exportCur.addEventListener("click", async () => {
     let givens = "";
     for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) givens += cellAt(r, c).dataset.value || "0";
