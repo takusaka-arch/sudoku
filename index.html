@@ -249,16 +249,16 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .sp-cells rect:nth-child(1) { animation-delay: 0.9s; }
 .sp-cells rect:nth-child(2) { animation-delay: 1.02s; }
 .sp-cells rect:nth-child(3) { animation-delay: 1.14s; }
-.splash-title { margin: 0; min-height: 1.4em; font-size: clamp(1.45rem, 6.4vw, 2rem); font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; color: #f4f8ff; text-shadow: 0 0 18px rgba(91, 155, 255, 0.6), 0 0 2px rgba(143, 184, 255, 0.8); }
-.splash-title .ch { display: inline-block; animation: splash-ch 0.45s ease-out both; }
-.splash-caret { display: inline-block; width: 3px; height: 1.05em; margin-left: 4px; vertical-align: -0.12em; border-radius: 2px; background: #8fb8ff; box-shadow: 0 0 10px #5b9bff; animation: splash-blink 0.9s steps(1) infinite; }
+.splash-title { position: relative; margin: 0; min-height: 1.4em; font-size: clamp(1.45rem, 6.4vw, 2rem); font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; color: #f4f8ff; text-shadow: 0 0 18px rgba(91, 155, 255, 0.6), 0 0 2px rgba(143, 184, 255, 0.8); }
+.splash-title .ch { display: inline-block; opacity: 0; will-change: opacity, transform; animation: splash-ch 0.7s cubic-bezier(.22, .61, .36, 1) calc(0.7s + var(--i) * 0.24s) both; }
+.splash-caret { position: absolute; left: 0; top: 0.2em; transition: transform 0.24s cubic-bezier(.22, .61, .36, 1); will-change: transform; width: 3px; height: 1.05em; border-radius: 2px; background: #8fb8ff; box-shadow: 0 0 10px #5b9bff; animation: splash-blink 0.9s steps(1) infinite; }
 .splash-sub { margin: 0; max-width: 22em; font-size: 0.85rem; color: #a9b8d3; text-wrap: balance; word-break: keep-all; overflow-wrap: anywhere; opacity: 0; transform: translateY(6px); transition: opacity 0.6s ease, transform 0.6s ease; }
 .splash-tap { margin: 18px 0 0; font-size: 0.72rem; letter-spacing: 0.2em; color: #6f82a6; opacity: 0; transition: opacity 0.6s ease 0.4s; }
 .splash.typed .splash-sub, .splash.typed .splash-tap { opacity: 1; transform: none; }
 @keyframes splash-icon { from { opacity: 0; transform: scale(0.7) rotate(-8deg); } to { opacity: 1; transform: none; } }
 @keyframes splash-draw { to { stroke-dashoffset: 0; } }
 @keyframes splash-pop { to { transform: scale(1); } }
-@keyframes splash-ch { from { opacity: 0; transform: translateY(0.35em); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+@keyframes splash-ch { from { opacity: 0; transform: translateY(0.3em) scale(0.92); } to { opacity: 1; transform: none; } }
 @keyframes splash-blink { 50% { opacity: 0; } }
 @keyframes splash-pulse { 50% { transform: translate(-50%, -50%) scale(1.12); opacity: 0.75; } }
 @keyframes splash-drift { to { transform: translate(44px, 44px); } }
@@ -352,7 +352,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.67</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.68</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -2015,17 +2015,25 @@ p.msg:empty { display: none; }
   if (matchMedia("(hover: hover) and (pointer: fine)").matches) splash.querySelector(".splash-tap").textContent = "クリックでスキップ";
   const typed = new Promise((done) => {
     if (splashCalm) { splash.classList.add("typed"); return done(); }
+    // 文字は最初から全部置いて透明にしておき、CSSアニメーションで順に浮かび上がらせる（位置がずれないのでなめらか）
     splashText.textContent = "";
-    let i = 0;
-    setTimeout(function typeNext() {
-      if (splashDone) return done();
+    const spans = splashChars.map((c, i) => {
       const ch = document.createElement("span");
       ch.className = "ch";
-      ch.textContent = splashChars[i++];
+      ch.textContent = c;
+      ch.style.setProperty("--i", i);
       splashText.appendChild(ch);
-      if (i < splashChars.length) setTimeout(typeNext, 240);
-      else { splash.classList.add("typed"); done(); }
-    }, 700);
+      return ch;
+    });
+    // カーソルは今出ている文字の右へすべるように動かす
+    const caret = splash.querySelector(".splash-caret");
+    const caretTo = (i) => {
+      const r = spans[i];
+      caret.style.transform = `translateX(${r.offsetLeft + r.offsetWidth + 3}px)`;
+    };
+    caret.style.transform = `translateX(${spans[0].offsetLeft - 6}px)`;
+    spans.forEach((ch, i) => ch.addEventListener("animationstart", () => caretTo(i)));
+    spans[spans.length - 1].addEventListener("animationend", () => { splash.classList.add("typed"); done(); });
   });
   function endSplash() {
     if (splashDone) return;
