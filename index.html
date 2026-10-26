@@ -338,6 +338,9 @@ p.msg:empty { display: none; }
 .photo p b { color: var(--ink); }
 .photo p { margin: 0; font-size: 0.85rem; line-height: 1.6; color: var(--muted); }
 .photo p.err { color: var(--error); }
+.photo p.warn { color: var(--ink); font-weight: 700; }
+.cell.ocr-unsure { position: relative; box-shadow: inset 0 0 0 3px var(--sel); }
+.cell.ocr-unsure::after { content: "?"; position: absolute; top: 1px; right: 4px; font: 700 0.8rem var(--font-num); color: var(--sel); pointer-events: none; }
 .name { display: grid; gap: 6px; }
 .name[hidden] { display: none; }
 .name label { font-size: 0.85rem; font-weight: 700; }
@@ -365,7 +368,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.73</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.74</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -604,6 +607,7 @@ p.msg:empty { display: none; }
       }
       return;
     }
+    cell.classList.remove("ocr-unsure");
     if (target.classList.contains("cand")) {
       cell.querySelector(".big").textContent = target.dataset.n;
       cell.dataset.value = target.dataset.n;
@@ -803,6 +807,7 @@ p.msg:empty { display: none; }
       prompt.textContent = "数字が1つも登録されていません。問題の数字を入れてから押してください";
       return;
     }
+    board.querySelectorAll(".cell.ocr-unsure").forEach((c) => c.classList.remove("ocr-unsure"));
     // 名前を付けて保存（同じ名前なら上書き、未入力なら日時で名前を付ける）
     let name = pname.value.trim();
     if (!name) {
@@ -1009,7 +1014,7 @@ p.msg:empty { display: none; }
   photoFile.addEventListener("change", () => readPhoto(photoFile));
   // クリップボードの画像を読み取る（ボタン、または Ctrl+V / ⌘V）
   document.getElementById("photo-paste").addEventListener("click", async () => {
-    photoStatus.classList.remove("err");
+    photoStatus.classList.remove("err", "warn");
     try {
       for (const item of await navigator.clipboard.read()) {
         const type = item.types.find((t) => t.startsWith("image/"));
@@ -1039,7 +1044,7 @@ p.msg:empty { display: none; }
     // Claude が使えないところ（ダウンロードしたファイルなど）では、端末の中で読み取る
     if (!sampleFn) return startCrop(file);
     photoBox.classList.add("busy");
-    photoStatus.classList.remove("err");
+    photoStatus.classList.remove("err", "warn");
     photoStatus.textContent = "読み取り中です…（数十秒かかることがあります）";
     try {
       const res = await sampleFn.json(PHOTO_PROMPT, { images: file });
@@ -1257,7 +1262,7 @@ p.msg:empty { display: none; }
   cropCanvas.addEventListener("pointerup", () => { dragIdx = -1; });
   document.getElementById("crop-cancel").addEventListener("click", () => {
     cropEl.hidden = true;
-    photoStatus.classList.remove("err");
+    photoStatus.classList.remove("err", "warn");
     photoStatus.textContent = photoHint;
   });
 
@@ -1275,7 +1280,7 @@ p.msg:empty { display: none; }
   document.getElementById("crop-ok").addEventListener("click", async () => {
     cropEl.hidden = true;
     photoBox.classList.add("busy");
-    photoStatus.classList.remove("err");
+    photoStatus.classList.remove("err", "warn");
     photoStatus.textContent = "読み取りの準備中です…（初回は少し時間がかかります）";
     try {
       // 写真をまっすぐな正方形に変換して、グレーの濃さにする
@@ -1287,7 +1292,7 @@ p.msg:empty { display: none; }
       sctx.drawImage(ocrImg, 0, 0, src.width, src.height);
       const px = sctx.getImageData(0, 0, src.width, src.height).data;
       const H = homography(corners.map(([x, y]) => [x * k, y * k]));
-      const N = 450, CS = N / 9;
+      const N = 900, CS = N / 9;
       const gray = new Uint8Array(N * N);
       for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
         const [sx, sy] = H((i + 0.5) / N, (j + 0.5) / N);
@@ -1353,9 +1358,11 @@ p.msg:empty { display: none; }
       await loadTesseract();
       if (!ocrWorker) ocrWorker = await Tesseract.createWorker("eng", 1, TESS_OPTS);
       const result = new Array(81).fill("0");
-      // 大きさと読み方を変えて読み、2回同じ数字になったら決める（読み間違いを減らす）
+      // 大きさと読み方を変えて読み、自信のある読みが2回同じ数字になったら決める（読み間違いを減らす）
+      // 自信の低い読み（confidence < 50）は票に数えず、点数（確かさの合計）だけに足す
       let todo = jobs;
       const votes = new Map(jobs.map((j) => [j, []]));
+      const sure = new Set();
       const tries = [{ h: 56, psm: "10" }, { h: 40, psm: "8" }, { h: 72, psm: "7" }, { h: 32, psm: "10" }];
       for (let t = 0; t < tries.length && todo.length; t++) {
         await ocrWorker.setParameters({ tessedit_char_whitelist: "123456789", tessedit_pageseg_mode: tries[t].psm });
@@ -1367,18 +1374,24 @@ p.msg:empty { display: none; }
           const { data } = await ocrWorker.recognize(render(todo[i], tries[t].h));
           const d = (data.text || "").replace(/[^1-9]/g, "")[0];
           const v = votes.get(todo[i]);
-          if (d) v.push(d);
-          if (d && v.filter((x) => x === d).length >= 2) result[todo[i].r * 9 + todo[i].c] = d;
-          else left.push(todo[i]);
+          if (d) v.push({ d, conf: data.confidence || 0 });
+          const good = v.filter((x) => x.conf >= 50);
+          if (d && good.filter((x) => x.d === d).length >= 2 && good.every((x) => x.d === d)) {
+            result[todo[i].r * 9 + todo[i].c] = d;
+            sure.add(todo[i]);
+          } else left.push(todo[i]);
         }
         todo = left;
       }
-      // 2回そろわなかったマスは、いちばん多く読めた数字を使う
+      // そろわなかったマスは、確かさの合計がいちばん大きい数字を使い、「要確認」の印を付ける
+      const unsure = [];
       todo = todo.filter((j) => {
         const v = votes.get(j);
         if (!v.length) return true;
-        const best = v.slice().sort((a, b) => v.filter((x) => x === b).length - v.filter((x) => x === a).length)[0];
-        result[j.r * 9 + j.c] = best;
+        const score = {};
+        for (const x of v) score[x.d] = (score[x.d] || 0) + x.conf + 1;
+        result[j.r * 9 + j.c] = Object.keys(score).sort((a, b) => score[b] - score[a])[0];
+        unsure.push(j);
         return false;
       });
       const miss = todo.length;
@@ -1393,8 +1406,12 @@ p.msg:empty { display: none; }
         c.classList.add("fixed");
         n++;
       });
+      for (const j of unsure) cellAt(j.r, j.c).classList.add("ocr-unsure");
       markConflicts();
-      photoStatus.textContent = `${n} マスを読み取りました` + (miss ? `（読めなかったマスが ${miss} か所あります）` : "") + "。写真と見比べて、間違いがあれば直してから「問題登録完了」を押してください。";
+      photoStatus.textContent = `${n} マスを読み取りました` + (miss ? `（読めなかったマスが ${miss} か所あります）` : "") + "。"
+        + (unsure.length ? `オレンジの枠の ${unsure.length} マスは読み取りに自信がありません。特に写真とよく見比べてください。` : "")
+        + "間違いがあれば直してから「問題登録完了」を押してください。";
+      if (unsure.length) photoStatus.classList.add("warn");
     } catch (e) {
       photoStatus.classList.add("err");
       photoStatus.textContent = "読み取りの準備ができませんでした。インターネットにつながっているか確かめて、もう一度試してください。";
@@ -1406,7 +1423,7 @@ p.msg:empty { display: none; }
   function showRegister() {
     clearUndo();
     undoBtn.hidden = false;
-    photoStatus.classList.remove("err");
+    photoStatus.classList.remove("err", "warn");
     photoStatus.textContent = photoHint;
     prompt.textContent = "問題を登録してください";
     note.textContent = registerNote;
