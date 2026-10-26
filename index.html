@@ -297,7 +297,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.56</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.57</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -661,7 +661,7 @@ p.msg:empty { display: none; }
     });
     if (!show) return;
     const given = mode === "solve" && sel.classList.contains("fixed");
-    padTitle.textContent = `黄色のマス：${+sel.dataset.row + 1}行目・${+sel.dataset.col + 1}列目` + (given ? "（問題の数字）" : sel.classList.contains("tent") ? "（確定候補）" : "");
+    padTitle.textContent = `選択中：${+sel.dataset.row + 1}行${+sel.dataset.col + 1}列` + (given ? "（問題の数字）" : sel.classList.contains("tent") ? "（確定候補）" : "");
     for (const k of keys) {
       const cand = sel.querySelector(`.cand[data-n="${k.dataset.n}"]`);
       k.className = "key";
