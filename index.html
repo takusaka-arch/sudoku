@@ -365,7 +365,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.72</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.73</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -2090,9 +2090,9 @@ p.msg:empty { display: none; }
     try { if (localStorage.getItem(TUT_KEY) !== "1") openTutorial(); } catch (e) { openTutorial(); }
   }
   splash.addEventListener("click", endSplash);
-  // 読み込みとタイトルの打ち出しが両方終わってから約2.5秒見せる
+  // 読み込みとタイトルの打ち出しが両方終わってから約3秒見せる
   const loaded = document.readyState === "complete" ? Promise.resolve() : new Promise((r) => addEventListener("load", r, { once: true }));
-  Promise.all([loaded, typed]).then(() => setTimeout(endSplash, 2500));
+  Promise.all([loaded, typed]).then(() => setTimeout(endSplash, 3000));
   board.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(e.target); }
   });
