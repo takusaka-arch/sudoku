@@ -364,7 +364,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.70</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.71</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1860,7 +1860,7 @@ p.msg:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
       ["grey", "8", "グレー", "除外した候補"],
     ] },
-    { title: "ボタン", text: "ヒント：1回押すと注目するマス、続けて2回押すと数字と理由を教えます（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
+    { title: "ボタン", text: "ヒント：1回押すと注目するマス、続けて2回押すと数字と理由を教えます（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
