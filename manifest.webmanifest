@@ -1,6 +1,6 @@
 {
-  "name": "数独解答支援アプリ",
-  "short_name": "数独解答支援",
+  "name": "数独回答支援アプリ",
+  "short_name": "数独回答支援",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

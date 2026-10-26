@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#1d2427">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="数独解答支援">
+<meta name="apple-mobile-web-app-title" content="数独回答支援">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
@@ -13,7 +13,7 @@
 window.CV_URL = "opencv/opencv.js";
 if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
 <style>[hidden]{display:none!important} body{margin:0}</style>
-<title>数独解答支援アプリ</title>
+<title>数独回答支援アプリ</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=IBM+Plex+Mono:wght@500;700&display=swap">
 <style>
 /* Layout: one centered square board; thick lines = outer frame and 3x3 boxes, medium = cells, hairline = candidate sub-cells */
@@ -327,7 +327,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独解答支援アプリ <small class="ver">ver.64</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.64</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -390,10 +390,10 @@ p.msg:empty { display: none; }
   </div>
   </aside>
 </main>
-<div class="splash" id="splash" role="dialog" aria-label="数独解答支援アプリ">
+<div class="splash" id="splash" role="dialog" aria-label="数独回答支援アプリ">
   <div class="splash-inner">
     <svg class="splash-icon" viewBox="0 0 90 90" aria-hidden="true"><rect width="90" height="90" rx="16" fill="#1d2427"/><rect x="12" y="12" width="66" height="66" fill="#fdfdfb"/><g stroke="#1d2427" stroke-width="0.8"><path d="M19.3 12V78M26.7 12V78M41.3 12V78M48.7 12V78M63.3 12V78M70.7 12V78M12 19.3H78M12 26.7H78M12 41.3H78M12 48.7H78M12 63.3H78M12 70.7H78"/></g><g stroke="#1d2427" stroke-width="2.2"><path d="M34 12V78M56 12V78M12 34H78M12 56H78"/><rect x="12" y="12" width="66" height="66" fill="none"/></g><g fill="#2f5fa8"><rect x="20.5" y="20.5" width="5" height="5"/><rect x="42.5" y="42.5" width="5" height="5"/><rect x="64.5" y="64.5" width="5" height="5"/></g></svg>
-    <p class="splash-title">数独解答支援アプリ</p>
+    <p class="splash-title">数独回答支援アプリ</p>
     <p class="splash-sub">このツールは、数独の問題を解くのをサポートするツールです。</p>
   </div>
 </div>
@@ -1791,7 +1791,7 @@ p.msg:empty { display: none; }
   const TAP3 = isMouse ? "トリプルクリック" : "トリプルタップ";
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
-    { title: "ようこそ", text: `数独解答支援アプリの使い方を、実際に試しながら説明します。\n\n使う流れ：\n1. 「新しい問題を作る」で問題の数字を入れる（手で入力、または写真から読み取り）\n2. 「問題登録完了」→「回答スタート」\n3. 各マスの小さな数字（候補）を${TAP}して解いていきます` },
+    { title: "ようこそ", text: `数独回答支援アプリの使い方を、実際に試しながら説明します。\n\n使う流れ：\n1. 「新しい問題を作る」で問題の数字を入れる（手で入力、または写真から読み取り）\n2. 「問題登録完了」→「回答スタート」\n3. 各マスの小さな数字（候補）を${TAP}して解いていきます` },
     { title: "問題を作る：手で入力する", text: `「新しい問題を作る」を押すと、問題の入力画面になります。問題に印刷されている数字を、各マスの小さな数字から${TAP}して入れます。入れた数字は大きく表示されます。まちがえたときは、大きな数字を${TAP}すると消えます。\n全部入れたら「問題登録完了」を押します。`,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
