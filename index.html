@@ -269,6 +269,18 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .tut-inner .tut-text { font-size: 0.92rem; line-height: 1.7; white-space: pre-line; }
 .tut-inner .tut-status { min-height: 1.6em; font-weight: 700; color: var(--answer); }
 .tut-inner .tut-status.ok { color: #2e7d32; }
+.tut-status .tut-done { display: block; font-size: 1.02rem; }
+.tut-status .tut-why { display: block; margin-top: 2px; font-size: 0.82rem; font-weight: 500; color: var(--muted); }
+.tut-colors { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
+@media (min-width: 480px) { .tut-colors { grid-template-columns: repeat(4, 1fr); } }
+.tut-color { display: grid; justify-items: center; gap: 2px; padding: 12px 6px 10px; border: 1px solid var(--line-sub); border-radius: 10px; background: var(--paper); text-align: center; }
+.tut-color .tc-num { font: 700 2.1rem/1.1 var(--font-num); }
+.tut-color .tc-name { font-weight: 700; font-size: 0.9rem; }
+.tut-color .tc-mean { font-size: 0.75rem; color: var(--muted); line-height: 1.35; }
+.tut-color.c-blue .tc-num { color: var(--answer); }
+.tut-color.c-red .tc-num { color: var(--error); }
+.tut-color.c-brown .tc-num { color: var(--brown); }
+.tut-color.c-grey .tc-num { color: var(--cand); opacity: 0.55; text-decoration: line-through; font-weight: 500; }
 .tut-nav { justify-content: center; }
 .tut-hide { font-size: 0.9rem; display: flex; gap: 6px; align-items: center; justify-content: center; }
 .tut-hide[hidden] { display: none; }
@@ -352,7 +364,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.69</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.70</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1842,13 +1854,30 @@ p.msg:empty { display: none; }
     { title: `大きな数字を${TAP3}`, text: `問題の数字や確定候補（大きな数字）を${TAP3}すると、同じ行・列・ブロックにある同じ数字の候補が、すべてグレーになります。`,
       cells: ["8", 0, 0], target: [0, "8"], ask: `左の大きな「8」を${TAP3}してみてください。`,
       goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」がグレーになりました。" },
-    { title: "色の意味", text: "青：選んだ候補・確定候補\n赤：同じ行・列・ブロックに同じ数字が重なっている（まちがい）\n茶色：確定候補と同じ数字の候補（入らない数字）\nグレー：選べなくした候補" },
+    { title: "色の意味", text: "盤の数字は、色で意味が分かるようになっています。", colors: [
+      ["blue", "5", "青", "選んだ候補"],
+      ["red", "3", "赤", "数字の重複"],
+      ["brown", "6", "茶", "入らない候補"],
+      ["grey", "8", "グレー", "除外した候補"],
+    ] },
     { title: "ボタン", text: "ヒント：1回押すと注目するマス、続けて2回押すと数字と理由を教えます（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
   function demoApi(cells) {
     return { cell: (i) => cells[i], cand: (i, n) => cells[i].querySelector(`.cand[data-n="${n}"]`) };
+  }
+  // 正しい操作ができたら「できました！ 次の操作へ進みましょう。」と、その操作で起きたことを表示する
+  function showTutOk(st) {
+    tutStatus.classList.add("ok");
+    tutStatus.textContent = "";
+    const head = document.createElement("span");
+    head.className = "tut-done";
+    head.textContent = "できました！ 次の操作へ進みましょう。";
+    const why = document.createElement("span");
+    why.className = "tut-why";
+    why.textContent = st.ok.replace(/^できました！\s*/, "");
+    tutStatus.append(head, why);
   }
   function renderTut() {
     const st = tutSteps[tutIdx];
@@ -1870,6 +1899,17 @@ p.msg:empty { display: none; }
       b.addEventListener("click", trySamplePhoto);
       tutDemo.appendChild(b);
       tutStatus.textContent = "ボタンを押すと、見本の写真で読み取りの流れを実際に試せます。";
+    }
+    if (st.colors) {
+      const box = document.createElement("div");
+      box.className = "tut-colors";
+      for (const [k, n, name, mean] of st.colors) {
+        const t = document.createElement("div");
+        t.className = `tut-color c-${k}`;
+        t.innerHTML = `<span class="tc-num">${n}</span><span class="tc-name">${name}</span><span class="tc-mean">${mean}</span>`;
+        box.appendChild(t);
+      }
+      tutDemo.appendChild(box);
     }
     if (!st.cells) return;
     const row = document.createElement("div");
@@ -1904,7 +1944,7 @@ p.msg:empty { display: none; }
         const c = el.closest(".cell");
         if (el.classList.contains("cand")) { c.classList.add("fixed"); c.dataset.value = el.dataset.n; c.querySelector(".big").textContent = el.dataset.n; }
         else { c.classList.remove("fixed"); delete c.dataset.value; }
-        if (st.goal(d)) { tutStatus.classList.add("ok"); tutStatus.textContent = st.ok; }
+        if (st.goal(d)) showTutOk(st);
         else { tutStatus.classList.remove("ok"); tutStatus.textContent = st.ask; }
         return;
       }
@@ -1914,7 +1954,7 @@ p.msg:empty { display: none; }
       tutTap.t = setTimeout(() => {
         demoTap(cells, el, Math.min(tutTap.n, 3));
         tutTap = { el: null, n: 0, t: null };
-        if (st.goal(d)) { tutStatus.classList.add("ok"); tutStatus.textContent = st.ok; }
+        if (st.goal(d)) showTutOk(st);
         else { tutStatus.classList.remove("ok"); tutStatus.textContent = st.ask; }
       }, 350);
     });
