@@ -226,7 +226,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .clear-inner .btn { justify-self: center; }
 .clear-inner .clear-title { font-size: 1.5rem; font-weight: 700; }
 .clear-inner .clear-time { font: 700 1.1rem var(--font-num); color: var(--muted); }
-.tut-inner { width: min(100%, 460px); box-sizing: border-box; gap: 12px; justify-items: stretch; }
+.tut-inner { width: min(100%, 460px); box-sizing: border-box; gap: 12px; justify-items: stretch; max-height: calc(100dvh - 32px); overflow-y: auto; }
 .tut-inner .tut-step { font: 500 0.75rem var(--font-num); color: var(--muted); }
 .tut-inner .tut-title { font-size: 1.15rem; font-weight: 700; }
 .tut-inner .tut-text { font-size: 0.92rem; line-height: 1.7; white-space: pre-line; }
@@ -314,7 +314,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.59</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.60</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -705,7 +705,7 @@ p.msg:empty { display: none; }
     padNote.textContent = mode === "register"
       ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
       : given ? "問題の数字は変えられません。"
-      : "1回タップ：候補（青）の選択・解除　2回：確定候補にする・戻す　3回：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す（問題の数字・確定候補を3回：その行・列・ブロックの同じ数字をグレーにする・戻す）";
+      : "1回タップ：候補（青）の選択・解除　ダブルタップ：確定候補にする・戻す　トリプルタップ：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す（問題の数字・確定候補をトリプルタップ：その行・列・ブロックの同じ数字をグレーにする・戻す）";
   }
   let lastTap = { key: null, t: 0 };
   pad.addEventListener("click", (e) => {
@@ -833,7 +833,8 @@ p.msg:empty { display: none; }
   function showSolve() {
     board.dataset.mode = "solve";
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
-    note.textContent = "小さな数字を 1回クリック：候補（青）の選択・解除　2回：確定候補にする（大きな数字を2回で戻す）　3回：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す（問題の数字・確定候補を3回：その行・列・ブロックの同じ数字をグレーにする・戻す）";
+    const [t1, t2, t3] = matchMedia("(hover: hover) and (pointer: fine)").matches ? ["1回クリック", "ダブルクリック", "トリプルクリック"] : ["1回タップ", "ダブルタップ", "トリプルタップ"];
+    note.textContent = `小さな数字を ${t1}：候補（青）の選択・解除　${t2}：確定候補にする（大きな数字を${t2}で戻す）　${t3}：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す（問題の数字・確定候補を${t3}：その行・列・ブロックの同じ数字をグレーにする・戻す）`;
     go.hidden = true;
     pause.hidden = false;
     pause.textContent = "一時停止";
@@ -1514,7 +1515,7 @@ p.msg:empty { display: none; }
   document.getElementById("clear-ok").addEventListener("click", () => { clearBox.hidden = true; });
 
   const hintBtn = document.getElementById("hint");
-  // 1回押す: 注目するマスだけを示す　2回続けて押す: 数字と理由まで示す
+  // 1回押す: 注目するマスだけを示す　続けて2回押す: 数字と理由まで示す
   let hintTimer = null;
   hintBtn.addEventListener("click", () => {
     if (hintTimer) {
@@ -1541,7 +1542,7 @@ p.msg:empty { display: none; }
       else cand.closest(".cell").classList.add("hint-cell");
       renderPad();
       workMsg.classList.remove("err");
-      workMsg.textContent = full ? text : "ヒント：薄い赤のマスに注目してください。（ヒントを2回続けて押すと、数字と理由を表示します）";
+      workMsg.textContent = full ? text : "ヒント：薄い赤のマスに注目してください。（ヒントを続けて2回押すと、数字と理由を表示します）";
     };
     // まず、入れられる数字が1つしかないマス
     for (const o of cells) {
@@ -1576,7 +1577,7 @@ p.msg:empty { display: none; }
       }
       renderPad();
       workMsg.classList.remove("err");
-      workMsg.textContent = full ? text : "ヒント：薄い紫の2マスに注目してください。（ヒントを2回続けて押すと、数字と理由を表示します）";
+      workMsg.textContent = full ? text : "ヒント：薄い紫の2マスに注目してください。（ヒントを続けて2回押すと、数字と理由を表示します）";
     };
     for (const u of units) {
       const inUnit = cells.filter(u.has);
@@ -1757,24 +1758,33 @@ p.msg:empty { display: none; }
   const tutDemo = document.getElementById("tut-demo");
   const tutStatus = document.getElementById("tut-status");
   const tutHide = document.getElementById("tut-hide");
-  const TAP = navigator.maxTouchPoints > 0 ? "タップ" : "クリック";
+  // パソコン（マウス）ではクリック、スマホ・タブレットではタップと表示する
+  const isMouse = matchMedia("(hover: hover) and (pointer: fine)").matches;
+  const TAP = isMouse ? "クリック" : "タップ";
+  const TAP1 = isMouse ? "1回クリック" : "1回タップ";
+  const TAP2 = isMouse ? "ダブルクリック" : "ダブルタップ";
+  const TAP3 = isMouse ? "トリプルクリック" : "トリプルタップ";
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
-    { title: "ようこそ", text: `数独支援アプリの使い方を、実際に試しながら説明します。\n\n使う流れ：\n1. 「新しい問題を作る」で問題の数字を入れる（写真から読み取ることもできます）\n2. 「問題登録完了」→「回答スタート」\n3. 各マスの小さな数字（候補）を${TAP}して解いていきます` },
-    { title: `1回${TAP}：候補を選ぶ`, text: `小さな数字を1回${TAP}すると、青くなります。「ここに入るかも」という候補の印です。もう1回${TAP}すると元に戻ります。`,
-      cells: [0], target: [0, "5"], ask: `下のマスの「5」を1回${TAP}してみてください。`,
+    { title: "ようこそ", text: `数独支援アプリの使い方を、実際に試しながら説明します。\n\n使う流れ：\n1. 「新しい問題を作る」で問題の数字を入れる（手で入力、または写真から読み取り）\n2. 「問題登録完了」→「回答スタート」\n3. 各マスの小さな数字（候補）を${TAP}して解いていきます` },
+    { title: "問題を作る：手で入力する", text: `「新しい問題を作る」を押すと、問題の入力画面になります。問題に印刷されている数字を、各マスの小さな数字から${TAP}して入れます。入れた数字は大きく表示されます。まちがえたときは、大きな数字を${TAP}すると消えます。\n全部入れたら「問題登録完了」を押します。`,
+      cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
+      goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
+    { title: "問題を作る：写真から読み取る", text: `入力画面の「写真から問題を読み取る」から、次のどれかで写真を渡します。\n・カメラで撮影\n・画像ファイルを選ぶ\n・クリップボードから貼り付け（パソコンは Ctrl+V でも可）\n\n盤面の外枠が自動で見つかり、四隅にオレンジの丸が置かれます。ずれていたら丸をドラッグして直し、「読み取る」を押します。\n読み取った数字が盤に入るので、写真と見比べて、まちがいがあれば直してから「問題登録完了」を押してください。\n\nコツ：盤面全体が入るように、なるべく真上から明るい場所で撮ると、よく読み取れます。` },
+    { title: `${TAP1}：候補を選ぶ`, text: `回答中は、小さな数字を${TAP1}すると青くなります。「ここに入るかも」という候補の印です。もう${TAP1}すると元に戻ります。`,
+      cells: [0], target: [0, "5"], ask: `下のマスの「5」を${TAP1}してみてください。`,
       goal: (d) => d.cand(0, "5").classList.contains("pick") && !d.cell(0).classList.contains("tent"), ok: "できました！ 青い数字が候補です。" },
-    { title: `2回続けて${TAP}：確定候補にする`, text: `小さな数字を2回続けて${TAP}すると、マス全体に大きな青い数字で表示されます（確定候補）。大きな数字を2回続けて${TAP}すると、元に戻ります。`,
-      cells: [0], target: [0, "7"], ask: `「7」を2回続けて${TAP}してみてください。`,
+    { title: `${TAP2}：確定候補にする`, text: `小さな数字を${TAP2}すると、マス全体に大きな青い数字で表示されます（確定候補）。大きな数字を${TAP2}すると、元に戻ります。`,
+      cells: [0], target: [0, "7"], ask: `「7」を${TAP2}してみてください。`,
       goal: (d) => d.cell(0).classList.contains("tent"), ok: "できました！ 大きな青い数字が確定候補です。" },
-    { title: `3回続けて${TAP}：候補をグレーにする`, text: `小さな数字を3回続けて${TAP}すると、その数字がグレーになり、選べなくなります。\n同じ行・列・ブロックに同じ数字が確定していれば、その中の同じ数字もまとめてグレーになります。もう一度3回${TAP}すると元に戻ります。`,
-      cells: ["5", 0, 0], target: [1, "5"], ask: `左に「5」が確定しています。真ん中のマスの「5」を3回続けて${TAP}してみてください。`,
+    { title: `${TAP3}：候補をグレーにする`, text: `小さな数字を${TAP3}すると、その数字がグレーになり、選べなくなります。\n同じ行・列・ブロックに同じ数字が確定していれば、その中の同じ数字もまとめてグレーになります。もう一度${TAP3}すると元に戻ります。`,
+      cells: ["5", 0, 0], target: [1, "5"], ask: `左に「5」が確定しています。真ん中のマスの「5」を${TAP3}してみてください。`,
       goal: (d) => d.cand(1, "5").classList.contains("off") && d.cand(2, "5").classList.contains("off"), ok: "できました！ この行の「5」がまとめてグレーになりました。" },
-    { title: `大きな数字を3回${TAP}`, text: `問題の数字や確定候補（大きな数字）を3回続けて${TAP}すると、同じ行・列・ブロックにある同じ数字の候補が、すべてグレーになります。`,
-      cells: ["8", 0, 0], target: [0, "8"], ask: `左の大きな「8」を3回続けて${TAP}してみてください。`,
+    { title: `大きな数字を${TAP3}`, text: `問題の数字や確定候補（大きな数字）を${TAP3}すると、同じ行・列・ブロックにある同じ数字の候補が、すべてグレーになります。`,
+      cells: ["8", 0, 0], target: [0, "8"], ask: `左の大きな「8」を${TAP3}してみてください。`,
       goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」がグレーになりました。" },
     { title: "色の意味", text: "青：選んだ候補・確定候補\n赤：同じ行・列・ブロックに同じ数字が重なっている（まちがい）\n茶色：確定候補と同じ数字の候補（入らない数字）\nグレー：選べなくした候補" },
-    { title: "ボタン", text: "ヒント：1回押すと注目するマス、2回続けて押すと数字と理由を教えます（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
+    { title: "ボタン", text: "ヒント：1回押すと注目するマス、続けて2回押すと数字と理由を教えます（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
@@ -1821,6 +1831,15 @@ p.msg:empty { display: none; }
     row.addEventListener("click", (e) => {
       const el = e.target.closest(".cand, .big");
       if (!el) return;
+      if (st.register) {
+        // 問題の入力：小さな数字で数字を入れ、大きな数字で消す
+        const c = el.closest(".cell");
+        if (el.classList.contains("cand")) { c.classList.add("fixed"); c.dataset.value = el.dataset.n; c.querySelector(".big").textContent = el.dataset.n; }
+        else { c.classList.remove("fixed"); delete c.dataset.value; }
+        if (st.goal(d)) { tutStatus.classList.add("ok"); tutStatus.textContent = st.ok; }
+        else { tutStatus.classList.remove("ok"); tutStatus.textContent = st.ask; }
+        return;
+      }
       if (tutTap.el !== el) { clearTimeout(tutTap.t); tutTap = { el, n: 0, t: null }; }
       tutTap.n++;
       clearTimeout(tutTap.t);
