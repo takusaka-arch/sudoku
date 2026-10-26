@@ -245,6 +245,9 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .tut-demo .cand.target { outline: 2px dashed var(--sel); outline-offset: -3px; }
 #crop-canvas { touch-action: none; max-width: 100%; cursor: grab; border: 1px solid var(--line-cell); }
 .start, .work { display: grid; gap: 14px; }
+.trial { display: grid; gap: 8px; padding: 10px 12px; background: var(--peer-bg); border: 2px solid var(--sel); border-radius: 6px; }
+.trial[hidden] { display: none; }
+.trial p { margin: 0; font-size: 0.85rem; font-weight: 700; }
 .start[hidden], .work[hidden] { display: none; }
 h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 55vh; overflow-y: auto; }
@@ -315,7 +318,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独支援アプリ <small class="ver">ver.61</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独支援アプリ <small class="ver">ver.62</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -332,6 +335,10 @@ p.msg:empty { display: none; }
     </div>
   </section>
   <div class="work" id="work" hidden>
+  <div class="trial" id="trial" hidden>
+    <p>ガイドのお試し中です（見本の写真）。試し終わったら、ここからガイドに戻れます。</p>
+    <button type="button" class="btn" id="trial-back">ガイドに戻る</button>
+  </div>
   <div class="name" id="name-field">
     <label for="pname">問題の名前</label>
     <input type="text" id="pname" maxlength="40" placeholder="例：新聞 10月24日" autocomplete="off">
@@ -808,6 +815,7 @@ p.msg:empty { display: none; }
   const go = document.getElementById("go");
   const pause = document.getElementById("pause");
   function showReady(count) {
+    document.getElementById("trial").hidden = true;
     clearUndo();
     undoBtn.hidden = true;
     currentCount = count;
@@ -1358,6 +1366,7 @@ p.msg:empty { display: none; }
   const workPanel = document.getElementById("work");
   const listEl = document.getElementById("list");
   function showStart() {
+    document.getElementById("trial").hidden = true;
     timerReset();
     clearBoard();
     board.dataset.mode = "start";
@@ -1905,10 +1914,21 @@ p.msg:empty { display: none; }
     tutEl.hidden = true;
     if (board.dataset.mode === "start") document.getElementById("new").click();
     pname.value = "見本の問題";
+    trialBox.hidden = false;
     const bin = atob(SAMPLE_PHOTO.split(",")[1]);
     const bytes = Uint8Array.from(bin, (ch) => ch.charCodeAt(0));
     readImage(new File([bytes], "sample.jpg", { type: "image/jpeg" }));
   }
+  // お試しを終えてガイドに戻る（見本の問題は保存しない）
+  const trialBox = document.getElementById("trial");
+  document.getElementById("trial-back").addEventListener("click", () => {
+    trialBox.hidden = true;
+    cropEl.hidden = true;
+    showStart();
+    openTutorial();
+    tutIdx = tutSteps.findIndex((st) => st.tryPhoto);
+    renderTut();
+  });
   function openTutorial() {
     if (board.dataset.mode === "solve") pause.click();
     tutIdx = 0;
