@@ -226,6 +226,22 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .clear-inner .btn { justify-self: center; }
 .clear-inner .clear-title { font-size: 1.5rem; font-weight: 700; }
 .clear-inner .clear-time { font: 700 1.1rem var(--font-num); color: var(--muted); }
+.tut-inner { width: min(100%, 460px); box-sizing: border-box; gap: 12px; justify-items: stretch; }
+.tut-inner .tut-step { font: 500 0.75rem var(--font-num); color: var(--muted); }
+.tut-inner .tut-title { font-size: 1.15rem; font-weight: 700; }
+.tut-inner .tut-text { font-size: 0.92rem; line-height: 1.7; white-space: pre-line; }
+.tut-inner .tut-status { min-height: 1.6em; font-weight: 700; color: var(--answer); }
+.tut-inner .tut-status.ok { color: #2e7d32; }
+.tut-nav { justify-content: center; }
+.tut-hide { font-size: 0.9rem; display: flex; gap: 6px; align-items: center; justify-content: center; }
+.tut-hide[hidden] { display: none; }
+.tut-demo { display: flex; justify-content: center; }
+.tut-demo:empty { display: none; }
+.tut-demo .row3 { display: grid; grid-template-columns: repeat(3, 96px); gap: var(--cell); background: var(--line-cell); border: var(--thick) solid var(--ink); }
+.tut-demo .cell { width: 96px; height: 96px; touch-action: manipulation; }
+.tut-demo .cand { font-size: 17px; }
+.tut-demo .big { font-size: 52px; }
+.tut-demo .cand.target { outline: 2px dashed var(--sel); outline-offset: -3px; }
 #crop-canvas { touch-action: none; max-width: 100%; cursor: grab; border: 1px solid var(--line-cell); }
 .start, .work { display: grid; gap: 14px; }
 .start[hidden], .work[hidden] { display: none; }
@@ -298,7 +314,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.58</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.59</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -306,6 +322,7 @@ p.msg:empty { display: none; }
     <p class="msg" id="file-msg" aria-live="polite"></p>
     <div class="row">
       <button type="button" class="btn" id="new">新しい問題を作る</button>
+      <button type="button" class="btn sub" id="tut-open">使い方</button>
       <label class="btn sub filepick">問題を選択して開く
         <input type="file" id="import-file">
       </label>
@@ -357,6 +374,21 @@ p.msg:empty { display: none; }
   </div>
   </aside>
 </main>
+<div class="crop" id="tut" role="dialog" aria-modal="true" aria-labelledby="tut-title" hidden>
+  <div class="crop-inner tut-inner">
+    <p class="tut-step" id="tut-step"></p>
+    <p class="tut-title" id="tut-title"></p>
+    <p class="tut-text" id="tut-text"></p>
+    <div class="tut-demo" id="tut-demo"></div>
+    <p class="tut-status" id="tut-status" aria-live="polite"></p>
+    <label class="tut-hide" id="tut-hide-wrap" hidden><input type="checkbox" id="tut-hide"> 次回から表示しない</label>
+    <div class="row tut-nav">
+      <button type="button" class="btn sub" id="tut-prev">戻る</button>
+      <button type="button" class="btn" id="tut-next">次へ</button>
+      <button type="button" class="btn sub" id="tut-skip">閉じる</button>
+    </div>
+  </div>
+</div>
 <div class="crop" id="clear" role="dialog" aria-modal="true" aria-labelledby="clear-msg" hidden>
   <div class="crop-inner clear-inner">
     <p class="clear-title" id="clear-msg">完成です。おめでとう！</p>
@@ -1719,7 +1751,147 @@ p.msg:empty { display: none; }
     pname.focus();
   });
   document.getElementById("back").addEventListener("click", showStart);
+  // ---- 使い方ガイド: 小さな盤で実際にタップを試しながら、1つずつ説明する ----
+  const TUT_KEY = "sudoku-tutorial-hide";
+  const tutEl = document.getElementById("tut");
+  const tutDemo = document.getElementById("tut-demo");
+  const tutStatus = document.getElementById("tut-status");
+  const tutHide = document.getElementById("tut-hide");
+  const TAP = navigator.maxTouchPoints > 0 ? "タップ" : "クリック";
+  // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
+  const tutSteps = [
+    { title: "ようこそ", text: `数独支援アプリの使い方を、実際に試しながら説明します。\n\n使う流れ：\n1. 「新しい問題を作る」で問題の数字を入れる（写真から読み取ることもできます）\n2. 「問題登録完了」→「回答スタート」\n3. 各マスの小さな数字（候補）を${TAP}して解いていきます` },
+    { title: `1回${TAP}：候補を選ぶ`, text: `小さな数字を1回${TAP}すると、青くなります。「ここに入るかも」という候補の印です。もう1回${TAP}すると元に戻ります。`,
+      cells: [0], target: [0, "5"], ask: `下のマスの「5」を1回${TAP}してみてください。`,
+      goal: (d) => d.cand(0, "5").classList.contains("pick") && !d.cell(0).classList.contains("tent"), ok: "できました！ 青い数字が候補です。" },
+    { title: `2回続けて${TAP}：確定候補にする`, text: `小さな数字を2回続けて${TAP}すると、マス全体に大きな青い数字で表示されます（確定候補）。大きな数字を2回続けて${TAP}すると、元に戻ります。`,
+      cells: [0], target: [0, "7"], ask: `「7」を2回続けて${TAP}してみてください。`,
+      goal: (d) => d.cell(0).classList.contains("tent"), ok: "できました！ 大きな青い数字が確定候補です。" },
+    { title: `3回続けて${TAP}：候補をグレーにする`, text: `小さな数字を3回続けて${TAP}すると、その数字がグレーになり、選べなくなります。\n同じ行・列・ブロックに同じ数字が確定していれば、その中の同じ数字もまとめてグレーになります。もう一度3回${TAP}すると元に戻ります。`,
+      cells: ["5", 0, 0], target: [1, "5"], ask: `左に「5」が確定しています。真ん中のマスの「5」を3回続けて${TAP}してみてください。`,
+      goal: (d) => d.cand(1, "5").classList.contains("off") && d.cand(2, "5").classList.contains("off"), ok: "できました！ この行の「5」がまとめてグレーになりました。" },
+    { title: `大きな数字を3回${TAP}`, text: `問題の数字や確定候補（大きな数字）を3回続けて${TAP}すると、同じ行・列・ブロックにある同じ数字の候補が、すべてグレーになります。`,
+      cells: ["8", 0, 0], target: [0, "8"], ask: `左の大きな「8」を3回続けて${TAP}してみてください。`,
+      goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」がグレーになりました。" },
+    { title: "色の意味", text: "青：選んだ候補・確定候補\n赤：同じ行・列・ブロックに同じ数字が重なっている（まちがい）\n茶色：確定候補と同じ数字の候補（入らない数字）\nグレー：選べなくした候補" },
+    { title: "ボタン", text: "ヒント：1回押すと注目するマス、2回続けて押すと数字と理由を教えます（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
+    { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
+  ];
+  let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
+  function demoApi(cells) {
+    return { cell: (i) => cells[i], cand: (i, n) => cells[i].querySelector(`.cand[data-n="${n}"]`) };
+  }
+  function renderTut() {
+    const st = tutSteps[tutIdx];
+    document.getElementById("tut-step").textContent = `${tutIdx + 1} / ${tutSteps.length}`;
+    document.getElementById("tut-title").textContent = st.title;
+    document.getElementById("tut-text").textContent = st.text;
+    document.getElementById("tut-prev").disabled = tutIdx === 0;
+    document.getElementById("tut-next").textContent = st.last ? "はじめる" : "次へ";
+    document.getElementById("tut-skip").hidden = !!st.last;
+    document.getElementById("tut-hide-wrap").hidden = !st.last;
+    tutStatus.classList.remove("ok");
+    tutStatus.textContent = st.ask || "";
+    tutDemo.innerHTML = "";
+    if (!st.cells) return;
+    const row = document.createElement("div");
+    row.className = "row3";
+    row.style.gridTemplateColumns = `repeat(${st.cells.length}, 96px)`;
+    const cells = st.cells.map((g) => {
+      const c = document.createElement("div");
+      c.className = "cell";
+      for (const n of order) {
+        const sp = document.createElement("span");
+        sp.className = "cand";
+        sp.dataset.n = n;
+        sp.textContent = n;
+        c.appendChild(sp);
+      }
+      const big = document.createElement("span");
+      big.className = "big";
+      c.appendChild(big);
+      if (g) { c.classList.add("fixed", "given"); c.dataset.value = g; big.textContent = g; }
+      row.appendChild(c);
+      return c;
+    });
+    tutDemo.appendChild(row);
+    const [ti, tn] = st.target;
+    (cells[ti].classList.contains("fixed") ? cells[ti].querySelector(".big") : cells[ti].querySelector(`.cand[data-n="${tn}"]`)).classList.add("target");
+    const d = demoApi(cells);
+    row.addEventListener("click", (e) => {
+      const el = e.target.closest(".cand, .big");
+      if (!el) return;
+      if (tutTap.el !== el) { clearTimeout(tutTap.t); tutTap = { el, n: 0, t: null }; }
+      tutTap.n++;
+      clearTimeout(tutTap.t);
+      tutTap.t = setTimeout(() => {
+        demoTap(cells, el, Math.min(tutTap.n, 3));
+        tutTap = { el: null, n: 0, t: null };
+        if (st.goal(d)) { tutStatus.classList.add("ok"); tutStatus.textContent = st.ok; }
+        else { tutStatus.classList.remove("ok"); tutStatus.textContent = st.ask; }
+      }, 350);
+    });
+  }
+  // 小さな盤での動き（本番の回答モードと同じ決まり）
+  function demoTap(cells, el, n) {
+    const cell = el.closest(".cell");
+    const val = (c) => c.dataset.value || (c.classList.contains("tent") ? c.querySelector(".big").textContent : "");
+    const grayOthers = (num) => {
+      const t = cells.filter((c) => c !== cell && !val(c)).map((c) => c.querySelector(`.cand[data-n="${num}"]`));
+      const back = t.length && t.every((x) => x.classList.contains("off"));
+      t.forEach((x) => { x.classList.toggle("off", !back); if (!back) x.classList.remove("pick"); });
+    };
+    if (cell.classList.contains("fixed") || cell.classList.contains("tent")) {
+      if (n === 3) grayOthers(val(cell));
+      else if (n === 2 && cell.classList.contains("tent")) {
+        cell.classList.remove("tent");
+        cell.querySelectorAll(".sure").forEach((x) => x.classList.remove("sure"));
+        cell.querySelector(".big").textContent = "";
+      }
+      return;
+    }
+    if (!el.classList.contains("cand")) return;
+    if (n === 3) {
+      const num = el.dataset.n;
+      if (el.classList.contains("off") || !cells.some((c) => c !== cell && val(c) === num)) { el.classList.toggle("off"); el.classList.remove("pick"); return; }
+      [cell, ...cells.filter((c) => c !== cell && !val(c))].forEach((c) => { const x = c.querySelector(`.cand[data-n="${num}"]`); x.classList.add("off"); x.classList.remove("pick"); });
+    } else if (el.classList.contains("off")) {
+      return;
+    } else if (n === 1) {
+      el.classList.toggle("pick");
+    } else {
+      el.classList.add("pick", "sure");
+      cell.classList.add("tent");
+      cell.querySelector(".big").textContent = el.dataset.n;
+    }
+  }
+  function openTutorial() {
+    tutIdx = 0;
+    let hidden = false;
+    try { hidden = localStorage.getItem(TUT_KEY) === "1"; } catch (e) { /* 使えない環境 */ }
+    tutHide.checked = hidden;
+    tutEl.hidden = false;
+    renderTut();
+    document.getElementById("tut-next").focus();
+  }
+  function closeTutorial() {
+    tutEl.hidden = true;
+    try {
+      if (tutHide.checked) localStorage.setItem(TUT_KEY, "1");
+      else localStorage.removeItem(TUT_KEY);
+    } catch (e) { /* 使えない環境 */ }
+  }
+  document.getElementById("tut-next").addEventListener("click", () => {
+    if (tutSteps[tutIdx].last) return closeTutorial();
+    tutIdx++;
+    renderTut();
+  });
+  document.getElementById("tut-prev").addEventListener("click", () => { if (tutIdx > 0) { tutIdx--; renderTut(); } });
+  document.getElementById("tut-skip").addEventListener("click", () => { tutEl.hidden = true; });
+  document.getElementById("tut-open").addEventListener("click", openTutorial);
+
   showStart();
+  try { if (localStorage.getItem(TUT_KEY) !== "1") openTutorial(); } catch (e) { openTutorial(); }
   board.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(e.target); }
   });
