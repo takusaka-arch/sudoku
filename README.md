@@ -8,4 +8,4 @@
 
 一度開けば、ネットにつながっていなくても動きます（写真からの読み取りも含む）。
 
-写真の読み取りには Tesseract.js（Apache License 2.0）を使っています。ライセンスは tesseract/ フォルダにあります。
+写真の読み取りには Tesseract.js（Apache License 2.0）を、盤面の外枠の自動検出には OpenCV.js（@techstark/opencv-js、Apache License 2.0）を使っています。

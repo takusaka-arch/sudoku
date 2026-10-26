@@ -10,6 +10,7 @@
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
 <script>window.TESS_BASE = "tesseract/";
+window.CV_URL = "opencv/opencv.js";
 if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
 <style>[hidden]{display:none!important} body{margin:0}</style>
 <title>数独支援アプリ</title>
@@ -297,7 +298,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <h1>数独支援アプリ <small class="ver">ver.57</small></h1>
+  <h1>数独支援アプリ <small class="ver">ver.58</small></h1>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -974,7 +975,9 @@ p.msg:empty { display: none; }
   const cropEl = document.getElementById("crop");
   const cropCanvas = document.getElementById("crop-canvas");
   const cropCtx = cropCanvas.getContext("2d");
-  let ocrImg = null, corners = null, cropScale = 1, dragIdx = -1, ocrWorker = null;
+  let ocrImg = null, corners = null, cropScale = 1, dragIdx = -1, ocrWorker = null, cornersMoved = false;
+  const cropMsg = document.getElementById("crop-msg");
+  const cropHint = cropMsg.textContent;
 
   // 単位正方形の四隅 → 写真上の四隅 への射影変換
   function homography(dst) {
@@ -1020,7 +1023,80 @@ p.msg:empty { display: none; }
     cropScale = Math.min(maxW / w, maxH / h, 1);
     cropCanvas.width = Math.round(w * cropScale);
     cropCanvas.height = Math.round(h * cropScale);
+    cornersMoved = false;
     drawCrop();
+    // 盤面の外枠を自動で探し、見つかれば四隅の丸をそこへ動かす（手で動かしたあとは上書きしない）
+    cropMsg.textContent = "盤面の外枠を探しています…";
+    const found = await detectCorners(img).catch(() => null);
+    if (ocrImg !== img || cropEl.hidden) return;
+    if (found && !cornersMoved) {
+      corners = found;
+      drawCrop();
+      cropMsg.textContent = "盤面の四隅を自動で合わせました。ずれていたらオレンジの丸をドラッグして直してください。";
+    } else {
+      cropMsg.textContent = cropHint;
+    }
+  }
+
+  // OpenCV.js で写真の中のいちばん大きな四角形（盤面の外枠）を探し、四隅を 左上・右上・右下・左下 の順で返す
+  const CV_URL = window.CV_URL || "https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js";
+  let cvReady = null;
+  function loadCV() {
+    if (!cvReady) cvReady = new Promise((ok, ng) => {
+      const sc = document.createElement("script");
+      sc.src = CV_URL;
+      sc.onload = async () => {
+        try {
+          let c = window.cv;
+          if (c && typeof c.then === "function" && !c.Mat) c = await new Promise((r) => c.then((m) => { delete m.then; r(m); }));
+          if (c && !c.Mat) await new Promise((r) => { c.onRuntimeInitialized = r; });
+          ok(c);
+        } catch (e) { ng(e); }
+      };
+      sc.onerror = ng;
+      document.head.appendChild(sc);
+    }).catch((e) => { cvReady = null; throw e; });
+    return cvReady;
+  }
+  async function detectCorners(img) {
+    const cv = await loadCV();
+    const k = Math.min(1, 800 / Math.max(img.naturalWidth, img.naturalHeight));
+    const cw = Math.round(img.naturalWidth * k), ch = Math.round(img.naturalHeight * k);
+    const can = document.createElement("canvas");
+    can.width = cw; can.height = ch;
+    can.getContext("2d").drawImage(img, 0, 0, cw, ch);
+    const src = cv.imread(can), gray = new cv.Mat(), bin = new cv.Mat();
+    const contours = new cv.MatVector(), hier = new cv.Mat();
+    try {
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+      cv.GaussianBlur(gray, gray, new cv.Size(5, 5), 0);
+      cv.adaptiveThreshold(gray, bin, 255, cv.ADAPTIVE_THRESH_GAUSSIAN_C, cv.THRESH_BINARY_INV, 11, 2);
+      cv.findContours(bin, contours, hier, cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE);
+      let best = null, bestArea = cw * ch * 0.12;
+      for (let i = 0; i < contours.size(); i++) {
+        const c = contours.get(i);
+        const area = cv.contourArea(c);
+        if (area > bestArea) {
+          const approx = new cv.Mat();
+          cv.approxPolyDP(c, approx, 0.02 * cv.arcLength(c, true), true);
+          if (approx.rows === 4 && cv.isContourConvex(approx)) {
+            best && best.delete();
+            best = approx;
+            bestArea = area;
+          } else approx.delete();
+        }
+        c.delete();
+      }
+      if (!best) return null;
+      const pts = [];
+      for (let i = 0; i < 4; i++) pts.push([best.data32S[i * 2] / k, best.data32S[i * 2 + 1] / k]);
+      best.delete();
+      // 左上 = x+y 最小、右下 = x+y 最大、右上 = x-y 最大、左下 = x-y 最小
+      const by = (f) => pts.reduce((a, b) => (f(b) > f(a) ? b : a));
+      return [by((p) => -(p[0] + p[1])), by((p) => p[0] - p[1]), by((p) => p[0] + p[1]), by((p) => p[1] - p[0])];
+    } finally {
+      src.delete(); gray.delete(); bin.delete(); contours.delete(); hier.delete();
+    }
   }
   function drawCrop() {
     const s = cropScale;
@@ -1061,7 +1137,10 @@ p.msg:empty { display: none; }
       if (d < bd) { bd = d; best = i; }
     });
     dragIdx = best;
-    if (best >= 0) cropCanvas.setPointerCapture(e.pointerId);
+    if (best >= 0) {
+      cornersMoved = true;
+      cropCanvas.setPointerCapture(e.pointerId);
+    }
   });
   cropCanvas.addEventListener("pointermove", (e) => {
     if (dragIdx < 0) return;
@@ -1171,8 +1250,9 @@ p.msg:empty { display: none; }
       await loadTesseract();
       if (!ocrWorker) ocrWorker = await Tesseract.createWorker("eng", 1, TESS_OPTS);
       const result = new Array(81).fill("0");
-      // 読めなかったマスは、大きさと読み方を変えてもう一度試す
+      // 大きさと読み方を変えて読み、2回同じ数字になったら決める（読み間違いを減らす）
       let todo = jobs;
+      const votes = new Map(jobs.map((j) => [j, []]));
       const tries = [{ h: 56, psm: "10" }, { h: 40, psm: "8" }, { h: 72, psm: "7" }, { h: 32, psm: "10" }];
       for (let t = 0; t < tries.length && todo.length; t++) {
         await ocrWorker.setParameters({ tessedit_char_whitelist: "123456789", tessedit_pageseg_mode: tries[t].psm });
@@ -1180,13 +1260,24 @@ p.msg:empty { display: none; }
         for (let i = 0; i < todo.length; i++) {
           photoStatus.textContent = t === 0
             ? `読み取り中です…（${i + 1} / ${todo.length}）`
-            : `読みにくいマスを読み直しています…（${i + 1} / ${todo.length}）`;
+            : `確かめながら読み直しています…（${i + 1} / ${todo.length}）`;
           const { data } = await ocrWorker.recognize(render(todo[i], tries[t].h));
           const d = (data.text || "").replace(/[^1-9]/g, "")[0];
-          if (d) result[todo[i].r * 9 + todo[i].c] = d; else left.push(todo[i]);
+          const v = votes.get(todo[i]);
+          if (d) v.push(d);
+          if (d && v.filter((x) => x === d).length >= 2) result[todo[i].r * 9 + todo[i].c] = d;
+          else left.push(todo[i]);
         }
         todo = left;
       }
+      // 2回そろわなかったマスは、いちばん多く読めた数字を使う
+      todo = todo.filter((j) => {
+        const v = votes.get(j);
+        if (!v.length) return true;
+        const best = v.slice().sort((a, b) => v.filter((x) => x === b).length - v.filter((x) => x === a).length)[0];
+        result[j.r * 9 + j.c] = best;
+        return false;
+      });
       const miss = todo.length;
       if (board.dataset.mode !== "register") return;
       clearBoard();
