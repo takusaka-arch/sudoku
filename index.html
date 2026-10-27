@@ -231,6 +231,12 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .pad #pad-title { font-weight: 700; font-size: 1rem; }
 .pad { display: grid; gap: 10px; justify-items: center; touch-action: manipulation; }
 .pad[hidden] { display: none; }
+/* 右上の×で拡大表示を閉じる（マスの選択を外す） */
+.pad { position: relative; }
+.pad .pad-close { position: absolute; top: 4px; right: 4px; width: 40px; height: 40px; border: none; border-radius: 8px; background: transparent; color: var(--ink); font: 700 1.6rem/1 var(--font-ui, sans-serif); cursor: pointer; }
+.pad .pad-close:active { background: var(--hover); }
+.pad .pad-close:focus-visible { outline: 3px solid var(--answer); }
+.pad #pad-title { padding: 0 40px; }
 .pad p { margin: 0; font-size: 0.9rem; text-align: center; }
 .pad .note { font-size: 0.8rem; }
 .keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(100%, 300px); }
@@ -435,12 +441,13 @@ p.msg:empty { display: none; }
   </div>
   </div>
   <div class="pad" id="pad" hidden>
+    <button type="button" class="pad-close" id="pad-close" aria-label="拡大表示を閉じる">×</button>
     <p id="pad-title"></p>
     <div class="keys" id="keys"></div>
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.89</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.90</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -846,6 +853,7 @@ p.msg:empty { display: none; }
   // 数字パッド（スマホ）: 選んだマスの候補を同じ色で大きく表示する
   const pad = document.getElementById("pad");
   const padTitle = document.getElementById("pad-title");
+  document.getElementById("pad-close").addEventListener("click", () => selectCell(null));
   const padNote = document.getElementById("pad-note");
   const keys = order.map((n) => {
     const k = document.createElement("button");
