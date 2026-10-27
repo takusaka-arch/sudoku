@@ -183,7 +183,8 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 /* 2つの組に入っている数字は、2色を斜めに分けて示す */
 .cell .cand.pgrp.pgrp2 { background: linear-gradient(135deg, color-mix(in srgb, var(--pg) 30%, var(--paper)) 50%, color-mix(in srgb, var(--pg2) 30%, var(--paper)) 50%); box-shadow: inset 0 0 0 2px var(--pg), inset 0 0 0 4px var(--pg2); }
 .key.hint { background: var(--hint-bg); border-color: var(--error); color: var(--error); }
-.cand.off, .cand.off.shadow { color: var(--line-sub); font-weight: 500; text-decoration: line-through; }
+/* 除外した候補は消して見えなくする（同じ場所をもう一度3回押すと戻る） */
+.cand.off, .cand.off.shadow { color: transparent; text-decoration: none; }
 .key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
 .cell.conflict .big { color: var(--error); }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -295,7 +296,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .tut-status .tut-done { display: block; font-size: 1.02rem; }
 .tut-status .tut-why { display: block; margin-top: 2px; font-size: 0.82rem; font-weight: 500; color: var(--muted); }
 .tut-colors { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
-@media (min-width: 480px) { .tut-colors { grid-template-columns: repeat(4, 1fr); } }
+@media (min-width: 480px) { .tut-colors { grid-template-columns: repeat(3, 1fr); } }
 .tut-color { display: grid; justify-items: center; gap: 2px; padding: 12px 6px 10px; border: 1px solid var(--line-sub); border-radius: 10px; background: var(--paper); text-align: center; }
 .tut-color .tc-num { font: 700 2.1rem/1.1 var(--font-num); }
 .tut-color .tc-name { font-weight: 700; font-size: 0.9rem; }
@@ -366,7 +367,6 @@ p.msg:empty { display: none; }
 .hint-menu .hm-check { grid-row: span 2; width: 1.2em; text-align: center; font-weight: 700; color: var(--answer); }
 /* 表示方法変更：回答中だけ効く。マスの位置は変えずに見えなくする */
 .board[data-mode="solve"][data-view-blank] .cell:not(.fixed):not(.tent) .cand { visibility: hidden; }
-.board[data-mode="solve"][data-view-nooff] .cand.off { color: transparent; text-decoration: none; pointer-events: none; }
 .board[data-mode="solve"][data-view-blank] .cell:not(.fixed):not(.tent) { background: var(--paper); }
 #view.on { border-color: var(--answer); color: var(--answer); }
 .hint-menu .hm-desc { font-size: 0.78rem; color: var(--muted); }
@@ -429,7 +429,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.87</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.88</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -597,7 +597,7 @@ p.msg:empty { display: none; }
   }
 
   // 盤の下で選んだ数字を、候補として残っているマスで点滅させる
-  // （グレーでなく、同じ行・列・ブロックに問題の数字や確定候補として同じ数字が無いマス）
+  // （消しておらず、同じ行・列・ブロックに問題の数字や確定候補として同じ数字が無いマス）
   function applyHighlight() {
     board.querySelectorAll(".cand.hl-on").forEach((x) => x.classList.remove("hl-on"));
     board.querySelectorAll(".cell.hl-big").forEach((x) => x.classList.remove("hl-big"));
@@ -734,7 +734,7 @@ p.msg:empty { display: none; }
     act(e.target);
   });
 
-  // 回答モードのタップ回数: 1回=候補の選択/解除、2回=確定候補、3回=グレーアウト
+  // 回答モードのタップ回数: 1回=候補の選択/解除、2回=確定候補、3回=候補を消す
   // （同じ数字への連続タップを少し待って数えてから実行する）
   let tap = { target: null, cell: null, n: 0, timer: null };
   function countTap(target, cell) {
@@ -752,7 +752,7 @@ p.msg:empty { display: none; }
     if (target && board.dataset.mode === "solve") runTap(target, cell, Math.min(n, 3));
   }
   function runTap(target, cell, n) {
-    // 問題の数字・確定候補を3回: その行・列・ブロックにある同じ数字の候補をすべてグレーにする（全部グレーなら元に戻す）
+    // 問題の数字・確定候補を3回: その行・列・ブロックにある同じ数字の候補をすべて消す（全部消えていれば元に戻す）
     if (cell.classList.contains("given") || (cell.classList.contains("tent") && n === 3)) {
       if (n !== 3) return;
       const num = cell.dataset.value || cell.querySelector(".big").textContent, r = +cell.dataset.row, c = +cell.dataset.col;
@@ -774,7 +774,7 @@ p.msg:empty { display: none; }
     if (!target.classList.contains("cand")) return;
     if (n === 3) {
       // そのマスの行・列・ブロックのうち、同じ数字が確定している（問題の数字か確定候補）ものについて、
-      // その中の同じ数字をすべてグレーにする。どこにも無ければそのマスの数字だけ。グレーの数字なら元に戻す
+      // その中の同じ数字をすべて消す。どこにも無ければそのマスの数字だけ。消えている数字なら元に戻す
       const restore = target.classList.contains("off");
       const num = target.dataset.n;
       const r = +cell.dataset.row, c = +cell.dataset.col;
@@ -882,7 +882,7 @@ p.msg:empty { display: none; }
     padNote.textContent = mode === "register"
       ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
       : given ? "問題の数字は変えられません。"
-      : "1回タップ：候補（青）の選択・解除　ダブルタップ：確定候補にする・戻す　トリプルタップ：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す（問題の数字・確定候補をトリプルタップ：その行・列・ブロックの同じ数字をグレーにする・戻す）";
+      : "1回タップ：候補（青）の選択・解除　ダブルタップ：確定候補にする・戻す　トリプルタップ：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（問題の数字・確定候補をトリプルタップ：その行・列・ブロックの同じ数字を消す・戻す）";
   }
   let lastTap = { key: null, t: 0 };
   pad.addEventListener("click", (e) => {
@@ -1016,7 +1016,7 @@ p.msg:empty { display: none; }
     board.dataset.mode = "solve";
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
     const [t1, t2, t3] = matchMedia("(hover: hover) and (pointer: fine)").matches ? ["1回クリック", "ダブルクリック", "トリプルクリック"] : ["1回タップ", "ダブルタップ", "トリプルタップ"];
-    note.textContent = `小さな数字を ${t1}：候補（青）の選択・解除　${t2}：確定候補にする（大きな数字を${t2}で戻す）　${t3}：その数字が確定している行・列・ブロックの中の同じ数字をグレーにする・戻す（問題の数字・確定候補を${t3}：その行・列・ブロックの同じ数字をグレーにする・戻す）`;
+    note.textContent = `小さな数字を ${t1}：候補（青）の選択・解除　${t2}：確定候補にする（大きな数字を${t2}で戻す）　${t3}：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（問題の数字・確定候補を${t3}：その行・列・ブロックの同じ数字を消す・戻す）`;
     go.hidden = true;
     pause.hidden = false;
     pause.textContent = "一時停止";
@@ -1623,7 +1623,7 @@ p.msg:empty { display: none; }
 
   // ヒント: 入れられる数字が1つだけのマス、または行・列・ブロックで1か所にしか入らない数字を、1つだけ薄い赤で示す
   // どちらも無ければ、2つの数字が同じ2マスにしか入らないペアを薄い紫で示す
-  // 入れられる = 問題の数字・確定候補で埋まっておらず、グレーにしておらず、同じ行・列・ブロックにその数字が確定していない
+  // 入れられる = 問題の数字・確定候補で埋まっておらず、消しておらず、同じ行・列・ブロックにその数字が確定していない
   // 一つ戻る: 操作の前の盤の状態を積んでおき、押すたびに1つ前に戻す（Ctrl+Z / ⌘Z でも可）
   const undoBtn = document.getElementById("undo");
   let undoStack = [];
@@ -1772,39 +1772,34 @@ p.msg:empty { display: none; }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !hintMenu.hidden) { closeHintMenu(); hintBtn.focus(); }
   });
-  // 表示方法変更: 未確定のマスを空白にする／グレーにした数字を表示しない／元に戻す（選んだ表示は次回も使う）
+  // 表示方法変更: 未確定のマスを空白にするか、候補を表示するかの2択（選んだ表示は次回も使う）
   const VIEW_KEY = "sudoku-view";
   const viewMenu = document.getElementById("view-menu");
   const viewKinds = [
     { key: "blank", label: "未確定のマスを空白にする", desc: "大きな数字が入っていないマスの小さな数字を、すべて隠します" },
-    { key: "nooff", label: "グレーにした数字を表示しない", desc: "除外した（グレーの）候補を隠します" },
-    { key: "", label: "元に戻す", desc: "すべての小さな数字を表示する、いつもの表示に戻します" },
+    { key: "", label: "未確定のマスの候補を表示する", desc: "小さな数字を表示する、いつもの表示です" },
   ];
   function applyView(v) {
     board.toggleAttribute("data-view-blank", !!v.blank);
-    board.toggleAttribute("data-view-nooff", !!v.nooff);
     try { localStorage.setItem(VIEW_KEY, JSON.stringify(v)); } catch {}
     viewMenu.querySelectorAll("button").forEach((b) => {
-      const on = b.dataset.key ? !!v[b.dataset.key] : !v.blank && !v.nooff;
+      const on = b.dataset.key ? !!v.blank : !v.blank;
       b.setAttribute("aria-checked", String(on));
       b.querySelector(".hm-check").textContent = on ? "✓" : "";
     });
-    viewBtn.classList.toggle("on", !!(v.blank || v.nooff));
+    viewBtn.classList.toggle("on", !!v.blank);
   }
-  const curView = () => ({ blank: board.hasAttribute("data-view-blank"), nooff: board.hasAttribute("data-view-nooff") });
+  const curView = () => ({ blank: board.hasAttribute("data-view-blank") });
   viewKinds.forEach((k) => {
     const b = document.createElement("button");
     b.type = "button";
-    b.setAttribute("role", "menuitemcheckbox");
+    b.setAttribute("role", "menuitemradio");
     b.dataset.key = k.key;
     b.innerHTML = `<span class="hm-check"></span><span class="hm-label"></span><span class="hm-desc"></span>`;
     b.querySelector(".hm-label").textContent = k.label;
     b.querySelector(".hm-desc").textContent = k.desc;
     b.addEventListener("click", () => {
-      const v = curView();
-      if (k.key) v[k.key] = !v[k.key];
-      else { v.blank = false; v.nooff = false; }
-      applyView(v);
+      applyView({ blank: !!k.key });
       closeViewMenu();
     });
     viewMenu.appendChild(b);
@@ -1846,7 +1841,7 @@ p.msg:empty { display: none; }
     workMsg.textContent = `ヒント：薄い緑の ${two.length} マスは、青い候補が2つだけです。`;
   }
   // ③ 行・列・ブロックの中で、2つの数字がどちらも同じ2マスにしか入らない組（ペア）を、すべて組ごとの色で示す
-  // 青い候補かどうかは関係なく、入れられる数字（グレー・確定済みの数字を除く）で調べる
+  // 青い候補かどうかは関係なく、入れられる数字（消した候補・確定済みの数字を除く）で調べる
   const PAIR_COLORS = ["#2f7de1", "#e07b00", "#2e9d4f", "#d6408f", "#0f9a92", "#8a5cd1", "#b8860b", "#c0392b"];
   function showPairs() {
     if (board.dataset.mode !== "solve") return;
@@ -1894,7 +1889,7 @@ p.msg:empty { display: none; }
       }
     });
     renderPad();
-    workMsg.textContent = `ヒント：同じ色の2つの数字（${found.length}組）は、その行・列・ブロックで、色の付いた2マスにしか入りません。その2マスのほかの候補はグレーにできます。`;
+    workMsg.textContent = `ヒント：同じ色の2つの数字（${found.length}組）は、その行・列・ブロックで、色の付いた2マスにしか入りません。その2マスのほかの候補は消せます。`;
   }
   function runHint(full) {
     if (board.dataset.mode !== "solve") return;
@@ -1936,7 +1931,7 @@ p.msg:empty { display: none; }
       }
     }
     // その次に、行・列・ブロックの中で2つの数字が同じ2マスにしか入らない組（ペア）を薄い紫で示す
-    // （そのペアでほかの候補をグレーにできる場合だけ）
+    // （そのペアでほかの候補を消せる場合だけ）
     const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
     const showPair = (two, a, b, text) => {
       hintsUsed++;
@@ -1958,17 +1953,17 @@ p.msg:empty { display: none; }
         // どちらの数字も入れられるのが同じ2マスだけ
         if (spots[a].length === 2 && spots[b].length === 2 && spots[a].every((o) => spots[b].includes(o))
           && spots[a].some((o) => digits.some((d) => d !== a && d !== b && can(o, d)))) {
-          return showPair(spots[a], a, b, `ヒント：この${u.name}で「${a}」と「${b}」は、薄い紫の2マスにしか入りません。この2マスのほかの候補はグレーにできます。`);
+          return showPair(spots[a], a, b, `ヒント：この${u.name}で「${a}」と「${b}」は、薄い紫の2マスにしか入りません。この2マスのほかの候補は消せます。`);
         }
         // 入れられる数字が「a と b」だけのマスが2つある
         const two = inUnit.filter((o) => !val(o) && digits.filter((d) => can(o, d)).join("") === a + b);
         if (two.length === 2 && inUnit.some((o) => !two.includes(o) && (can(o, a) || can(o, b)))) {
-          return showPair(two, a, b, `ヒント：この${u.name}の薄い紫の2マスには「${a}」と「${b}」しか入りません。この${u.name}のほかのマスの「${a}」「${b}」はグレーにできます。`);
+          return showPair(two, a, b, `ヒント：この${u.name}の薄い紫の2マスには「${a}」と「${b}」しか入りません。この${u.name}のほかのマスの「${a}」「${b}」は消せます。`);
         }
       }
     }
     workMsg.classList.remove("err");
-    workMsg.textContent = "ヒント：見つかりませんでした。グレーにできる候補を減らしてから、もう一度押してみてください。";
+    workMsg.textContent = "ヒント：見つかりませんでした。消せる候補を消してから、もう一度押してみてください。";
   }
   exportCur.addEventListener("click", async () => {
     let givens = "";
@@ -2313,21 +2308,20 @@ p.msg:empty { display: none; }
     { title: `${TAP2}：確定候補にする`, text: `小さな数字を${TAP2}すると、マス全体に大きな青い数字で表示されます（確定候補）。大きな数字を${TAP2}すると、元に戻ります。`,
       cells: [0], target: [0, "7"], ask: `「7」を${TAP2}してみてください。`,
       goal: (d) => d.cell(0).classList.contains("tent"), ok: "できました！ 大きな青い数字が確定候補です。" },
-    { title: `${TAP3}：候補をグレーにする`, text: `小さな数字を${TAP3}すると、その数字がグレーになり、選べなくなります。\n同じ行・列・ブロックに同じ数字が確定していれば、その中の同じ数字もまとめてグレーになります。もう一度${TAP3}すると元に戻ります。`,
+    { title: `${TAP3}：候補を消す`, text: `小さな数字を${TAP3}すると、その数字が消えます（入らないと分かった候補を消す操作です）。\n同じ行・列・ブロックに同じ数字が確定していれば、その中の同じ数字もまとめて消えます。もう一度${TAP3}すると元に戻ります。`,
       cells: ["5", 0, 0], target: [1, "5"], ask: `左に「5」が確定しています。真ん中のマスの「5」を${TAP3}してみてください。`,
-      goal: (d) => d.cand(1, "5").classList.contains("off") && d.cand(2, "5").classList.contains("off"), ok: "できました！ この行の「5」がまとめてグレーになりました。" },
-    { title: `大きな数字を${TAP3}`, text: `問題の数字や確定候補（大きな数字）を${TAP3}すると、同じ行・列・ブロックにある同じ数字の候補が、すべてグレーになります。`,
+      goal: (d) => d.cand(1, "5").classList.contains("off") && d.cand(2, "5").classList.contains("off"), ok: "できました！ この行の「5」がまとめて消えました。" },
+    { title: `大きな数字を${TAP3}`, text: `問題の数字や確定候補（大きな数字）を${TAP3}すると、同じ行・列・ブロックにある同じ数字の候補が、すべて消えます。`,
       cells: ["8", 0, 0], target: [0, "8"], ask: `左の大きな「8」を${TAP3}してみてください。`,
-      goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」がグレーになりました。" },
+      goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」が消えました。" },
     { title: "色の意味", text: "盤の数字は、色で意味が分かるようになっています。", colors: [
       ["blue", "5", "青", "選んだ候補"],
       ["red", "3", "赤", "数字の重複"],
       ["brown", "6", "茶", "入らない候補"],
-      ["grey", "8", "グレー", "除外した候補"],
     ] },
-    { title: "数字をハイライトする", text: `回答中は、盤の下に「以下の数字をハイライトする」と1〜9の数字が並びます。\n数字を${TAP}すると、その数字の問題の数字・確定候補（大きな数字）が黄色になり、その数字がまだ入る可能性のあるマスの候補が点滅します。同じ行・列・ブロックにすでにその数字があるマスや、グレーにした候補は点滅しません。\nもう一度同じ数字を${TAP}すると、点滅が止まります。\n\n「この数字はどこに入る？」を探すときに便利です。` },
+    { title: "数字をハイライトする", text: `回答中は、盤の下に「以下の数字をハイライトする」と1〜9の数字が並びます。\n数字を${TAP}すると、その数字の問題の数字・確定候補（大きな数字）が黄色になり、その数字がまだ入る可能性のあるマスの候補が点滅します。同じ行・列・ブロックにすでにその数字があるマスや、消した候補は点滅しません。\nもう一度同じ数字を${TAP}すると、点滅が止まります。\n\n「この数字はどこに入る？」を探すときに便利です。` },
     { title: "ヒント", text: "「ヒント」を押すと、ヒントの種類を選べます。\n①注目するマス：次に考えるとよいマスに色を付けます\n②候補が2つのマス：自分で選んだ青い候補が2つだけのマスを緑で示します\n③2つの数字のペア：青い候補かどうかに関係なく、行・列・ブロックの中で同じ2マスにしか入らない2つの数字の組を、組ごとに色分けして示します\n④答えと理由：入る数字と、その理由を教えます（赤＝1つに決まる所、紫＝ペア）\n\n使ったヒントの回数は、タイマーの右に表示されます。" },
-    { title: "ボタン", text: "一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます（数字は隠れます）\n表示方法変更：「未確定のマスを空白にする」「グレーにした数字を表示しない」を選べます。「元に戻す」でいつもの表示に戻ります\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
+    { title: "ボタン", text: "一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます（数字は隠れます）\n表示方法変更：「未確定のマスを空白にする」か「未確定のマスの候補を表示する」を選べます\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "保存とGoogleドライブ", text: "「この状態をファイルに保存」で、解いている途中の状態（経過時間も含む）を保存できます。続きは、最初の画面の「回答中のファイルを開く」で再開します。問題だけを渡したいときは、問題一覧の「書き出し」を使います。\n\nGoogleドライブ（インストールしたアプリ版・Web版のみ）：\n最初の画面の「Googleドライブ」欄で「保存するときは、Googleドライブの「Sudoku」フォルダに保存する」にチェックを入れると、保存先がご自分のGoogleドライブになります。初回だけGoogleアカウントを選び、次からは自動で接続します。\n「Googleドライブから開く」で、パソコンで保存した続きをスマホで開く、といった使い方ができます。" },
     { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
   ];
