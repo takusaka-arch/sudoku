@@ -361,7 +361,9 @@ p.msg:empty { display: none; }
 .board[data-mode="paused"] :is(.cand, .big) { visibility: hidden; }
 .timer { margin: 0; font: 700 2.2rem var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; line-height: 1; }
 .timer[hidden] { display: none; }
-.hints-used { margin: -8px 0 0; font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+.timer-row { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 18px; row-gap: 4px; }
+.timer-row:not(:has(> :not([hidden]))) { display: none; }
+.hints-used { margin: 0; font-size: 0.85rem; font-weight: 700; color: var(--muted); }
 .timer.paused { color: var(--muted); }
 .prompt {
   margin: 0; padding: 10px 14px;
@@ -378,7 +380,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.76</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.77</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -403,8 +405,10 @@ p.msg:empty { display: none; }
     <label for="pname">問題の名前</label>
     <input type="text" id="pname" maxlength="40" placeholder="例：新聞 10月24日" autocomplete="off">
   </div>
-  <p class="timer" id="timer" role="timer" aria-label="経過時間" hidden>00:00</p>
-  <p class="hints-used" id="hints-used" hidden>使ったヒント：0回</p>
+  <div class="timer-row">
+    <p class="timer" id="timer" role="timer" aria-label="経過時間" hidden>00:00</p>
+    <p class="hints-used" id="hints-used" hidden>使ったヒント：0回</p>
+  </div>
   <div class="photo" id="photo-box" hidden>
     <p><b>写真から問題を読み取る</b></p>
     <div class="row">
