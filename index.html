@@ -86,7 +86,7 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 
 .board {
   touch-action: manipulation;
-  width: min(calc(100vh - 32px), calc(100vw - 32px - var(--side) - 24px));
+  width: min(calc(100vh - 32px - 64px), calc(100vw - 32px - var(--side) - 24px));
   aspect-ratio: 1;
   max-width: 100%;
   display: grid;
@@ -100,6 +100,19 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 @media (max-width: 760px) {
   .board { width: 100%; }
 }
+/* 盤の下の 1〜9：押した数字が候補として残っているマスで点滅させる */
+.board-wrap { display: grid; gap: 8px; justify-items: center; min-width: 0; }
+.num-hl { display: grid; gap: 4px; justify-items: center; width: 100%; }
+.board-wrap:has(.board:not([data-mode="solve"])) .num-hl { display: none; }
+.nh-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+.nh-keys { display: grid; grid-template-columns: repeat(9, minmax(0, 40px)); gap: 4px; justify-content: center; width: 100%; }
+.nh-keys button { aspect-ratio: 1; min-width: 0; padding: 0; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1.05rem var(--font-num); cursor: pointer; touch-action: manipulation; }
+.nh-keys button:hover { background: var(--hover); }
+.nh-keys button[aria-pressed="true"] { background: var(--sel-bg); border-color: var(--sel); box-shadow: 0 0 0 2px var(--sel); }
+.nh-keys button:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+.cand.hl-on { animation: hl-blink 1s ease-in-out infinite; }
+@keyframes hl-blink { 50% { background: var(--sel-bg); color: var(--ink); font-weight: 700; } }
+@media (prefers-reduced-motion: reduce) { .cand.hl-on { animation: none; background: var(--sel-bg); color: var(--ink); font-weight: 700; } }
 .box {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -378,14 +391,20 @@ p.msg:empty { display: none; }
 </style>
 
 <main>
+  <div class="board-wrap">
   <div class="board" id="board" role="grid" aria-label="数独の盤面"></div>
+  <div class="num-hl" id="num-hl" role="group" aria-label="数字をハイライト">
+    <span class="nh-label">以下の数字をハイライトする</span>
+    <div class="nh-keys"></div>
+  </div>
+  </div>
   <div class="pad" id="pad" hidden>
     <p id="pad-title"></p>
     <div class="keys" id="keys"></div>
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.78</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.79</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -533,6 +552,23 @@ p.msg:empty { display: none; }
     board.appendChild(box);
   }
 
+  // 盤の下で選んだ数字を、候補として残っているマスで点滅させる
+  // （グレーでなく、同じ行・列・ブロックに問題の数字や確定候補として同じ数字が無いマス）
+  function applyHighlight() {
+    board.querySelectorAll(".cand.hl-on").forEach((x) => x.classList.remove("hl-on"));
+    const n = board.dataset.hl;
+    if (!n || board.dataset.mode !== "solve") return;
+    const cells = [...board.querySelectorAll(".cell")];
+    const val = (o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "");
+    const has = cells.filter((o) => val(o) === n);
+    for (const o of cells) {
+      if (val(o)) continue;
+      if (has.some((x) => x.dataset.row === o.dataset.row || x.dataset.col === o.dataset.col
+        || (Math.floor(x.dataset.row / 3) === Math.floor(o.dataset.row / 3) && Math.floor(x.dataset.col / 3) === Math.floor(o.dataset.col / 3)))) continue;
+      const c = o.querySelector(`.cand[data-n="${n}"]`);
+      if (!c.classList.contains("off")) c.classList.add("hl-on");
+    }
+  }
   // 同じ行・列・3x3ブロックに同じ数字があるマスを赤くする
   function markConflicts() {
     // 盤が変わったらヒントの表示を消す
@@ -587,6 +623,7 @@ p.msg:empty { display: none; }
     }
     if (typeof renderPad === "function") renderPad();
     if (typeof checkComplete === "function") checkComplete();
+    applyHighlight();
   }
 
   // 保存した問題（このブラウザに保存）: [{name, givens: 81文字(0=空き), saved}]
@@ -1467,6 +1504,7 @@ p.msg:empty { display: none; }
   const workPanel = document.getElementById("work");
   const listEl = document.getElementById("list");
   function showStart() {
+    if (typeof setHighlight === "function" && document.querySelector("#num-hl button")) setHighlight("");
     document.getElementById("trial").hidden = true;
     timerReset();
     clearBoard();
@@ -1626,6 +1664,23 @@ p.msg:empty { display: none; }
   document.getElementById("clear-ok").addEventListener("click", () => { clearBox.hidden = true; });
 
   const hintBtn = document.getElementById("hint");
+  // 盤の下の 1〜9：押すとその数字を点滅させる（もう一度押すと止める）
+  const hlKeys = document.querySelector("#num-hl .nh-keys");
+  for (let n = 1; n <= 9; n++) {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.textContent = n;
+    b.setAttribute("aria-pressed", "false");
+    b.setAttribute("aria-label", `${n}をハイライト`);
+    b.addEventListener("click", () => setHighlight(board.dataset.hl === String(n) ? "" : String(n)));
+    hlKeys.appendChild(b);
+  }
+  function setHighlight(n) {
+    if (n) board.dataset.hl = n;
+    else delete board.dataset.hl;
+    hlKeys.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === n)));
+    applyHighlight();
+  }
   // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
   const hintKinds = [
     { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
