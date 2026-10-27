@@ -176,6 +176,10 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 .cell.hint-cell .cand, .cell.hint-cell .cand.pick { background: var(--hint-bg); }
 .cell.pair-cell .cand, .cell.pair-cell .cand.pick { background: var(--pair-bg); }
 .cell.two-cell .cand, .cell.two-cell .cand.pick { background: var(--two-bg); }
+/* ③ ペアの組ごとの色（--pg に組の色が入る） */
+.cell .cand.pgrp, .cell .cand.pick.pgrp { color: var(--pg); background: color-mix(in srgb, var(--pg) 20%, var(--paper)); font-weight: 700; box-shadow: inset 0 0 0 2px var(--pg); text-decoration: none; }
+/* 2つの組に入っている数字は、2色を斜めに分けて示す */
+.cell .cand.pgrp.pgrp2 { background: linear-gradient(135deg, color-mix(in srgb, var(--pg) 30%, var(--paper)) 50%, color-mix(in srgb, var(--pg2) 30%, var(--paper)) 50%); box-shadow: inset 0 0 0 2px var(--pg), inset 0 0 0 4px var(--pg2); }
 .key.hint { background: var(--hint-bg); border-color: var(--error); color: var(--error); }
 .cand.off, .cand.off.shadow { color: var(--line-sub); font-weight: 500; text-decoration: line-through; }
 .key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
@@ -417,7 +421,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.83</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.84</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -605,6 +609,7 @@ p.msg:empty { display: none; }
     const msg = document.getElementById("work-msg");
     if (msg.textContent.startsWith("ヒント")) msg.textContent = "";
     board.querySelectorAll(".cand.hint, .cand.pair, .cell.hint-cell, .cell.pair-cell, .cell.two-cell").forEach((s) => s.classList.remove("hint", "pair", "hint-cell", "pair-cell", "two-cell"));
+    board.querySelectorAll(".cand.pgrp").forEach((s) => { s.classList.remove("pgrp", "pgrp2"); s.style.removeProperty("--pg"); s.style.removeProperty("--pg2"); });
     const cells = [...board.querySelectorAll(".cell")];
     const fixed = cells.filter((c) => c.dataset.value);
     cells.forEach((c) => c.classList.remove("conflict"));
@@ -1715,6 +1720,7 @@ p.msg:empty { display: none; }
   const hintKinds = [
     { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
     { label: "候補が2つのマス", desc: "青い候補が2つだけのマスに色を付けます", run: () => showTwoCells() },
+    { label: "2つの数字のペア", desc: "同じ2マスにしか入らない2つの数字の組を、組ごとに色分けします", run: () => showPairs() },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます", run: () => runHint(true) },
   ];
   const hintMenu = document.getElementById("hint-menu");
@@ -1761,6 +1767,57 @@ p.msg:empty { display: none; }
     two.forEach((o) => o.classList.add("two-cell"));
     renderPad();
     workMsg.textContent = `ヒント：薄い緑の ${two.length} マスは、青い候補が2つだけです。`;
+  }
+  // ③ 行・列・ブロックの中で、2つの数字がどちらも同じ2マスにしか入らない組（ペア）を、すべて組ごとの色で示す
+  // 青い候補かどうかは関係なく、入れられる数字（グレー・確定済みの数字を除く）で調べる
+  const PAIR_COLORS = ["#2f7de1", "#e07b00", "#2e9d4f", "#d6408f", "#0f9a92", "#8a5cd1", "#b8860b", "#c0392b"];
+  function showPairs() {
+    if (board.dataset.mode !== "solve") return;
+    markConflicts();
+    const cells = [...board.querySelectorAll(".cell")];
+    const val = (o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "");
+    const peers = (a, b) => a.dataset.row === b.dataset.row || a.dataset.col === b.dataset.col
+      || (Math.floor(a.dataset.row / 3) === Math.floor(b.dataset.row / 3) && Math.floor(a.dataset.col / 3) === Math.floor(b.dataset.col / 3));
+    const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
+      && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
+    const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    const units = [];
+    for (let i = 0; i < 9; i++) units.push((o) => +o.dataset.row === i);
+    for (let i = 0; i < 9; i++) units.push((o) => +o.dataset.col === i);
+    for (let i = 0; i < 9; i++) units.push((o) => Math.floor(o.dataset.row / 3) * 3 + Math.floor(o.dataset.col / 3) === i);
+    const found = [], seen = new Set();
+    for (const has of units) {
+      const inUnit = cells.filter(has);
+      const spots = {};
+      for (const d of digits) spots[d] = inUnit.filter((o) => can(o, d));
+      for (let i = 0; i < 9; i++) for (let j = i + 1; j < 9; j++) {
+        const a = digits[i], b = digits[j];
+        if (spots[a].length !== 2 || spots[b].length !== 2 || !spots[a].every((o) => spots[b].includes(o))) continue;
+        // 行とブロックで同じ組が見つかったときは1つにまとめる
+        const key = a + b + spots[a].map((o) => cells.indexOf(o)).join(",");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push({ a, b, two: spots[a] });
+      }
+    }
+    workMsg.classList.remove("err");
+    if (!found.length) {
+      workMsg.textContent = "ヒント：同じ2マスにしか入らない2つの数字の組は、今はありません。";
+      return;
+    }
+    hintsUsed++;
+    drawHints();
+    found.forEach((p, i) => {
+      const color = PAIR_COLORS[i % PAIR_COLORS.length];
+      for (const o of p.two) for (const d of [p.a, p.b]) {
+        const c = o.querySelector(`.cand[data-n="${d}"]`);
+        if (c.classList.contains("pgrp")) { c.classList.add("pgrp2"); c.style.setProperty("--pg2", color); continue; }
+        c.classList.add("pgrp");
+        c.style.setProperty("--pg", color);
+      }
+    });
+    renderPad();
+    workMsg.textContent = `ヒント：同じ色の2つの数字（${found.length}組）は、その行・列・ブロックで、色の付いた2マスにしか入りません。その2マスのほかの候補はグレーにできます。`;
   }
   function runHint(full) {
     if (board.dataset.mode !== "solve") return;
@@ -2192,7 +2249,7 @@ p.msg:empty { display: none; }
       ["grey", "8", "グレー", "除外した候補"],
     ] },
     { title: "数字をハイライトする", text: `回答中は、盤の下に「以下の数字をハイライトする」と1〜9の数字が並びます。\n数字を${TAP}すると、その数字がまだ入る可能性のあるマスの候補が点滅します。同じ行・列・ブロックにすでにその数字があるマスや、グレーにした候補は点滅しません。\nもう一度同じ数字を${TAP}すると、点滅が止まります。\n\n「この数字はどこに入る？」を探すときに便利です。` },
-    { title: "ヒント", text: "「ヒント」を押すと、ヒントの種類を選べます。\n①注目するマス：次に考えるとよいマスに色を付けます\n②候補が2つのマス：自分で選んだ青い候補が2つだけのマスを緑で示します\n③答えと理由：入る数字と、その理由を教えます（赤＝1つに決まる所、紫＝ペア）\n\n使ったヒントの回数は、タイマーの右に表示されます。" },
+    { title: "ヒント", text: "「ヒント」を押すと、ヒントの種類を選べます。\n①注目するマス：次に考えるとよいマスに色を付けます\n②候補が2つのマス：自分で選んだ青い候補が2つだけのマスを緑で示します\n③2つの数字のペア：青い候補かどうかに関係なく、行・列・ブロックの中で同じ2マスにしか入らない2つの数字の組を、組ごとに色分けして示します\n④答えと理由：入る数字と、その理由を教えます（赤＝1つに決まる所、紫＝ペア）\n\n使ったヒントの回数は、タイマーの右に表示されます。" },
     { title: "ボタン", text: "一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます（数字は隠れます）\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "保存とGoogleドライブ", text: "「この状態をファイルに保存」で、解いている途中の状態（経過時間も含む）を保存できます。続きは、最初の画面の「回答中のファイルを開く」で再開します。問題だけを渡したいときは、問題一覧の「書き出し」を使います。\n\nGoogleドライブ（インストールしたアプリ版・Web版のみ）：\n最初の画面の「Googleドライブ」欄で「保存するときは、Googleドライブの「Sudoku」フォルダに保存する」にチェックを入れると、保存先がご自分のGoogleドライブになります。初回だけGoogleアカウントを選び、次からは自動で接続します。\n「Googleドライブから開く」で、パソコンで保存した続きをスマホで開く、といった使い方ができます。" },
     { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
