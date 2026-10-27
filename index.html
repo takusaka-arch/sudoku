@@ -332,6 +332,7 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .gd-account { margin-left: 8px; font-weight: 500; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
 .gd-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem; line-height: 1.5; cursor: pointer; }
 .gd-opt input { margin-top: 3px; }
+.gd-policy { font-size: 0.75rem; color: var(--muted); }
 .gd-inner { width: min(100%, 440px); box-sizing: border-box; justify-items: stretch; max-height: calc(100dvh - 32px); }
 .gd-box-title { margin: 0; font-weight: 700; }
 .gd-inner .msg { margin: 0; }
@@ -416,7 +417,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.81</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.82</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -438,6 +439,7 @@ p.msg:empty { display: none; }
         <button type="button" class="btn sub" id="gd-open">Googleドライブから開く</button>
         <button type="button" class="btn sub" id="gd-signout" hidden>接続を解除</button>
       </div>
+      <a class="gd-policy" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
     </div>
   </section>
   <div class="crop" id="gd-box" role="dialog" aria-modal="true" aria-labelledby="gd-box-title" hidden>
