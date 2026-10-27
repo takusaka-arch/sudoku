@@ -325,6 +325,17 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .share-box p, .import p { margin: 0; font-size: 0.85rem; line-height: 1.6; }
 .share-box textarea, .import textarea { font: 500 0.85rem var(--font-num); padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 4px; background: var(--bg); color: var(--ink); resize: vertical; min-width: 0; overflow-wrap: anywhere; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.gdrive { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
+.gdrive[hidden] { display: none; }
+.gd-title { margin: 0; font-weight: 700; }
+.gd-account { margin-left: 8px; font-weight: 500; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+.gd-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem; line-height: 1.5; cursor: pointer; }
+.gd-opt input { margin-top: 3px; }
+.gd-inner { width: min(100%, 440px); box-sizing: border-box; justify-items: stretch; max-height: calc(100dvh - 32px); }
+.gd-box-title { margin: 0; font-weight: 700; }
+.gd-inner .msg { margin: 0; }
+.gd-inner .msg:empty { display: none; }
+.gd-inner #gd-close { justify-self: center; }
 .filepick { position: relative; }
 .filepick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .filepick:focus-within { outline: 3px solid var(--answer); outline-offset: 2px; }
@@ -404,7 +415,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.79</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.80</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -419,7 +430,23 @@ p.msg:empty { display: none; }
         <input type="file" id="progress-file">
       </label>
     </div>
+    <div class="gdrive" id="gdrive" hidden>
+      <p class="gd-title">Googleドライブ<span class="gd-account" id="gd-account"></span></p>
+      <label class="gd-opt"><input type="checkbox" id="gd-save"> 保存するときは、Googleドライブの「Sudoku」フォルダに保存する</label>
+      <div class="row">
+        <button type="button" class="btn sub" id="gd-open">Googleドライブから開く</button>
+        <button type="button" class="btn sub" id="gd-signout" hidden>接続を解除</button>
+      </div>
+    </div>
   </section>
+  <div class="crop" id="gd-box" role="dialog" aria-modal="true" aria-labelledby="gd-box-title" hidden>
+    <div class="crop-inner gd-inner">
+      <p class="gd-box-title" id="gd-box-title">Googleドライブの「Sudoku」フォルダ</p>
+      <p class="msg" id="gd-box-msg" aria-live="polite"></p>
+      <ul class="list" id="gd-files"></ul>
+      <button type="button" class="btn sub" id="gd-close">閉じる</button>
+    </div>
+  </div>
   <div class="work" id="work" hidden>
   <div class="trial" id="trial" hidden>
     <p>ガイドのお試し中です（見本の写真）。試し終わったら、ここからガイドに戻れます。</p>
@@ -1818,6 +1845,7 @@ p.msg:empty { display: none; }
     return saveFile(`数独_${safeName(p.name)}.json`, data, `「${p.name}」をファイルに書き出しました`);
   }
   async function saveFile(filename, data, okText) {
+    if (gd.saveOn()) return gd.saveFile(filename, data, okText);
     // claude.ai 上では保存の確認を出して保存、単体のファイルでは普通にダウンロード
     const dl = await window.claude?.use?.("downloads").catch(() => null);
     if (dl) {
@@ -1869,6 +1897,9 @@ p.msg:empty { display: none; }
     if (!file) return;
     let obj;
     try { obj = JSON.parse(await file.text()); } catch (e) { obj = null; }
+    openProgressData(obj, file.name);
+  });
+  function openProgressData(obj, fileName) {
     const ok = obj && obj.kind === "progress" && /^[0-9]{81}$/.test(obj.givens || "") && Array.isArray(obj.picks) && obj.picks.length === 81 && /^[0-9]{81}$/.test(obj.sure || "");
     if (!ok) {
       say(obj && /^[0-9]{81}$/.test(obj.givens || "")
@@ -1877,7 +1908,7 @@ p.msg:empty { display: none; }
       return;
     }
     say("");
-    openProblem({ name: String(obj.name || "").trim().slice(0, 40) || file.name.replace(/\.json$/i, ""), givens: obj.givens });
+    openProblem({ name: String(obj.name || "").trim().slice(0, 40) || fileName.replace(/\.json$/i, ""), givens: obj.givens });
     obj.picks.forEach((p, i) => {
       const cell = cellAt(Math.floor(i / 9), i % 9);
       if (cell.classList.contains("fixed")) return;
@@ -1900,7 +1931,7 @@ p.msg:empty { display: none; }
     drawHints();
     pause.click();
     prompt.textContent = `一時停止中：${currentName}（保存した続きから）`;
-  });
+  }
   const importFile = document.getElementById("import-file");
   importFile.addEventListener("change", async () => {
     const file = importFile.files[0];
@@ -1908,12 +1939,15 @@ p.msg:empty { display: none; }
     if (!file) return;
     let obj;
     try { obj = JSON.parse(await file.text()); } catch (e) { obj = null; }
+    importProblemData(obj, file.name);
+  });
+  function importProblemData(obj, fileName) {
     const givens = obj && typeof obj.givens === "string" ? obj.givens.replace(/\./g, "0") : "";
     if (!/^[0-9]{81}$/.test(givens) || !/[1-9]/.test(givens)) {
       say("このファイルは問題のファイルではありません。「書き出し」で作ったファイルを選んでください", true);
       return;
     }
-    const base = String(obj.name || "").trim().slice(0, 40) || file.name.replace(/\.json$/i, "");
+    const base = String(obj.name || "").trim().slice(0, 40) || fileName.replace(/\.json$/i, "");
     const list = loadAll();
     // 同じ問題があればそれを開く。名前だけ同じなら番号を付けて追加
     let p = list.find((q) => q.name === base && q.givens === givens);
@@ -1926,7 +1960,165 @@ p.msg:empty { display: none; }
     }
     say("");
     openProblem(p);
-  });
+  }
+
+  // Googleドライブ: 直下の「Sudoku」フォルダに保存・そこから開く（GitHub版で使える。2回目からは前のアカウントで自動接続）
+  const gd = (() => {
+    const CLIENT = window.GDRIVE_CLIENT_ID || "";
+    const SCOPE = "https://www.googleapis.com/auth/drive.file";
+    const EMAIL_KEY = "sudoku-gdrive-email", SAVE_KEY = "sudoku-gdrive-save";
+    const API = "https://www.googleapis.com/drive/v3", UP = "https://www.googleapis.com/upload/drive/v3";
+    const box = document.getElementById("gdrive"), saveChk = document.getElementById("gd-save");
+    const account = document.getElementById("gd-account"), signout = document.getElementById("gd-signout");
+    const ok = !!CLIENT && location.protocol === "https:";
+    let tokenClient = null, token = null, tokenExp = 0, waiting = null, folder = null;
+    const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } };
+    function drawAccount() {
+      const email = ls(EMAIL_KEY);
+      account.textContent = email ? `（${email}）` : "（まだ接続していません）";
+      signout.hidden = !email;
+    }
+    function loadGis() {
+      if (window.google?.accounts?.oauth2) return Promise.resolve();
+      return new Promise((done, fail) => {
+        const sc = document.createElement("script");
+        sc.src = "https://accounts.google.com/gsi/client";
+        sc.onload = done;
+        sc.onerror = fail;
+        document.head.appendChild(sc);
+      });
+    }
+    // トークンを得る（ボタンを押した流れの中で呼ぶこと。初回はアカウントを選ぶ画面、次回からは前のアカウントで自動）
+    function getToken() {
+      if (token && Date.now() < tokenExp - 60000) return Promise.resolve(token);
+      if (!window.google?.accounts?.oauth2) return Promise.reject(new Error("Googleの読み込みが終わっていません。少し待ってからもう一度押してください"));
+      if (!tokenClient) tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT,
+        scope: SCOPE,
+        callback: (r) => {
+          const w = waiting; waiting = null;
+          if (!w) return;
+          if (r.error) return w.ng(new Error("Googleドライブに接続できませんでした"));
+          token = r.access_token;
+          tokenExp = Date.now() + (Number(r.expires_in) || 3600) * 1000;
+          w.ok(token);
+        },
+        error_callback: () => { const w = waiting; waiting = null; w?.ng(new Error("Googleへのログインが取り消されました")); },
+      });
+      const email = ls(EMAIL_KEY);
+      return new Promise((ok2, ng) => {
+        waiting = { ok: ok2, ng };
+        tokenClient.requestAccessToken(email ? { prompt: "", login_hint: email } : { prompt: "select_account" });
+      });
+    }
+    async function api(url, opt = {}, retry = true) {
+      const t = await getToken();
+      const res = await fetch(url, { ...opt, headers: { ...(opt.headers || {}), Authorization: `Bearer ${t}` } });
+      if (res.status === 401 && retry) { token = null; return api(url, opt, false); }
+      if (!res.ok) throw new Error(`Googleドライブとのやり取りに失敗しました（${res.status}）`);
+      return res;
+    }
+    async function rememberAccount() {
+      if (ls(EMAIL_KEY)) return;
+      const me = await (await api(`${API}/about?fields=user(emailAddress)`)).json();
+      if (me.user?.emailAddress) ls(EMAIL_KEY, me.user.emailAddress);
+      drawAccount();
+    }
+    async function folderId() {
+      if (folder) return folder;
+      const q = encodeURIComponent("name = 'Sudoku' and mimeType = 'application/vnd.google-apps.folder' and 'root' in parents and trashed = false");
+      const found = await (await api(`${API}/files?q=${q}&fields=files(id)&spaces=drive`)).json();
+      if (found.files?.length) return (folder = found.files[0].id);
+      const made = await (await api(`${API}/files?fields=id`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: "Sudoku", mimeType: "application/vnd.google-apps.folder", parents: ["root"] }),
+      })).json();
+      return (folder = made.id);
+    }
+    async function saveFile(filename, data, okText) {
+      const first = getToken();  // ボタンを押した流れのうちにログイン画面を出す
+      say("Googleドライブに保存しています…");
+      try {
+        await first;
+        await rememberAccount();
+        const dir = await folderId();
+        const q = encodeURIComponent(`name = '${filename.replace(/\\/g, "\\\\").replace(/'/g, "\\'")}' and '${dir}' in parents and trashed = false`);
+        const same = (await (await api(`${API}/files?q=${q}&fields=files(id)`)).json()).files || [];
+        if (same.length) {
+          // 同じ名前のファイルがあれば上書きする
+          await api(`${UP}/files/${same[0].id}?uploadType=media`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: data });
+        } else {
+          const b = "sudoku" + Math.random().toString(36).slice(2);
+          const body = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: filename, parents: [dir], mimeType: "application/json" })}\r\n`
+            + `--${b}\r\nContent-Type: application/json\r\n\r\n${data}\r\n--${b}--`;
+          await api(`${UP}/files?uploadType=multipart&fields=id`, { method: "POST", headers: { "Content-Type": `multipart/related; boundary=${b}` }, body });
+        }
+        say(`${okText}（Googleドライブの「Sudoku」フォルダ）`);
+      } catch (e) {
+        say(e.message || "Googleドライブに保存できませんでした", true);
+      }
+    }
+    // 一覧から選んで開く
+    const dlg = document.getElementById("gd-box"), filesEl = document.getElementById("gd-files"), dlgMsg = document.getElementById("gd-box-msg");
+    async function openList() {
+      const first = getToken();
+      filesEl.textContent = "";
+      dlgMsg.classList.remove("err");
+      dlgMsg.textContent = "読み込んでいます…";
+      dlg.hidden = false;
+      try {
+        await first;
+        await rememberAccount();
+        const dir = await folderId();
+        const q = encodeURIComponent(`'${dir}' in parents and trashed = false`);
+        const files = (await (await api(`${API}/files?q=${q}&orderBy=modifiedTime desc&pageSize=100&fields=files(id,name,modifiedTime)`)).json()).files || [];
+        dlgMsg.textContent = files.length ? "" : "「Sudoku」フォルダにはまだファイルがありません。";
+        for (const f of files) {
+          const li = document.createElement("li");
+          const b = document.createElement("button");
+          b.type = "button";
+          b.className = "open";
+          const kind = /_回答中\.json$/.test(f.name) ? "回答中" : "問題";
+          b.textContent = f.name.replace(/^数独_/, "").replace(/(_回答中)?\.json$/i, "");
+          const sm = document.createElement("small");
+          sm.textContent = `${kind}・${new Date(f.modifiedTime).toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}`;
+          b.appendChild(sm);
+          b.addEventListener("click", () => openFile(f));
+          li.appendChild(b);
+          filesEl.appendChild(li);
+        }
+      } catch (e) {
+        dlgMsg.classList.add("err");
+        dlgMsg.textContent = e.message || "Googleドライブを開けませんでした";
+      }
+    }
+    async function openFile(f) {
+      dlgMsg.classList.remove("err");
+      dlgMsg.textContent = "開いています…";
+      let obj = null;
+      try { obj = JSON.parse(await (await api(`${API}/files/${f.id}?alt=media`)).text()); } catch (e) { obj = null; }
+      dlg.hidden = true;
+      if (obj && obj.kind === "progress") openProgressData(obj, f.name);
+      else importProblemData(obj, f.name);
+    }
+    if (ok) {
+      box.hidden = false;
+      saveChk.checked = ls(SAVE_KEY) === "1";
+      saveChk.addEventListener("change", () => ls(SAVE_KEY, saveChk.checked ? "1" : "0"));
+      drawAccount();
+      loadGis().catch(() => {});
+      document.getElementById("gd-open").addEventListener("click", openList);
+      document.getElementById("gd-close").addEventListener("click", () => { dlg.hidden = true; });
+      signout.addEventListener("click", () => {
+        if (token && window.google?.accounts?.oauth2) google.accounts.oauth2.revoke(token, () => {});
+        token = null; folder = null;
+        ls(EMAIL_KEY, null);
+        drawAccount();
+        say("Googleドライブとの接続を解除しました");
+      });
+    }
+    return { saveOn: () => ok && saveChk.checked, saveFile };
+  })();
 
   function openProblem(p) {
     clearBoard();

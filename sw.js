@@ -1,5 +1,5 @@
 // アプリ本体と読み取り用ファイルを端末に保存し、ネットなしでも開けるようにする
-const CACHE = "sudoku-v42";
+const CACHE = "sudoku-v43";
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png",
@@ -16,6 +16,8 @@ self.addEventListener("activate", (e) => {
 });
 self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
+  // Google など別のサイトへの通信はそのまま通す
+  if (new URL(e.request.url).origin !== location.origin) return;
   // アプリ本体はネットにつながっていれば（ブラウザの一時保存も使わず）常に最新を取りに行き、つながらないときだけ保存分を使う
   if (e.request.mode === "navigate") {
     e.respondWith(fetch(e.request.url, { cache: "no-cache" }).then((res) => {
