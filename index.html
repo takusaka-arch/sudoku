@@ -363,6 +363,12 @@ p.msg:empty { display: none; }
 .hint-menu button:focus-visible { outline: 3px solid var(--answer); outline-offset: 1px; }
 .hint-menu .hm-no { grid-row: span 2; font: 700 1.1rem var(--font-num); color: var(--answer); }
 .hint-menu .hm-label { font-weight: 700; font-size: 0.92rem; }
+.hint-menu .hm-check { grid-row: span 2; width: 1.2em; text-align: center; font-weight: 700; color: var(--answer); }
+/* 表示方法変更：回答中だけ効く。マスの位置は変えずに見えなくする */
+.board[data-mode="solve"][data-view-blank] .cell:not(.fixed):not(.tent) .cand { visibility: hidden; }
+.board[data-mode="solve"][data-view-nooff] .cand.off { color: transparent; text-decoration: none; pointer-events: none; }
+.board[data-mode="solve"][data-view-blank] .cell:not(.fixed):not(.tent) { background: var(--paper); }
+#view.on { border-color: var(--answer); color: var(--answer); }
 .hint-menu .hm-desc { font-size: 0.78rem; color: var(--muted); }
 .msg.err { color: var(--error); }
 .list .del.armed { border-color: var(--error); background: var(--error); color: var(--paper); }
@@ -423,7 +429,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.86</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.87</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -490,11 +496,13 @@ p.msg:empty { display: none; }
     <button type="button" class="btn" id="go" hidden>回答スタート</button>
     <button type="button" class="btn" id="pause" hidden>一時停止</button>
     <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
+    <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
     <button type="button" id="reset" hidden>リセット</button>
     <button type="button" class="btn sub" id="export-cur" hidden>問題を書き出す</button>
     <button type="button" class="btn sub" id="save-progress" hidden>この状態をファイルに保存</button>
   </div>
   <div class="hint-menu" id="hint-menu" role="menu" aria-label="ヒントの種類" hidden></div>
+  <div class="hint-menu" id="view-menu" role="menu" aria-label="表示方法" hidden></div>
   <p class="msg" id="work-msg" aria-live="polite"></p>
   <div class="confirm" id="confirm" role="alertdialog" aria-labelledby="confirm-msg" hidden>
     <p id="confirm-msg">リセットしますか？選んだ候補と確定候補がすべて消えます。</p>
@@ -998,6 +1006,8 @@ p.msg:empty { display: none; }
     saveProgress.hidden = true;
     hintBtn.hidden = true;
     document.getElementById("hint-menu").hidden = true;
+    viewBtn.hidden = true;
+    document.getElementById("view-menu").hidden = true;
     workMsg.textContent = "";
     confirmBox.hidden = true;
     updatePhoto();
@@ -1014,6 +1024,7 @@ p.msg:empty { display: none; }
     exportCur.hidden = true;
     saveProgress.hidden = false;
     hintBtn.hidden = false;
+    viewBtn.hidden = false;
     undoBtn.hidden = false;
     timerStart();
     markConflicts();
@@ -1534,6 +1545,8 @@ p.msg:empty { display: none; }
     saveProgress.hidden = true;
     hintBtn.hidden = true;
     document.getElementById("hint-menu").hidden = true;
+    viewBtn.hidden = true;
+    document.getElementById("view-menu").hidden = true;
     workMsg.textContent = "";
     updatePhoto();
   }
@@ -1692,6 +1705,8 @@ p.msg:empty { display: none; }
     pause.hidden = true;
     hintBtn.hidden = true;
     document.getElementById("hint-menu").hidden = true;
+    viewBtn.hidden = true;
+    document.getElementById("view-menu").hidden = true;
     undoBtn.hidden = true;
     saveProgress.hidden = true;
     confirmBox.hidden = true;
@@ -1703,6 +1718,7 @@ p.msg:empty { display: none; }
   document.getElementById("clear-ok").addEventListener("click", () => { clearBox.hidden = true; });
 
   const hintBtn = document.getElementById("hint");
+  const viewBtn = document.getElementById("view");
   // 盤の下の 1〜9：押すとその数字を点滅させる（もう一度押すと止める）
   const hlKeys = document.querySelector("#num-hl .nh-keys");
   for (let n = 1; n <= 9; n++) {
@@ -1744,6 +1760,7 @@ p.msg:empty { display: none; }
   }
   hintBtn.addEventListener("click", () => {
     if (!hintMenu.hidden) return closeHintMenu();
+    closeViewMenu();
     hintMenu.hidden = false;
     hintBtn.setAttribute("aria-expanded", "true");
     hintMenu.querySelector("button").focus({ preventScroll: true });
@@ -1754,6 +1771,62 @@ p.msg:empty { display: none; }
   });
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !hintMenu.hidden) { closeHintMenu(); hintBtn.focus(); }
+  });
+  // 表示方法変更: 未確定のマスを空白にする／グレーにした数字を表示しない／元に戻す（選んだ表示は次回も使う）
+  const VIEW_KEY = "sudoku-view";
+  const viewMenu = document.getElementById("view-menu");
+  const viewKinds = [
+    { key: "blank", label: "未確定のマスを空白にする", desc: "大きな数字が入っていないマスの小さな数字を、すべて隠します" },
+    { key: "nooff", label: "グレーにした数字を表示しない", desc: "除外した（グレーの）候補を隠します" },
+    { key: "", label: "元に戻す", desc: "すべての小さな数字を表示する、いつもの表示に戻します" },
+  ];
+  function applyView(v) {
+    board.toggleAttribute("data-view-blank", !!v.blank);
+    board.toggleAttribute("data-view-nooff", !!v.nooff);
+    try { localStorage.setItem(VIEW_KEY, JSON.stringify(v)); } catch {}
+    viewMenu.querySelectorAll("button").forEach((b) => {
+      const on = b.dataset.key ? !!v[b.dataset.key] : !v.blank && !v.nooff;
+      b.setAttribute("aria-checked", String(on));
+      b.querySelector(".hm-check").textContent = on ? "✓" : "";
+    });
+    viewBtn.classList.toggle("on", !!(v.blank || v.nooff));
+  }
+  const curView = () => ({ blank: board.hasAttribute("data-view-blank"), nooff: board.hasAttribute("data-view-nooff") });
+  viewKinds.forEach((k) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "menuitemcheckbox");
+    b.dataset.key = k.key;
+    b.innerHTML = `<span class="hm-check"></span><span class="hm-label"></span><span class="hm-desc"></span>`;
+    b.querySelector(".hm-label").textContent = k.label;
+    b.querySelector(".hm-desc").textContent = k.desc;
+    b.addEventListener("click", () => {
+      const v = curView();
+      if (k.key) v[k.key] = !v[k.key];
+      else { v.blank = false; v.nooff = false; }
+      applyView(v);
+      closeViewMenu();
+    });
+    viewMenu.appendChild(b);
+  });
+  try { applyView(JSON.parse(localStorage.getItem(VIEW_KEY)) || {}); } catch { applyView({}); }
+  function closeViewMenu() {
+    viewMenu.hidden = true;
+    viewBtn.setAttribute("aria-expanded", "false");
+  }
+  viewBtn.addEventListener("click", () => {
+    if (!viewMenu.hidden) return closeViewMenu();
+    closeHintMenu();
+    viewMenu.hidden = false;
+    viewBtn.setAttribute("aria-expanded", "true");
+    viewMenu.querySelector("button").focus({ preventScroll: true });
+    viewMenu.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+  document.addEventListener("click", (e) => {
+    if (!viewMenu.hidden && !viewMenu.contains(e.target) && !viewBtn.contains(e.target)) closeViewMenu();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !viewMenu.hidden) { closeViewMenu(); viewBtn.focus(); }
   });
   // ② 自分で選んだ青い候補がちょうど2つのマスを、すべて薄い緑で示す
   function showTwoCells() {
@@ -2254,7 +2327,7 @@ p.msg:empty { display: none; }
     ] },
     { title: "数字をハイライトする", text: `回答中は、盤の下に「以下の数字をハイライトする」と1〜9の数字が並びます。\n数字を${TAP}すると、その数字の問題の数字・確定候補（大きな数字）が黄色になり、その数字がまだ入る可能性のあるマスの候補が点滅します。同じ行・列・ブロックにすでにその数字があるマスや、グレーにした候補は点滅しません。\nもう一度同じ数字を${TAP}すると、点滅が止まります。\n\n「この数字はどこに入る？」を探すときに便利です。` },
     { title: "ヒント", text: "「ヒント」を押すと、ヒントの種類を選べます。\n①注目するマス：次に考えるとよいマスに色を付けます\n②候補が2つのマス：自分で選んだ青い候補が2つだけのマスを緑で示します\n③2つの数字のペア：青い候補かどうかに関係なく、行・列・ブロックの中で同じ2マスにしか入らない2つの数字の組を、組ごとに色分けして示します\n④答えと理由：入る数字と、その理由を教えます（赤＝1つに決まる所、紫＝ペア）\n\n使ったヒントの回数は、タイマーの右に表示されます。" },
-    { title: "ボタン", text: "一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます（数字は隠れます）\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
+    { title: "ボタン", text: "一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます（数字は隠れます）\n表示方法変更：「未確定のマスを空白にする」「グレーにした数字を表示しない」を選べます。「元に戻す」でいつもの表示に戻ります\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "保存とGoogleドライブ", text: "「この状態をファイルに保存」で、解いている途中の状態（経過時間も含む）を保存できます。続きは、最初の画面の「回答中のファイルを開く」で再開します。問題だけを渡したいときは、問題一覧の「書き出し」を使います。\n\nGoogleドライブ（インストールしたアプリ版・Web版のみ）：\n最初の画面の「Googleドライブ」欄で「保存するときは、Googleドライブの「Sudoku」フォルダに保存する」にチェックを入れると、保存先がご自分のGoogleドライブになります。初回だけGoogleアカウントを選び、次からは自動で接続します。\n「Googleドライブから開く」で、パソコンで保存した続きをスマホで開く、といった使い方ができます。" },
     { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
   ];
