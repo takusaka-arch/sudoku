@@ -378,7 +378,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.75</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.76</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1620,7 +1620,7 @@ p.msg:empty { display: none; }
   // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
   const hintKinds = [
     { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
-    { label: "候補が2つのマス", desc: "入れられる数字が2つだけのマスに色を付けます", run: () => showTwoCells() },
+    { label: "候補が2つのマス", desc: "青い候補が2つだけのマスに色を付けます", run: () => showTwoCells() },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます", run: () => runHint(true) },
   ];
   const hintMenu = document.getElementById("hint-menu");
@@ -1650,27 +1650,22 @@ p.msg:empty { display: none; }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !hintMenu.hidden) { closeHintMenu(); hintBtn.focus(); }
   });
-  // ② 入れられる数字が2つだけのマスを、すべて薄い緑で示す
+  // ② 自分で選んだ青い候補がちょうど2つのマスを、すべて薄い緑で示す
   function showTwoCells() {
     if (board.dataset.mode !== "solve") return;
     markConflicts();
-    const cells = [...board.querySelectorAll(".cell")];
-    const val = (o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "");
-    const peers = (a, b) => a.dataset.row === b.dataset.row || a.dataset.col === b.dataset.col
-      || (Math.floor(a.dataset.row / 3) === Math.floor(b.dataset.row / 3) && Math.floor(a.dataset.col / 3) === Math.floor(b.dataset.col / 3));
-    const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
-      && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
-    const two = cells.filter((o) => !val(o) && ["1", "2", "3", "4", "5", "6", "7", "8", "9"].filter((d) => can(o, d)).length === 2);
+    const two = [...board.querySelectorAll(".cell")].filter((o) => !o.dataset.value && !o.classList.contains("tent")
+      && o.querySelectorAll(".cand.pick:not(.off)").length === 2);
     workMsg.classList.remove("err");
     if (!two.length) {
-      workMsg.textContent = "ヒント：入れられる数字が2つだけのマスは、今はありません。";
+      workMsg.textContent = "ヒント：青い候補が2つだけのマスは、今はありません。";
       return;
     }
     hintsUsed++;
     drawHints();
     two.forEach((o) => o.classList.add("two-cell"));
     renderPad();
-    workMsg.textContent = `ヒント：薄い緑の ${two.length} マスは、入れられる数字が2つだけです。`;
+    workMsg.textContent = `ヒント：薄い緑の ${two.length} マスは、青い候補が2つだけです。`;
   }
   function runHint(full) {
     if (board.dataset.mode !== "solve") return;
@@ -1936,7 +1931,7 @@ p.msg:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
       ["grey", "8", "グレー", "除外した候補"],
     ] },
-    { title: "ボタン", text: "ヒント：押すとヒントの種類を選べます。①注目するマス　②候補が2つのマス（緑）　③答えと理由（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
+    { title: "ボタン", text: "ヒント：押すとヒントの種類を選べます。①注目するマス　②候補が2つのマス（青い候補が2つのマスを緑で）　③答えと理由（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };

@@ -1,5 +1,5 @@
 // アプリ本体と読み取り用ファイルを端末に保存し、ネットなしでも開けるようにする
-const CACHE = "sudoku-v38";
+const CACHE = "sudoku-v39";
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png",
