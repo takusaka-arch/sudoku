@@ -37,6 +37,7 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
   --hl-bg: #fffcee;
   --hint-bg: #fbd9d6;
   --pair-bg: #e9def7;
+  --two-bg: #d6f0e3;
   --pair: #6a3fa8;
   --cand: #6f7b80;
   --muted: #6a7478;
@@ -49,12 +50,12 @@ if ("serviceWorker" in navigator) addEventListener("load", () => navigator.servi
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; --pair-bg: #3a2d52; --pair: #c3a5f0; color-scheme: dark;
+    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; --pair-bg: #3a2d52; --two-bg: #1f4034; --pair: #c3a5f0; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
-  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; --pair-bg: #3a2d52; --pair: #c3a5f0; color-scheme: dark;
+  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; --pair-bg: #3a2d52; --two-bg: #1f4034; --pair: #c3a5f0; color-scheme: dark;
 }
 html, body { min-height: 100%; }
 body {
@@ -160,6 +161,7 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 .key.pair { background: var(--pair-bg); border-color: var(--pair); color: var(--pair); }
 .cell.hint-cell .cand, .cell.hint-cell .cand.pick { background: var(--hint-bg); }
 .cell.pair-cell .cand, .cell.pair-cell .cand.pick { background: var(--pair-bg); }
+.cell.two-cell .cand, .cell.two-cell .cand.pick { background: var(--two-bg); }
 .key.hint { background: var(--hint-bg); border-color: var(--error); color: var(--error); }
 .cand.off, .cand.off.shadow { color: var(--line-sub); font-weight: 500; text-decoration: line-through; }
 .key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
@@ -317,6 +319,14 @@ p.msg { margin: 0; font-size: 0.85rem; }
 p.msg:empty { display: none; }
 .btn.small { font-size: 0.85rem; padding: 4px 10px; }
 .msg { color: var(--muted); }
+.hint-menu { display: grid; gap: 6px; padding: 8px; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); }
+.hint-menu[hidden] { display: none; }
+.hint-menu button { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; text-align: left; padding: 8px 10px; border: 1px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
+.hint-menu button:hover { background: var(--hover); }
+.hint-menu button:focus-visible { outline: 3px solid var(--answer); outline-offset: 1px; }
+.hint-menu .hm-no { grid-row: span 2; font: 700 1.1rem var(--font-num); color: var(--answer); }
+.hint-menu .hm-label { font-weight: 700; font-size: 0.92rem; }
+.hint-menu .hm-desc { font-size: 0.78rem; color: var(--muted); }
 .msg.err { color: var(--error); }
 .list .del.armed { border-color: var(--error); background: var(--error); color: var(--paper); }
 .list button:hover { background: var(--hover); }
@@ -368,7 +378,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.74</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.75</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -415,11 +425,12 @@ p.msg:empty { display: none; }
     <button type="button" id="edit" hidden>問題修正</button>
     <button type="button" class="btn" id="go" hidden>回答スタート</button>
     <button type="button" class="btn" id="pause" hidden>一時停止</button>
-    <button type="button" class="btn sub" id="hint" hidden>ヒント</button>
+    <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
     <button type="button" id="reset" hidden>リセット</button>
     <button type="button" class="btn sub" id="export-cur" hidden>問題を書き出す</button>
     <button type="button" class="btn sub" id="save-progress" hidden>この状態をファイルに保存</button>
   </div>
+  <div class="hint-menu" id="hint-menu" role="menu" aria-label="ヒントの種類" hidden></div>
   <p class="msg" id="work-msg" aria-live="polite"></p>
   <div class="confirm" id="confirm" role="alertdialog" aria-labelledby="confirm-msg" hidden>
     <p id="confirm-msg">リセットしますか？選んだ候補と確定候補がすべて消えます。</p>
@@ -518,7 +529,7 @@ p.msg:empty { display: none; }
     // 盤が変わったらヒントの表示を消す
     const msg = document.getElementById("work-msg");
     if (msg.textContent.startsWith("ヒント")) msg.textContent = "";
-    board.querySelectorAll(".cand.hint, .cand.pair, .cell.hint-cell, .cell.pair-cell").forEach((s) => s.classList.remove("hint", "pair", "hint-cell", "pair-cell"));
+    board.querySelectorAll(".cand.hint, .cand.pair, .cell.hint-cell, .cell.pair-cell, .cell.two-cell").forEach((s) => s.classList.remove("hint", "pair", "hint-cell", "pair-cell", "two-cell"));
     const cells = [...board.querySelectorAll(".cell")];
     const fixed = cells.filter((c) => c.dataset.value);
     cells.forEach((c) => c.classList.remove("conflict"));
@@ -901,6 +912,7 @@ p.msg:empty { display: none; }
     exportCur.hidden = false;
     saveProgress.hidden = true;
     hintBtn.hidden = true;
+    document.getElementById("hint-menu").hidden = true;
     workMsg.textContent = "";
     confirmBox.hidden = true;
     updatePhoto();
@@ -1436,6 +1448,7 @@ p.msg:empty { display: none; }
     exportCur.hidden = true;
     saveProgress.hidden = true;
     hintBtn.hidden = true;
+    document.getElementById("hint-menu").hidden = true;
     workMsg.textContent = "";
     updatePhoto();
   }
@@ -1592,6 +1605,7 @@ p.msg:empty { display: none; }
     note.textContent = "「リセット」で最初から解き直せます。";
     pause.hidden = true;
     hintBtn.hidden = true;
+    document.getElementById("hint-menu").hidden = true;
     undoBtn.hidden = true;
     saveProgress.hidden = true;
     confirmBox.hidden = true;
@@ -1603,17 +1617,61 @@ p.msg:empty { display: none; }
   document.getElementById("clear-ok").addEventListener("click", () => { clearBox.hidden = true; });
 
   const hintBtn = document.getElementById("hint");
-  // 1回押す: 注目するマスだけを示す　続けて2回押す: 数字と理由まで示す
-  let hintTimer = null;
-  hintBtn.addEventListener("click", () => {
-    if (hintTimer) {
-      clearTimeout(hintTimer);
-      hintTimer = null;
-      runHint(true);
-    } else {
-      hintTimer = setTimeout(() => { hintTimer = null; runHint(false); }, 350);
-    }
+  // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
+  const hintKinds = [
+    { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
+    { label: "候補が2つのマス", desc: "入れられる数字が2つだけのマスに色を付けます", run: () => showTwoCells() },
+    { label: "答えと理由", desc: "入る数字と、その理由を教えます", run: () => runHint(true) },
+  ];
+  const hintMenu = document.getElementById("hint-menu");
+  hintKinds.forEach((k, i) => {
+    const b = document.createElement("button");
+    b.type = "button";
+    b.setAttribute("role", "menuitem");
+    b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨"[i]}</span><span class="hm-label"></span><span class="hm-desc"></span>`;
+    b.querySelector(".hm-label").textContent = k.label;
+    b.querySelector(".hm-desc").textContent = k.desc;
+    b.addEventListener("click", () => { closeHintMenu(); k.run(); });
+    hintMenu.appendChild(b);
   });
+  function closeHintMenu() {
+    hintMenu.hidden = true;
+    hintBtn.setAttribute("aria-expanded", "false");
+  }
+  hintBtn.addEventListener("click", () => {
+    if (!hintMenu.hidden) return closeHintMenu();
+    hintMenu.hidden = false;
+    hintBtn.setAttribute("aria-expanded", "true");
+    hintMenu.querySelector("button").focus();
+  });
+  document.addEventListener("click", (e) => {
+    if (!hintMenu.hidden && !hintMenu.contains(e.target) && e.target !== hintBtn) closeHintMenu();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !hintMenu.hidden) { closeHintMenu(); hintBtn.focus(); }
+  });
+  // ② 入れられる数字が2つだけのマスを、すべて薄い緑で示す
+  function showTwoCells() {
+    if (board.dataset.mode !== "solve") return;
+    markConflicts();
+    const cells = [...board.querySelectorAll(".cell")];
+    const val = (o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "");
+    const peers = (a, b) => a.dataset.row === b.dataset.row || a.dataset.col === b.dataset.col
+      || (Math.floor(a.dataset.row / 3) === Math.floor(b.dataset.row / 3) && Math.floor(a.dataset.col / 3) === Math.floor(b.dataset.col / 3));
+    const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
+      && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
+    const two = cells.filter((o) => !val(o) && ["1", "2", "3", "4", "5", "6", "7", "8", "9"].filter((d) => can(o, d)).length === 2);
+    workMsg.classList.remove("err");
+    if (!two.length) {
+      workMsg.textContent = "ヒント：入れられる数字が2つだけのマスは、今はありません。";
+      return;
+    }
+    hintsUsed++;
+    drawHints();
+    two.forEach((o) => o.classList.add("two-cell"));
+    renderPad();
+    workMsg.textContent = `ヒント：薄い緑の ${two.length} マスは、入れられる数字が2つだけです。`;
+  }
   function runHint(full) {
     if (board.dataset.mode !== "solve") return;
     markConflicts();
@@ -1630,7 +1688,7 @@ p.msg:empty { display: none; }
       else cand.closest(".cell").classList.add("hint-cell");
       renderPad();
       workMsg.classList.remove("err");
-      workMsg.textContent = full ? text : "ヒント：薄い赤のマスに注目してください。（ヒントを続けて2回押すと、数字と理由を表示します）";
+      workMsg.textContent = full ? text : "ヒント：薄い赤のマスに注目してください。（ヒントの「答えと理由」で、数字と理由を表示します）";
     };
     // まず、入れられる数字が1つしかないマス
     for (const o of cells) {
@@ -1665,7 +1723,7 @@ p.msg:empty { display: none; }
       }
       renderPad();
       workMsg.classList.remove("err");
-      workMsg.textContent = full ? text : "ヒント：薄い紫の2マスに注目してください。（ヒントを続けて2回押すと、数字と理由を表示します）";
+      workMsg.textContent = full ? text : "ヒント：薄い紫の2マスに注目してください。（ヒントの「答えと理由」で、数字と理由を表示します）";
     };
     for (const u of units) {
       const inUnit = cells.filter(u.has);
@@ -1878,7 +1936,7 @@ p.msg:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
       ["grey", "8", "グレー", "除外した候補"],
     ] },
-    { title: "ボタン", text: "ヒント：1回押すと注目するマス、続けて2回押すと数字と理由を教えます（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
+    { title: "ボタン", text: "ヒント：押すとヒントの種類を選べます。①注目するマス　②候補が2つのマス（緑）　③答えと理由（赤＝1つに決まる所、紫＝ペア）\n一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\nこの状態をファイルに保存：続きを別の日や別の端末で解けます\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
