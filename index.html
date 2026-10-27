@@ -321,6 +321,11 @@ p.msg:empty { display: none; }
 .msg { color: var(--muted); }
 .hint-menu { display: grid; gap: 6px; padding: 8px; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); }
 .hint-menu[hidden] { display: none; }
+/* スマホではタイトルの位置から重ねて出し、スクロールしなくても全部見えるようにする */
+@media (max-width: 760px) {
+  .side { position: relative; }
+  .hint-menu { position: absolute; top: 0; left: 0; right: 0; z-index: 20; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); }
+}
 .hint-menu button { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; text-align: left; padding: 8px 10px; border: 1px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
 .hint-menu button:hover { background: var(--hover); }
 .hint-menu button:focus-visible { outline: 3px solid var(--answer); outline-offset: 1px; }
@@ -380,7 +385,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.77</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.78</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1646,7 +1651,8 @@ p.msg:empty { display: none; }
     if (!hintMenu.hidden) return closeHintMenu();
     hintMenu.hidden = false;
     hintBtn.setAttribute("aria-expanded", "true");
-    hintMenu.querySelector("button").focus();
+    hintMenu.querySelector("button").focus({ preventScroll: true });
+    hintMenu.scrollIntoView({ block: "nearest", behavior: "smooth" });
   });
   document.addEventListener("click", (e) => {
     if (!hintMenu.hidden && !hintMenu.contains(e.target) && e.target !== hintBtn) closeHintMenu();
