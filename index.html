@@ -202,6 +202,17 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
   padding: 12px 14px; background: var(--bad-bg); border-left: 4px solid var(--error);
 }
 .confirm[hidden] { display: none; }
+/* この状態を保存：名前を付けて保存する欄 */
+.save-box { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px; }
+.save-box[hidden] { display: none; }
+.save-box .save-title { margin: 0; font-weight: 700; }
+.save-box .save-name { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; }
+.save-box .save-name input { flex: 1; min-width: 0; font: inherit; padding: 6px 8px; border: 1.5px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); }
+.save-box .save-help { margin: 0; font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+.snap-item { display: flex; gap: 6px; }
+.hint-menu .snap-item .snap-go { flex: 1; }
+.hint-menu .snap-item .snap-del { display: block; flex: none; font-size: 0.8rem; color: var(--muted); }
+.hint-menu .snap-empty { margin: 0; padding: 6px; font-size: 0.85rem; color: var(--muted); }
 .confirm p { margin: 0; flex: 1 1 160px; font-weight: 700; }
 .confirm button {
   font: 700 0.9rem var(--font-ui); padding: 5px 12px; border-radius: 4px; cursor: pointer;
@@ -429,7 +440,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.88</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.89</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -499,10 +510,22 @@ p.msg:empty { display: none; }
     <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
     <button type="button" id="reset" hidden>リセット</button>
     <button type="button" class="btn sub" id="export-cur" hidden>問題を書き出す</button>
-    <button type="button" class="btn sub" id="save-progress" hidden>この状態をファイルに保存</button>
+    <button type="button" class="btn sub" id="save-progress" hidden>この状態を保存</button>
+    <button type="button" class="btn sub" id="snap-open" aria-haspopup="menu" aria-expanded="false" hidden>保存した状態に戻す ▾</button>
   </div>
   <div class="hint-menu" id="hint-menu" role="menu" aria-label="ヒントの種類" hidden></div>
   <div class="hint-menu" id="view-menu" role="menu" aria-label="表示方法" hidden></div>
+  <div class="hint-menu" id="snap-menu" role="menu" aria-label="保存した状態" hidden></div>
+  <div class="save-box" id="save-box" role="dialog" aria-labelledby="save-box-title" hidden>
+    <p class="save-title" id="save-box-title">この状態を保存</p>
+    <label class="save-name">名前 <input type="text" id="snap-name" maxlength="40"></label>
+    <div class="row">
+      <button type="button" class="btn" id="snap-save">保存</button>
+      <button type="button" class="btn sub" id="snap-file">ファイルに保存</button>
+      <button type="button" class="btn sub" id="snap-cancel">キャンセル</button>
+    </div>
+    <p class="save-help">「保存」はこの端末に保存し、あとで「保存した状態に戻す」でその時点に戻れます。「ファイルに保存」は、別の日や別の端末で続きを解くときに使います。</p>
+  </div>
   <p class="msg" id="work-msg" aria-live="polite"></p>
   <div class="confirm" id="confirm" role="alertdialog" aria-labelledby="confirm-msg" hidden>
     <p id="confirm-msg">リセットしますか？選んだ候補と確定候補がすべて消えます。</p>
@@ -1004,6 +1027,8 @@ p.msg:empty { display: none; }
     reset.hidden = true;
     exportCur.hidden = false;
     saveProgress.hidden = true;
+    snapOpen.hidden = true;
+    closeSnapUI();
     hintBtn.hidden = true;
     document.getElementById("hint-menu").hidden = true;
     viewBtn.hidden = true;
@@ -1023,6 +1048,7 @@ p.msg:empty { display: none; }
     reset.hidden = false;
     exportCur.hidden = true;
     saveProgress.hidden = false;
+    snapOpen.hidden = false;
     hintBtn.hidden = false;
     viewBtn.hidden = false;
     undoBtn.hidden = false;
@@ -1543,6 +1569,8 @@ p.msg:empty { display: none; }
     done.hidden = false;
     exportCur.hidden = true;
     saveProgress.hidden = true;
+    snapOpen.hidden = true;
+    closeSnapUI();
     hintBtn.hidden = true;
     document.getElementById("hint-menu").hidden = true;
     viewBtn.hidden = true;
@@ -1709,6 +1737,8 @@ p.msg:empty { display: none; }
     document.getElementById("view-menu").hidden = true;
     undoBtn.hidden = true;
     saveProgress.hidden = true;
+    snapOpen.hidden = true;
+    closeSnapUI();
     confirmBox.hidden = true;
     document.getElementById("clear-time").textContent = `かかった時間 ${timerEl.textContent}`;
     document.getElementById("clear-hints").textContent = `使ったヒント ${hintsUsed}回`;
@@ -1761,6 +1791,7 @@ p.msg:empty { display: none; }
   hintBtn.addEventListener("click", () => {
     if (!hintMenu.hidden) return closeHintMenu();
     closeViewMenu();
+    closeSnapUI();
     hintMenu.hidden = false;
     hintBtn.setAttribute("aria-expanded", "true");
     hintMenu.querySelector("button").focus({ preventScroll: true });
@@ -1812,6 +1843,7 @@ p.msg:empty { display: none; }
   viewBtn.addEventListener("click", () => {
     if (!viewMenu.hidden) return closeViewMenu();
     closeHintMenu();
+    closeSnapUI();
     viewMenu.hidden = false;
     viewBtn.setAttribute("aria-expanded", "true");
     viewMenu.querySelector("button").focus({ preventScroll: true });
@@ -2001,9 +2033,130 @@ p.msg:empty { display: none; }
     say(okText);
   }
 
-  // 回答途中の状態（問題・候補・確定候補・経過時間）をファイルに保存する
+  // この状態を保存: 名前（最初は保存する日時「27日18時47分」、自由に書き足し・変更できる）を付けてこの端末に保存し、あとで「保存した状態に戻す」でその時点に戻れる
+  // 「ファイルに保存」を選ぶと、今までどおり問題・候補・確定候補・経過時間をファイル（またはGoogleドライブ）に保存する
+  const SNAP_KEY = "sudoku-snapshots";
   const saveProgress = document.getElementById("save-progress");
-  saveProgress.addEventListener("click", async () => {
+  const snapOpen = document.getElementById("snap-open");
+  const snapMenu = document.getElementById("snap-menu");
+  const saveBox = document.getElementById("save-box");
+  const snapName = document.getElementById("snap-name");
+  const curGivens = () => [...board.querySelectorAll(".cell")].map((c) => (c.classList.contains("given") && c.dataset.value) || "0").join("");
+  function loadSnaps() {
+    try { return JSON.parse(localStorage.getItem(SNAP_KEY)) || {}; } catch { return {}; }
+  }
+  function snapsFor() { return loadSnaps()[curGivens()] || []; }
+  function storeSnaps(list) {
+    const all = loadSnaps();
+    if (list.length) all[curGivens()] = list.slice(-30); else delete all[curGivens()];
+    try { localStorage.setItem(SNAP_KEY, JSON.stringify(all)); return true; } catch { return false; }
+  }
+  function closeSnapUI() {
+    saveBox.hidden = true;
+    snapMenu.hidden = true;
+    snapOpen.setAttribute("aria-expanded", "false");
+  }
+  saveProgress.addEventListener("click", () => {
+    if (!saveBox.hidden) return closeSnapUI();
+    closeSnapUI();
+    snapName.value = snapName.dataset.stamp = stamp(new Date());
+    saveBox.hidden = false;
+    saveBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    // 書き足しやすいよう、カーソルは末尾に置く
+    snapName.focus();
+    snapName.setSelectionRange(snapName.value.length, snapName.value.length);
+  });
+  document.getElementById("snap-cancel").addEventListener("click", closeSnapUI);
+  function saveSnap() {
+    const base = snapName.value.trim() || snapName.dataset.stamp;
+    // 同じ名前があれば「(2)」のように番号を付けて、前の保存を残す
+    const list = snapsFor();
+    let name = base, k = 2;
+    while (list.some((x) => x.name === name)) name = `${base} (${k++})`;
+    list.push({ name, at: Date.now(), snap: snapshot() });
+    closeSnapUI();
+    workMsg.classList.remove("err");
+    if (!storeSnaps(list)) { workMsg.classList.add("err"); workMsg.textContent = "保存できませんでした。ブラウザの保存領域がいっぱいかもしれません。"; return; }
+    workMsg.textContent = `「${name}」として保存しました。「保存した状態に戻す」で、いつでもこの時点に戻れます。`;
+  }
+  document.getElementById("snap-save").addEventListener("click", saveSnap);
+  snapName.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.isComposing) { e.preventDefault(); saveSnap(); }
+    if (e.key === "Escape") closeSnapUI();
+  });
+  const two = (n) => String(n).padStart(2, "0");
+  const stamp = (d) => `${d.getDate()}日${two(d.getHours())}時${two(d.getMinutes())}分`;
+  function drawSnapMenu() {
+    snapMenu.textContent = "";
+    const list = snapsFor();
+    if (!list.length) {
+      const p = document.createElement("p");
+      p.className = "snap-empty";
+      p.textContent = "保存した状態はまだありません。「この状態を保存」で保存できます。";
+      snapMenu.appendChild(p);
+      return;
+    }
+    list.slice().reverse().forEach((x) => {
+      const row = document.createElement("div");
+      row.className = "snap-item";
+      const go = document.createElement("button");
+      go.type = "button";
+      go.className = "snap-go";
+      go.setAttribute("role", "menuitem");
+      const d = new Date(x.at);
+      go.innerHTML = `<span class="hm-check">↺</span><span class="hm-label"></span><span class="hm-desc"></span>`;
+      go.querySelector(".hm-label").textContent = x.name;
+      go.querySelector(".hm-desc").textContent = `${d.getMonth() + 1}/${d.getDate()} ${two(d.getHours())}:${two(d.getMinutes())} に保存`;
+      go.addEventListener("click", () => {
+        closeSnapUI();
+        flushTap();
+        // 戻す前の状態は「一つ戻る」で取り戻せるようにしておく
+        undoStack.push(snapshot());
+        undoBtn.disabled = false;
+        restore(x.snap);
+        workMsg.classList.remove("err");
+        workMsg.textContent = `「${x.name}」の時点に戻しました。（「一つ戻る」で戻す前に戻れます）`;
+      });
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "snap-del";
+      del.textContent = "削除";
+      del.setAttribute("aria-label", `${x.name} を削除`);
+      del.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (del.dataset.armed) {
+          storeSnaps(snapsFor().filter((y) => !(y.name === x.name && y.at === x.at)));
+          drawSnapMenu();
+        } else {
+          del.dataset.armed = "1";
+          del.textContent = "本当に削除";
+        }
+      });
+      row.append(go, del);
+      snapMenu.appendChild(row);
+    });
+  }
+  snapOpen.addEventListener("click", () => {
+    if (!snapMenu.hidden) return closeSnapUI();
+    closeSnapUI();
+    closeHintMenu();
+    closeViewMenu();
+    drawSnapMenu();
+    snapMenu.hidden = false;
+    snapOpen.setAttribute("aria-expanded", "true");
+    snapMenu.querySelector("button")?.focus({ preventScroll: true });
+    snapMenu.scrollIntoView({ block: "nearest", behavior: "smooth" });
+  });
+  document.addEventListener("click", (e) => {
+    if (!snapMenu.hidden && !snapMenu.contains(e.target) && !snapOpen.contains(e.target)) closeSnapUI();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && !snapMenu.hidden) { closeSnapUI(); snapOpen.focus(); }
+  });
+  // ファイルに保存（回答途中の状態：問題・候補・確定候補・経過時間）
+  document.getElementById("snap-file").addEventListener("click", async () => {
+    const label = snapName.value.trim();
+    closeSnapUI();
     let givens = "", sure = "";
     const picks = [], offs = [];
     for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
@@ -2017,7 +2170,7 @@ p.msg:empty { display: none; }
     const data = JSON.stringify({ app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, hints: hintsUsed, saved: new Date().toISOString() }, null, 2);
     msgTarget = workMsg;
     try {
-      await saveFile(`数独_${safeName(currentName)}_回答中.json`, data, `この状態を保存しました（経過時間 ${fmt(ms)}）`);
+      await saveFile(`数独_${safeName(currentName)}_${safeName(label || snapName.dataset.stamp || "回答中")}.json`, data, `この状態を保存しました（経過時間 ${fmt(ms)}）`);
     } finally { msgTarget = null; }
   });
 
@@ -2036,7 +2189,7 @@ p.msg:empty { display: none; }
     if (!ok) {
       say(obj && /^[0-9]{81}$/.test(obj.givens || "")
         ? "これは問題だけのファイルです。「問題を選択して開く」から開いてください"
-        : "このファイルは回答中のファイルではありません。「この状態をファイルに保存」で作ったファイルを選んでください", true);
+        : "このファイルは回答中のファイルではありません。「この状態を保存」→「ファイルに保存」で作ったファイルを選んでください", true);
       return;
     }
     say("");
@@ -2322,7 +2475,7 @@ p.msg:empty { display: none; }
     { title: "数字をハイライトする", text: `回答中は、盤の下に「以下の数字をハイライトする」と1〜9の数字が並びます。\n数字を${TAP}すると、その数字の問題の数字・確定候補（大きな数字）が黄色になり、その数字がまだ入る可能性のあるマスの候補が点滅します。同じ行・列・ブロックにすでにその数字があるマスや、消した候補は点滅しません。\nもう一度同じ数字を${TAP}すると、点滅が止まります。\n\n「この数字はどこに入る？」を探すときに便利です。` },
     { title: "ヒント", text: "「ヒント」を押すと、ヒントの種類を選べます。\n①注目するマス：次に考えるとよいマスに色を付けます\n②候補が2つのマス：自分で選んだ青い候補が2つだけのマスを緑で示します\n③2つの数字のペア：青い候補かどうかに関係なく、行・列・ブロックの中で同じ2マスにしか入らない2つの数字の組を、組ごとに色分けして示します\n④答えと理由：入る数字と、その理由を教えます（赤＝1つに決まる所、紫＝ペア）\n\n使ったヒントの回数は、タイマーの右に表示されます。" },
     { title: "ボタン", text: "一つ戻る：操作を1つずつ取り消します\n一時停止：タイマーを止めます（数字は隠れます）\n表示方法変更：「未確定のマスを空白にする」か「未確定のマスの候補を表示する」を選べます\nリセット：回答中に押すと、入れた候補や確定候補がすべて消えて、問題だけの最初の状態に戻ります（タイマーも0に戻ります。押すと確認が出ます）\n\nすべてのマスが大きな数字で埋まり、赤がなければ完成です。" },
-    { title: "保存とGoogleドライブ", text: "「この状態をファイルに保存」で、解いている途中の状態（経過時間も含む）を保存できます。続きは、最初の画面の「回答中のファイルを開く」で再開します。問題だけを渡したいときは、問題一覧の「書き出し」を使います。\n\nGoogleドライブ（インストールしたアプリ版・Web版のみ）：\n最初の画面の「Googleドライブ」欄で「保存するときは、Googleドライブの「Sudoku」フォルダに保存する」にチェックを入れると、保存先がご自分のGoogleドライブになります。初回だけGoogleアカウントを選び、次からは自動で接続します。\n「Googleドライブから開く」で、パソコンで保存した続きをスマホで開く、といった使い方ができます。" },
+    { title: "保存とGoogleドライブ", text: "「この状態を保存」を押すと、名前を付けて今の盤面を保存できます。名前には最初から保存する日時（例：27日18時47分）が入っていて、「27日18時47分 仮置き」のように書き足したり、書き換えたりできます。\n・「保存」：この端末に保存します。仮置きして試してみて、うまくいかなかったら「保存した状態に戻す」でその時点に戻れます。\n・「ファイルに保存」：経過時間も含めてファイルに保存します。続きは、最初の画面の「回答中のファイルを開く」で再開します。問題だけを渡したいときは、問題一覧の「書き出し」を使います。\n\nGoogleドライブ（インストールしたアプリ版・Web版のみ）：\n最初の画面の「Googleドライブ」欄で「保存するときは、Googleドライブの「Sudoku」フォルダに保存する」にチェックを入れると、保存先がご自分のGoogleドライブになります。初回だけGoogleアカウントを選び、次からは自動で接続します。\n「Googleドライブから開く」で、パソコンで保存した続きをスマホで開く、といった使い方ができます。" },
     { title: "準備ができました", text: "このガイドは、最初の画面の「使い方」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
