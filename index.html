@@ -308,6 +308,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .tut-inner .tut-step { font: 500 0.75rem var(--font-num); color: var(--muted); margin: 0; }
 .tut-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 #tut-voice[aria-pressed="true"] { border-color: var(--answer); color: var(--answer); }
+.tut-voice-note { margin: 0; font-size: 0.75rem; color: var(--muted); }
 .tut-inner .tut-title { font-size: 1.15rem; font-weight: 700; }
 .tut-inner .tut-text { font-size: 0.92rem; line-height: 1.7; white-space: pre-line; }
 .tut-inner .tut-status { min-height: 1.6em; font-weight: 700; color: var(--answer); }
@@ -449,7 +450,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.91</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.92</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -567,6 +568,7 @@ p.msg:empty { display: none; }
       <p class="tut-step" id="tut-step"></p>
       <button type="button" class="btn sub small" id="tut-voice" aria-pressed="false" hidden>🔈 読み上げ</button>
     </div>
+    <p class="tut-voice-note" id="tut-voice-note" hidden>声が聞こえないときは、消音（マナーモード）を解除して、音量を上げてください。</p>
     <p class="tut-title" id="tut-title"></p>
     <p class="tut-text" id="tut-text"></p>
     <div class="tut-demo" id="tut-demo"></div>
@@ -2518,6 +2520,7 @@ p.msg:empty { display: none; }
     voiceBtn.hidden = !canSpeak;
     voiceBtn.setAttribute("aria-pressed", String(voiceOn));
     voiceBtn.textContent = voiceOn ? "🔊 読み上げ中" : "🔈 読み上げ";
+    document.getElementById("tut-voice-note").hidden = !voiceOn;
   }
   function jaVoice() {
     const vs = speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
@@ -2525,15 +2528,38 @@ p.msg:empty { display: none; }
   }
   // 記号などは読みにくいので、読み上げ用に整える
   const forSpeech = (t) => t.replace(/[→↺✓▾]/g, " ").replace(/[：:]\s*\n+/g, "、").replace(/([。！？])\s*\n+/g, "$1").replace(/\n+/g, "。");
+  // iPhone の Safari 対策:
+  // ・読み上げ中でないのに cancel() してすぐ speak() すると、声が出ないことがあるので、話しているときだけ止める
+  // ・止まったままになることがあるので resume() してから話す
+  // ・長い文は途中で切れることがあるので、文ごとに分けて順に話す
   function speakTut(text, queue) {
     if (!canSpeak || !voiceOn || !text) return;
-    if (!queue) speechSynthesis.cancel();
-    const u = new SpeechSynthesisUtterance(forSpeech(text));
-    u.lang = "ja-JP";
+    if (!queue && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel();
+    if (speechSynthesis.paused) speechSynthesis.resume();
     const v = jaVoice();
-    if (v) u.voice = v;
-    u.rate = 1;
+    const parts = forSpeech(text).split(/(?<=[。！？])/).map((x) => x.trim()).filter(Boolean);
+    for (const part of parts) {
+      const u = new SpeechSynthesisUtterance(part);
+      u.lang = "ja-JP";
+      if (v) u.voice = v;
+      u.rate = 1;
+      speechSynthesis.speak(u);
+    }
+  }
+  // iPhone では、画面に触れた操作の中で一度話さないと音が出ないので、最初のタッチで無音の読み上げをしておく
+  let voiceUnlocked = false;
+  function unlockVoice() {
+    if (voiceUnlocked || !canSpeak) return;
+    voiceUnlocked = true;
+    const u = new SpeechSynthesisUtterance(" ");
+    u.volume = 0;
     speechSynthesis.speak(u);
+  }
+  if (canSpeak) {
+    addEventListener("pointerdown", unlockVoice, { capture: true, once: true });
+    addEventListener("touchend", unlockVoice, { capture: true, once: true });
+    // 声の一覧はあとから届くことがある
+    speechSynthesis.addEventListener?.("voiceschanged", () => {});
   }
   function stopVoice() { if (canSpeak) speechSynthesis.cancel(); }
   voiceBtn.addEventListener("click", () => {
