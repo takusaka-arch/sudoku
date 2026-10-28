@@ -305,10 +305,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 @keyframes splash-drift { to { transform: translate(44px, 44px); } }
 @media (prefers-reduced-motion: reduce) { .splash, .splash *, .splash::before { animation: none !important; transition: none !important; } .splash-icon path, .splash-icon rect[pathLength] { stroke-dashoffset: 0; } .sp-cells rect { transform: none; } }
 .tut-inner { width: min(100%, 460px); box-sizing: border-box; gap: 12px; justify-items: stretch; max-height: calc(100dvh - 32px); overflow-y: auto; }
-.tut-inner .tut-step { font: 500 0.75rem var(--font-num); color: var(--muted); margin: 0; }
-.tut-top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-#tut-voice[aria-pressed="true"] { border-color: var(--answer); color: var(--answer); }
-.tut-voice-note { margin: 0; font-size: 0.75rem; color: var(--muted); }
+.tut-inner .tut-step { font: 500 0.75rem var(--font-num); color: var(--muted); }
 .tut-inner .tut-title { font-size: 1.15rem; font-weight: 700; }
 .tut-inner .tut-text { font-size: 0.92rem; line-height: 1.7; white-space: pre-line; }
 .tut-inner .tut-status { min-height: 1.6em; font-weight: 700; color: var(--answer); }
@@ -450,7 +447,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.92</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.93</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -564,11 +561,7 @@ p.msg:empty { display: none; }
 </div>
 <div class="crop" id="tut" role="dialog" aria-modal="true" aria-labelledby="tut-title" hidden>
   <div class="crop-inner tut-inner">
-    <div class="tut-top">
-      <p class="tut-step" id="tut-step"></p>
-      <button type="button" class="btn sub small" id="tut-voice" aria-pressed="false" hidden>🔈 読み上げ</button>
-    </div>
-    <p class="tut-voice-note" id="tut-voice-note" hidden>声が聞こえないときは、消音（マナーモード）を解除して、音量を上げてください。</p>
+    <p class="tut-step" id="tut-step"></p>
     <p class="tut-title" id="tut-title"></p>
     <p class="tut-text" id="tut-text"></p>
     <div class="tut-demo" id="tut-demo"></div>
@@ -2464,7 +2457,7 @@ p.msg:empty { display: none; }
   const TAP3 = isMouse ? "トリプルクリック" : "トリプルタップ";
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
-    { title: "ようこそ", text: `数独回答支援アプリの使い方を、実際に試しながら説明します。\n\n使う流れ：\n1. 「新しい問題を作る」で問題の数字を入れる（手で入力、または写真から読み取り）\n2. 「問題登録完了」→「回答スタート」\n3. 各マスの小さな数字（候補）を${TAP}して解いていきます\n\n右上の「読み上げ」を押すと、説明を音声で読み上げます。` },
+    { title: "ようこそ", text: `数独回答支援アプリの使い方を、実際に試しながら説明します。\n\n使う流れ：\n1. 「新しい問題を作る」で問題の数字を入れる（手で入力、または写真から読み取り）\n2. 「問題登録完了」→「回答スタート」\n3. 各マスの小さな数字（候補）を${TAP}して解いていきます` },
     { title: "問題を作る：手で入力する", text: `「新しい問題を作る」を押すと、問題の入力画面になります。問題に印刷されている数字を、各マスの小さな数字から${TAP}して入れます。入れた数字は大きく表示されます。まちがえたときは、大きな数字を${TAP}すると消えます。\n全部入れたら「問題登録完了」を押します。`,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
@@ -2508,79 +2501,10 @@ p.msg:empty { display: none; }
     why.className = "tut-why";
     why.textContent = st.ok.replace(/^できました！\s*/, "");
     tutStatus.append(head, why);
-    speakTut(`${head.textContent}${why.textContent}`);
   }
-  // 読み上げ: ガイドの説明を音声で読む（ボタンでオン・オフ、設定は次回も使う）
-  const VOICE_KEY = "sudoku-tut-voice";
-  const voiceBtn = document.getElementById("tut-voice");
-  const canSpeak = "speechSynthesis" in window && typeof SpeechSynthesisUtterance === "function";
-  let voiceOn = false;
-  try { voiceOn = canSpeak && localStorage.getItem(VOICE_KEY) === "1"; } catch (e) { /* 使えない環境 */ }
-  function drawVoiceBtn() {
-    voiceBtn.hidden = !canSpeak;
-    voiceBtn.setAttribute("aria-pressed", String(voiceOn));
-    voiceBtn.textContent = voiceOn ? "🔊 読み上げ中" : "🔈 読み上げ";
-    document.getElementById("tut-voice-note").hidden = !voiceOn;
-  }
-  function jaVoice() {
-    const vs = speechSynthesis.getVoices().filter((v) => /^ja/i.test(v.lang));
-    return vs.find((v) => /google|kyoko|otoya|nanami|haruka/i.test(v.name)) || vs[0] || null;
-  }
-  // 記号などは読みにくいので、読み上げ用に整える
-  const forSpeech = (t) => t.replace(/[→↺✓▾]/g, " ").replace(/[：:]\s*\n+/g, "、").replace(/([。！？])\s*\n+/g, "$1").replace(/\n+/g, "。");
-  // iPhone の Safari 対策:
-  // ・読み上げ中でないのに cancel() してすぐ speak() すると、声が出ないことがあるので、話しているときだけ止める
-  // ・止まったままになることがあるので resume() してから話す
-  // ・長い文は途中で切れることがあるので、文ごとに分けて順に話す
-  function speakTut(text, queue) {
-    if (!canSpeak || !voiceOn || !text) return;
-    if (!queue && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel();
-    if (speechSynthesis.paused) speechSynthesis.resume();
-    const v = jaVoice();
-    const parts = forSpeech(text).split(/(?<=[。！？])/).map((x) => x.trim()).filter(Boolean);
-    for (const part of parts) {
-      const u = new SpeechSynthesisUtterance(part);
-      u.lang = "ja-JP";
-      if (v) u.voice = v;
-      u.rate = 1;
-      speechSynthesis.speak(u);
-    }
-  }
-  // iPhone では、画面に触れた操作の中で一度話さないと音が出ないので、最初のタッチで無音の読み上げをしておく
-  let voiceUnlocked = false;
-  function unlockVoice() {
-    if (voiceUnlocked || !canSpeak) return;
-    voiceUnlocked = true;
-    const u = new SpeechSynthesisUtterance(" ");
-    u.volume = 0;
-    speechSynthesis.speak(u);
-  }
-  if (canSpeak) {
-    addEventListener("pointerdown", unlockVoice, { capture: true, once: true });
-    addEventListener("touchend", unlockVoice, { capture: true, once: true });
-    // 声の一覧はあとから届くことがある
-    speechSynthesis.addEventListener?.("voiceschanged", () => {});
-  }
-  function stopVoice() { if (canSpeak) speechSynthesis.cancel(); }
-  voiceBtn.addEventListener("click", () => {
-    voiceOn = !voiceOn;
-    try { localStorage.setItem(VOICE_KEY, voiceOn ? "1" : "0"); } catch (e) { /* 使えない環境 */ }
-    drawVoiceBtn();
-    if (voiceOn) speakCurrentStep(); else stopVoice();
-  });
-  function speakCurrentStep() {
-    const st = tutSteps[tutIdx];
-    speakTut(`${st.title}。${st.text}`);
-    if (st.ask) speakTut(st.ask, true);
-  }
-  // ガイドを閉じたら読み上げも止める
-  new MutationObserver(() => { if (tutEl.hidden) stopVoice(); }).observe(tutEl, { attributes: true, attributeFilter: ["hidden"] });
-  if (canSpeak) speechSynthesis.getVoices();
-  drawVoiceBtn();
   function renderTut() {
     const st = tutSteps[tutIdx];
     document.getElementById("tut-step").textContent = `${tutIdx + 1} / ${tutSteps.length}`;
-    speakCurrentStep();
     document.getElementById("tut-title").textContent = st.title;
     document.getElementById("tut-text").textContent = st.text;
     document.getElementById("tut-prev").disabled = tutIdx === 0;
