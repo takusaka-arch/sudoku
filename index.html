@@ -447,7 +447,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.94</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.95</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -758,8 +758,13 @@ p.msg:empty { display: none; }
   const isPhone = () => phoneMQ.matches;
   board.addEventListener("click", (e) => {
     const cell = e.target.closest(".cell");
-    // スマホではタップしたマスを選んで下のパッドにも出し、盤の数字はパソコンと同じように操作できる
-    if (isPhone() && cell) selectCell(cell);
+    // スマホでは、選んでいないマスをタップしたときはマスを選ぶだけにする（数字は変えない）
+    // 選んでいるマスをもう一度タップしたときだけ、パソコンと同じように盤の数字を操作できる
+    if (isPhone() && cell && ["register", "solve"].includes(board.dataset.mode) && cell !== sel) {
+      if (board.dataset.mode === "solve") flushTap();
+      selectCell(cell);
+      return;
+    }
     if (board.dataset.mode === "solve" && cell) return countTap(e.target, cell);
     act(e.target);
   });
