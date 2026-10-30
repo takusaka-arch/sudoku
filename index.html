@@ -418,6 +418,8 @@ p.msg:empty { display: none; }
 .board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"], [data-mode="complete"]) .cand, .board[data-mode="complete"] .big { cursor: default; }
 .board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"]) .cand:not(.pick):hover { background: var(--paper); color: var(--cand); }
 .board[data-mode="paused"] .cell { background: var(--paper); }
+.cell.rp-wait .big { visibility: hidden; }
+.cell.rp-now { background: var(--sel-bg); }
 .board[data-mode="paused"] :is(.cand, .big) { visibility: hidden; }
 .timer { margin: 0; font: 700 2.2rem var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; line-height: 1; }
 .timer[hidden] { display: none; }
@@ -447,7 +449,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.97</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.98</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -515,6 +517,7 @@ p.msg:empty { display: none; }
     <button type="button" class="btn" id="pause" hidden>一時停止</button>
     <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
     <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
+    <button type="button" class="btn" id="replay" hidden>解いた順に再生</button>
     <button type="button" id="reset" hidden>リセット</button>
     <button type="button" class="btn sub" id="export-cur" hidden>問題を書き出す</button>
     <button type="button" class="btn sub" id="save-progress" hidden>この状態を保存</button>
@@ -579,7 +582,8 @@ p.msg:empty { display: none; }
     <p class="clear-title" id="clear-msg">完成です。おめでとう！</p>
     <p class="clear-time" id="clear-time"></p>
     <p class="clear-time" id="clear-hints"></p>
-    <button type="button" class="btn" id="clear-ok">閉じる</button>
+    <button type="button" class="btn" id="clear-replay">解いた順に再生</button>
+    <button type="button" class="btn sub" id="clear-ok">閉じる</button>
   </div>
 </div>
 <div class="crop" id="crop" role="dialog" aria-modal="true" aria-labelledby="crop-msg" hidden>
@@ -645,6 +649,16 @@ p.msg:empty { display: none; }
       if (!c.classList.contains("off")) c.classList.add("hl-on");
     }
   }
+  // 確定候補にした順番（戻したり消したりしたマスは記録から外し、もう一度確定したときの順番にする）
+  let sureOrder = new Array(81).fill(null), sureSeq = 0;
+  function trackSure() {
+    board.querySelectorAll(".cell").forEach((c) => {
+      const i = c.dataset.row * 9 + +c.dataset.col;
+      const d = c.querySelector(".cand.sure")?.dataset.n || "";
+      if (!d) sureOrder[i] = null;
+      else if (!sureOrder[i] || sureOrder[i].d !== d) sureOrder[i] = { d, seq: ++sureSeq };
+    });
+  }
   // 同じ行・列・3x3ブロックに同じ数字があるマスを赤くする
   function markConflicts() {
     if (typeof autoSave === "function") setTimeout(autoSave, 0);
@@ -699,6 +713,7 @@ p.msg:empty { display: none; }
       });
       if (dup) a.classList.add("tent-bad");
     }
+    trackSure();
     if (typeof renderPad === "function") renderPad();
     if (typeof checkComplete === "function") checkComplete();
     applyHighlight();
@@ -1044,6 +1059,8 @@ p.msg:empty { display: none; }
     pause.hidden = true;
     edit.hidden = false;
     reset.hidden = true;
+    replayBtn.hidden = true;
+    stopReplay();
     exportCur.hidden = false;
     saveProgress.hidden = true;
     snapOpen.hidden = true;
@@ -1065,6 +1082,8 @@ p.msg:empty { display: none; }
     pause.hidden = false;
     pause.textContent = "一時停止";
     reset.hidden = false;
+    replayBtn.hidden = true;
+    stopReplay();
     exportCur.hidden = true;
     saveProgress.hidden = false;
     snapOpen.hidden = false;
@@ -1585,6 +1604,8 @@ p.msg:empty { display: none; }
     pname.value = currentName;
     edit.hidden = true;
     reset.hidden = true;
+    replayBtn.hidden = true;
+    stopReplay();
     confirmBox.hidden = true;
     done.hidden = false;
     exportCur.hidden = true;
@@ -1763,10 +1784,46 @@ p.msg:empty { display: none; }
     confirmBox.hidden = true;
     document.getElementById("clear-time").textContent = `かかった時間 ${timerEl.textContent}`;
     document.getElementById("clear-hints").textContent = `使ったヒント ${hintsUsed}回`;
+    replayBtn.hidden = false;
     clearBox.hidden = false;
-    document.getElementById("clear-ok").focus();
+    document.getElementById("clear-replay").focus();
   }
   document.getElementById("clear-ok").addEventListener("click", () => { clearBox.hidden = true; });
+  // 解いた順に再生: 確定候補を、最後に確定した順に1マスずつ出していく
+  const replayBtn = document.getElementById("replay");
+  let replayTimer = null;
+  function stopReplay() {
+    clearInterval(replayTimer);
+    replayTimer = null;
+    board.querySelectorAll(".cell.rp-wait, .cell.rp-now").forEach((c) => c.classList.remove("rp-wait", "rp-now"));
+    replayBtn.textContent = "解いた順に再生";
+  }
+  function startReplay() {
+    stopReplay();
+    clearBox.hidden = true;
+    const cells = [...board.querySelectorAll(".cell")];
+    const steps = cells.map((c) => ({ c, o: sureOrder[c.dataset.row * 9 + +c.dataset.col] })).filter((x) => x.o && x.c.classList.contains("tent")).sort((a, b) => a.o.seq - b.o.seq).map((x) => x.c);
+    if (!steps.length) return;
+    steps.forEach((c) => c.classList.add("rp-wait"));
+    replayBtn.textContent = "再生を止める";
+    let k = 0;
+    const done = prompt.textContent;
+    prompt.textContent = `再生中：0 / ${steps.length}`;
+    replayTimer = setInterval(() => {
+      if (board.dataset.mode !== "complete") return stopReplay();
+      board.querySelectorAll(".cell.rp-now").forEach((c) => c.classList.remove("rp-now"));
+      if (k >= steps.length) { stopReplay(); prompt.textContent = done; return; }
+      steps[k].classList.remove("rp-wait");
+      steps[k].classList.add("rp-now");
+      k++;
+      prompt.textContent = `再生中：${k} / ${steps.length}`;
+    }, 800);
+  }
+  replayBtn.addEventListener("click", () => {
+    if (replayTimer) { stopReplay(); prompt.textContent = `完成：${currentName}（${timerEl.textContent}）`; }
+    else startReplay();
+  });
+  document.getElementById("clear-replay").addEventListener("click", startReplay);
 
   const hintBtn = document.getElementById("hint");
   const viewBtn = document.getElementById("view");
@@ -2186,7 +2243,7 @@ p.msg:empty { display: none; }
       offs.push([...cell.querySelectorAll(".cand.off")].map((s) => s.dataset.n).sort().join(""));
     }
     const ms = elapsed + (startedAt ? Date.now() - startedAt : 0);
-    return { app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, hints: hintsUsed, saved: new Date().toISOString() };
+    return { app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, hints: hintsUsed, order: sureOrder.map((o) => (o ? o.seq : 0)), saved: new Date().toISOString() };
   }
   // 解いている途中は端末に自動保存し、画面ロックやアプリの終了のあとも続きから再開できるようにする
   const CUR_KEY = "sudoku-current";
@@ -2250,6 +2307,11 @@ p.msg:empty { display: none; }
         cell.classList.add("tent");
       }
     });
+    // 確定した順番を戻す
+    if (Array.isArray(obj.order) && obj.order.length === 81) {
+      sureOrder = obj.order.map((q, i) => (q > 0 && obj.sure[i] !== "0" ? { d: obj.sure[i], seq: +q } : null));
+      sureSeq = Math.max(0, ...sureOrder.map((o) => (o ? o.seq : 0)));
+    }
     // 経過時間を戻して回答モードに入り、すぐ一時停止にする
     showSolve();
     timerStop();
