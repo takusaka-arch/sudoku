@@ -447,7 +447,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.95</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.96</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -760,11 +760,14 @@ p.msg:empty { display: none; }
     const cell = e.target.closest(".cell");
     // スマホでは、選んでいないマスをタップしたときはマスを選ぶだけにする（数字は変えない）
     // 選んでいるマスをもう一度タップしたときだけ、パソコンと同じように盤の数字を操作できる
-    if (isPhone() && cell && ["register", "solve"].includes(board.dataset.mode) && cell !== sel) {
+    // （問題の数字・確定候補のマスは、1回目のタップで数字が変わらないので、そのまま数えてトリプルタップの消し込みができるようにする）
+    const bigCell = cell && board.dataset.mode === "solve" && (cell.classList.contains("fixed") || cell.classList.contains("tent"));
+    if (isPhone() && cell && ["register", "solve"].includes(board.dataset.mode) && cell !== sel && !bigCell) {
       if (board.dataset.mode === "solve") flushTap();
       selectCell(cell);
       return;
     }
+    if (isPhone() && bigCell && cell !== sel) selectCell(cell);
     if (board.dataset.mode === "solve" && cell) return countTap(e.target, cell);
     act(e.target);
   });
@@ -913,17 +916,19 @@ p.msg:empty { display: none; }
       k.className = "key";
       for (const c of ["pick", "sure", "bad", "shadow", "off", "hint", "pair"]) if (cand.classList.contains(c)) k.classList.add(c);
       k.classList.toggle("val", sel.dataset.value === k.dataset.n);
-      k.disabled = given;
+      // 問題の数字のマスでは、その数字のボタンだけ押せる（トリプルタップで消し込みをする）
+      k.disabled = given && k.dataset.n !== sel.dataset.value;
     }
     padNote.textContent = mode === "register"
       ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
-      : given ? "問題の数字は変えられません。"
+      : given ? "問題の数字は変えられません。この数字をトリプルタップすると、同じ行・列・ブロックの同じ数字の候補を消す・戻すができます。"
       : "1回タップ：候補（青）の選択・解除　ダブルタップ：確定候補にする・戻す　トリプルタップ：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（問題の数字・確定候補をトリプルタップ：その行・列・ブロックの同じ数字を消す・戻す）";
   }
   let lastTap = { key: null, t: 0 };
   pad.addEventListener("click", (e) => {
     const k = e.target.closest(".key");
     if (!k || !sel || k.disabled) return;
+    if (board.dataset.mode === "solve" && sel.classList.contains("given")) return countTap(sel.querySelector(".big"), sel);
     const cand = sel.querySelector(`.cand[data-n="${k.dataset.n}"]`);
     if (board.dataset.mode === "register") {
       act(sel.dataset.value === k.dataset.n ? sel.querySelector(".big") : cand, true);
