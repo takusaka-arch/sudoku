@@ -340,11 +340,11 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .start[hidden], .work[hidden] { display: none; }
 h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 55vh; overflow-y: auto; }
-.list li { display: flex; gap: 6px; }
+.list li { display: flex; flex-wrap: wrap; gap: 4px 6px; justify-content: flex-end; }
 .list button { font: 500 0.95rem var(--font-ui); border-radius: 4px; cursor: pointer; background: var(--paper); color: var(--ink); border: 1.5px solid var(--line-cell); }
-.list .open { flex: 1; min-width: 0; text-align: left; padding: 8px 12px; overflow-wrap: anywhere; }
+.list .open { flex: 1 1 100%; min-width: 0; text-align: left; padding: 8px 12px; overflow-wrap: anywhere; }
 .list .open small { display: block; margin-top: 2px; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
-.list .del, .list .share { padding: 0 10px; font-size: 0.8rem; color: var(--muted); }
+.list .del, .list .share { flex: 0 0 auto; padding: 6px 10px; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
 .share-box, .import { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
 .share-box[hidden] { display: none; }
 .share-box p, .import p { margin: 0; font-size: 0.85rem; line-height: 1.6; }
@@ -418,6 +418,7 @@ p.msg:empty { display: none; }
 .board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"], [data-mode="complete"]) .cand, .board[data-mode="complete"] .big { cursor: default; }
 .board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"]) .cand:not(.pick):hover { background: var(--paper); color: var(--cand); }
 .board[data-mode="paused"] .cell { background: var(--paper); }
+.board[data-mode="replay"] :is(.cand, .big) { cursor: default; }
 .cell.rp-wait .big { visibility: hidden; }
 .cell.rp-now { background: var(--sel-bg); }
 .board[data-mode="paused"] :is(.cand, .big) { visibility: hidden; }
@@ -449,7 +450,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.98</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.99</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1082,7 +1083,7 @@ p.msg:empty { display: none; }
     pause.hidden = false;
     pause.textContent = "一時停止";
     reset.hidden = false;
-    replayBtn.hidden = true;
+    replayBtn.hidden = false;
     stopReplay();
     exportCur.hidden = true;
     saveProgress.hidden = false;
@@ -1674,7 +1675,16 @@ p.msg:empty { display: none; }
       share.textContent = "書き出し";
       share.setAttribute("aria-label", `${p.name} をファイルに書き出し`);
       share.addEventListener("click", () => exportProblem(p));
-      li.append(open, share, del);
+      const rec = solvedRecord(p.givens);
+      if (rec) {
+        const view = document.createElement("button");
+        view.type = "button";
+        view.className = "share";
+        view.textContent = "完成を見る";
+        view.setAttribute("aria-label", `${p.name} の完成した盤を見る`);
+        view.addEventListener("click", () => openProgressData(rec, p.name, true));
+        li.append(open, view, share, del);
+      } else li.append(open, share, del);
       listEl.appendChild(li);
     }
   }
@@ -1760,6 +1770,11 @@ p.msg:empty { display: none; }
 
   // 完成: 全マスが大きな数字（問題の数字か確定候補）で埋まり、赤字が無ければタイマーを止めて知らせる
   const clearBox = document.getElementById("clear");
+  const SOLVED_KEY = "sudoku-solved";
+  let viewingSolved = false;
+  function solvedRecord(givens) {
+    try { return JSON.parse(localStorage.getItem(SOLVED_KEY) || "{}")[givens] || null; } catch (e) { return null; }
+  }
   function checkComplete() {
     if (board.dataset.mode !== "solve") return;
     const cells = [...board.querySelectorAll(".cell")];
@@ -1768,7 +1783,15 @@ p.msg:empty { display: none; }
     flushTap();
     timerStop();
     board.dataset.mode = "complete";
-    clearAutoSave();
+    if (!viewingSolved) {
+      clearAutoSave();
+      // 完成した盤と解いた順番を残し、一覧の「完成を見る」からあとで開けるようにする
+      try {
+        const all = JSON.parse(localStorage.getItem(SOLVED_KEY) || "{}");
+        all[progressObj().givens] = progressObj();
+        localStorage.setItem(SOLVED_KEY, JSON.stringify(all));
+      } catch (e) {}
+    }
     selectCell(null);
     prompt.textContent = `完成：${currentName}（${timerEl.textContent}）`;
     note.textContent = "「リセット」で最初から解き直せます。";
@@ -1792,27 +1815,40 @@ p.msg:empty { display: none; }
   // 解いた順に再生: 確定候補を、最後に確定した順に1マスずつ出していく
   const replayBtn = document.getElementById("replay");
   let replayTimer = null;
+  let replayFrom = "", replayPrompt = "";
   function stopReplay() {
     clearInterval(replayTimer);
     replayTimer = null;
     board.querySelectorAll(".cell.rp-wait, .cell.rp-now").forEach((c) => c.classList.remove("rp-wait", "rp-now"));
     replayBtn.textContent = "解いた順に再生";
+    if (board.dataset.mode === "replay") {
+      board.dataset.mode = replayFrom;
+      prompt.textContent = replayPrompt;
+      renderPad();
+    }
   }
+  // 解いている途中でも再生できる（再生のあいだは一時停止にし、終わったら一時停止のまま戻る）
   function startReplay() {
     stopReplay();
     clearBox.hidden = true;
+    if (board.dataset.mode === "solve") pause.click();
+    if (!["paused", "complete"].includes(board.dataset.mode)) return;
     const cells = [...board.querySelectorAll(".cell")];
     const steps = cells.map((c) => ({ c, o: sureOrder[c.dataset.row * 9 + +c.dataset.col] })).filter((x) => x.o && x.c.classList.contains("tent")).sort((a, b) => a.o.seq - b.o.seq).map((x) => x.c);
-    if (!steps.length) return;
+    if (!steps.length) { workMsg.textContent = "まだ確定候補がないので、再生するものがありません。"; return; }
+    replayFrom = board.dataset.mode;
+    replayPrompt = prompt.textContent;
+    selectCell(null);
+    board.dataset.mode = "replay";
+    renderPad();
     steps.forEach((c) => c.classList.add("rp-wait"));
     replayBtn.textContent = "再生を止める";
     let k = 0;
-    const done = prompt.textContent;
     prompt.textContent = `再生中：0 / ${steps.length}`;
     replayTimer = setInterval(() => {
-      if (board.dataset.mode !== "complete") return stopReplay();
+      if (board.dataset.mode !== "replay") return stopReplay();
       board.querySelectorAll(".cell.rp-now").forEach((c) => c.classList.remove("rp-now"));
-      if (k >= steps.length) { stopReplay(); prompt.textContent = done; return; }
+      if (k >= steps.length) return stopReplay();
       steps[k].classList.remove("rp-wait");
       steps[k].classList.add("rp-now");
       k++;
@@ -1820,7 +1856,7 @@ p.msg:empty { display: none; }
     }, 800);
   }
   replayBtn.addEventListener("click", () => {
-    if (replayTimer) { stopReplay(); prompt.textContent = `完成：${currentName}（${timerEl.textContent}）`; }
+    if (replayTimer) stopReplay();
     else startReplay();
   });
   document.getElementById("clear-replay").addEventListener("click", startReplay);
@@ -2284,7 +2320,7 @@ p.msg:empty { display: none; }
     try { obj = JSON.parse(await file.text()); } catch (e) { obj = null; }
     openProgressData(obj, file.name);
   });
-  function openProgressData(obj, fileName) {
+  function openProgressData(obj, fileName, solved) {
     const ok = obj && obj.kind === "progress" && /^[0-9]{81}$/.test(obj.givens || "") && Array.isArray(obj.picks) && obj.picks.length === 81 && /^[0-9]{81}$/.test(obj.sure || "");
     if (!ok) {
       say(obj && /^[0-9]{81}$/.test(obj.givens || "")
@@ -2312,13 +2348,17 @@ p.msg:empty { display: none; }
       sureOrder = obj.order.map((q, i) => (q > 0 && obj.sure[i] !== "0" ? { d: obj.sure[i], seq: +q } : null));
       sureSeq = Math.max(0, ...sureOrder.map((o) => (o ? o.seq : 0)));
     }
-    // 経過時間を戻して回答モードに入り、すぐ一時停止にする
+    // 経過時間を戻して回答モードに入り、すぐ一時停止にする（完成の記録はそのまま完成の画面になる）
+    elapsed = Math.max(0, Number(obj.elapsed) || 0);
+    hintsUsed = Math.max(0, Math.floor(Number(obj.hints) || 0));
+    drawHints();
+    viewingSolved = !!solved;
     showSolve();
+    viewingSolved = false;
+    if (solved) return;
     timerStop();
     elapsed = Math.max(0, Number(obj.elapsed) || 0);
     drawTimer();
-    hintsUsed = Math.max(0, Math.floor(Number(obj.hints) || 0));
-    drawHints();
     pause.click();
     prompt.textContent = `一時停止中：${currentName}（保存した続きから）`;
   }
