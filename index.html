@@ -447,7 +447,7 @@ p.msg:empty { display: none; }
     <p class="note" id="pad-note"></p>
   </div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.96</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.97</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -647,6 +647,7 @@ p.msg:empty { display: none; }
   }
   // 同じ行・列・3x3ブロックに同じ数字があるマスを赤くする
   function markConflicts() {
+    if (typeof autoSave === "function") setTimeout(autoSave, 0);
     // 盤が変わったらヒントの表示を消す
     const msg = document.getElementById("work-msg");
     if (msg.textContent.startsWith("ヒント")) msg.textContent = "";
@@ -1084,6 +1085,7 @@ p.msg:empty { display: none; }
       prompt.textContent = `一時停止中：${currentName}`;
       note.textContent = "「再開」を押すと回答を続けられます。";
       confirmBox.hidden = true;
+      autoSave();
     } else {
       showSolve();
     }
@@ -1745,6 +1747,7 @@ p.msg:empty { display: none; }
     flushTap();
     timerStop();
     board.dataset.mode = "complete";
+    clearAutoSave();
     selectCell(null);
     prompt.textContent = `完成：${currentName}（${timerEl.textContent}）`;
     note.textContent = "「リセット」で最初から解き直せます。";
@@ -2171,10 +2174,8 @@ p.msg:empty { display: none; }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !snapMenu.hidden) { closeSnapUI(); snapOpen.focus(); }
   });
-  // ファイルに保存（回答途中の状態：問題・候補・確定候補・経過時間）
-  document.getElementById("snap-file").addEventListener("click", async () => {
-    const label = snapName.value.trim();
-    closeSnapUI();
+  // 回答途中の状態（問題・候補・確定候補・経過時間）
+  function progressObj() {
     let givens = "", sure = "";
     const picks = [], offs = [];
     for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
@@ -2185,7 +2186,31 @@ p.msg:empty { display: none; }
       offs.push([...cell.querySelectorAll(".cand.off")].map((s) => s.dataset.n).sort().join(""));
     }
     const ms = elapsed + (startedAt ? Date.now() - startedAt : 0);
-    const data = JSON.stringify({ app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, hints: hintsUsed, saved: new Date().toISOString() }, null, 2);
+    return { app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, hints: hintsUsed, saved: new Date().toISOString() };
+  }
+  // 解いている途中は端末に自動保存し、画面ロックやアプリの終了のあとも続きから再開できるようにする
+  const CUR_KEY = "sudoku-current";
+  let restoring = false;
+  function autoSave() {
+    if (restoring || !["solve", "paused"].includes(board.dataset.mode) || !document.getElementById("trial").hidden) return;
+    try { localStorage.setItem(CUR_KEY, JSON.stringify(progressObj())); } catch (e) {}
+  }
+  function clearAutoSave() {
+    try { localStorage.removeItem(CUR_KEY); } catch (e) {}
+  }
+  // 画面を離れたら（ロック・アプリ切り替え）一時停止して保存する
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "hidden") return;
+    if (board.dataset.mode === "solve") pause.click();
+    autoSave();
+  });
+  addEventListener("pagehide", autoSave);
+  // ファイルに保存
+  document.getElementById("snap-file").addEventListener("click", async () => {
+    const label = snapName.value.trim();
+    closeSnapUI();
+    const obj = progressObj(), ms = obj.elapsed;
+    const data = JSON.stringify(obj, null, 2);
     msgTarget = workMsg;
     try {
       await saveFile(`数独_${safeName(currentName)}_${safeName(label || snapName.dataset.stamp || "回答中")}.json`, data, `この状態を保存しました（経過時間 ${fmt(ms)}）`);
@@ -2678,6 +2703,17 @@ p.msg:empty { display: none; }
   document.getElementById("tut-open").addEventListener("click", openTutorial);
 
   showStart();
+  // 前回、解いている途中で閉じた場合は一時停止の状態で続きを開く
+  try {
+    const cur = JSON.parse(localStorage.getItem(CUR_KEY) || "null");
+    if (cur) {
+      restoring = true;
+      openProgressData(cur, "回答中");
+      restoring = false;
+      if (board.dataset.mode === "paused") prompt.textContent = `一時停止中：${currentName}（前回の続き）`;
+      else { clearAutoSave(); showStart(); }
+    }
+  } catch (e) { restoring = false; }
   // 起動時のスプラッシュ画面: 少し見せてから消し、そのあと使い方ガイドを出す（タップですぐ閉じる）
   const splash = document.getElementById("splash");
   let splashDone = false;
