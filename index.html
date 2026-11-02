@@ -467,7 +467,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.106</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.107</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -536,6 +536,7 @@ p.msg:empty { display: none; }
     <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
     <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
     <button type="button" class="btn" id="replay" hidden>解いた順に再生</button>
+    <button type="button" class="btn sub" id="save-solved" hidden>完成形を保存</button>
     <button type="button" id="reset" hidden>リセット</button>
     <button type="button" class="btn sub" id="export-cur" hidden>問題を書き出す</button>
     <button type="button" class="btn sub" id="save-progress" hidden>この状態を保存</button>
@@ -601,6 +602,7 @@ p.msg:empty { display: none; }
     <p class="clear-time" id="clear-time"></p>
     <p class="clear-time" id="clear-hints"></p>
     <button type="button" class="btn" id="clear-replay">解いた順に再生</button>
+    <button type="button" class="btn sub" id="clear-save">完成形を保存</button>
     <button type="button" class="btn sub" id="clear-ok">閉じる</button>
   </div>
 </div>
@@ -1169,6 +1171,7 @@ p.msg:empty { display: none; }
     edit.hidden = false;
     reset.hidden = true;
     replayBtn.hidden = true;
+    saveSolvedBtn.hidden = true;
     stopReplay();
     exportCur.hidden = false;
     saveProgress.hidden = true;
@@ -1192,6 +1195,7 @@ p.msg:empty { display: none; }
     pause.textContent = "一時停止";
     reset.hidden = false;
     replayBtn.hidden = false;
+    saveSolvedBtn.hidden = true;
     stopReplay();
     exportCur.hidden = true;
     saveProgress.hidden = false;
@@ -1714,6 +1718,7 @@ p.msg:empty { display: none; }
     edit.hidden = true;
     reset.hidden = true;
     replayBtn.hidden = true;
+    saveSolvedBtn.hidden = true;
     stopReplay();
     confirmBox.hidden = true;
     done.hidden = false;
@@ -1951,10 +1956,23 @@ p.msg:empty { display: none; }
     document.getElementById("clear-time").textContent = `かかった時間 ${timerEl.textContent}`;
     document.getElementById("clear-hints").textContent = `使ったヒント ${hintsUsed}回`;
     replayBtn.hidden = false;
+    saveSolvedBtn.hidden = false;
     clearBox.hidden = false;
     document.getElementById("clear-replay").focus();
   }
   document.getElementById("clear-ok").addEventListener("click", () => { clearBox.hidden = true; });
+  // 完成形を保存: 完成した盤・解いた順番・時間をファイル（チェックがあればGoogleドライブ）に保存する。開くと完成の画面になる
+  const saveSolvedBtn = document.getElementById("save-solved");
+  async function saveSolved() {
+    clearBox.hidden = true;
+    const obj = { ...progressObj(), solved: true };
+    msgTarget = workMsg;
+    try {
+      await saveFile(`数独_${safeName(currentName)}_完成.json`, JSON.stringify(obj, null, 2), `完成形を保存しました（${fmt(obj.elapsed)}）`);
+    } finally { msgTarget = null; }
+  }
+  saveSolvedBtn.addEventListener("click", saveSolved);
+  document.getElementById("clear-save").addEventListener("click", saveSolved);
   // 解いた順に再生: 確定候補を、最後に確定した順に1マスずつ出していく
   const replayBtn = document.getElementById("replay");
   let replayTimer = null;
@@ -2469,6 +2487,7 @@ p.msg:empty { display: none; }
     openProgressData(obj, file.name);
   });
   function openProgressData(obj, fileName, solved) {
+    if (obj && obj.solved) solved = true;
     const ok = obj && obj.kind === "progress" && /^[0-9]{81}$/.test(obj.givens || "") && Array.isArray(obj.picks) && obj.picks.length === 81 && /^[0-9]{81}$/.test(obj.sure || "");
     if (!ok) {
       say(obj && /^[0-9]{81}$/.test(obj.givens || "")
@@ -2699,7 +2718,8 @@ p.msg:empty { display: none; }
           const empty = (o.givens.match(/[0.]/g) || []).length;
           const sure = (o.sure.match(/[1-9]/g) || []).length;
           const label = f.name.replace(/^数独_/, "").replace(/\.json$/i, "").replace(safeName(String(o.name || "")) + "_", "");
-          filesEl.appendChild(fileRow(f, `回答の途中：${label}`, `確定 ${sure}/${empty} マス・経過 ${fmt(Number(o.elapsed) || 0)}・${when(f.modifiedTime)}`));
+          if (o.solved) filesEl.appendChild(fileRow(f, "完成形", `かかった時間 ${fmt(Number(o.elapsed) || 0)}・ヒント ${Number(o.hints) || 0}回・${when(f.modifiedTime)}`));
+          else filesEl.appendChild(fileRow(f, `回答の途中：${label}`, `確定 ${sure}/${empty} マス・経過 ${fmt(Number(o.elapsed) || 0)}・${when(f.modifiedTime)}`));
         }
         for (const f of grp.other) filesEl.appendChild(fileRow(f, f.name, `開けないファイル・${when(f.modifiedTime)}`, true));
       }
