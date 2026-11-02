@@ -467,7 +467,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.107</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.108</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -2044,8 +2044,8 @@ p.msg:empty { display: none; }
   // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
   const hintKinds = [
     { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
-    { label: "候補が2つのマス", desc: "青い候補が2つだけのマスに色を付けます", run: () => showTwoCells() },
-    { label: "2つの数字のペア", desc: "同じ2マスにしか入らない2つの数字の組を、組ごとに色分けします", run: () => showPairs() },
+    { label: "2つの数字のペア", desc: "同じ2マスにしか入らない2つの数字の組を、組ごとに色分けします", run: () => showPairs(2) },
+    { label: "3つの数字の組", desc: "同じ3マスにしか入らない3つの数字の組を、組ごとに色分けします", run: () => showPairs(3) },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます", run: () => runHint(true) },
     { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
   ];
@@ -2135,27 +2135,11 @@ p.msg:empty { display: none; }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !viewMenu.hidden) { closeViewMenu(); viewBtn.focus(); }
   });
-  // ② 自分で選んだ青い候補がちょうど2つのマスを、すべて薄い緑で示す
-  function showTwoCells() {
-    if (board.dataset.mode !== "solve") return;
-    markConflicts();
-    const two = [...board.querySelectorAll(".cell")].filter((o) => !o.dataset.value && !o.classList.contains("tent")
-      && o.querySelectorAll(".cand.pick:not(.off)").length === 2);
-    workMsg.classList.remove("err");
-    if (!two.length) {
-      workMsg.textContent = "ヒント：青い候補が2つだけのマスは、今はありません。";
-      return;
-    }
-    hintsUsed++;
-    drawHints();
-    two.forEach((o) => o.classList.add("two-cell"));
-    renderPad();
-    workMsg.textContent = `ヒント：薄い緑の ${two.length} マスは、青い候補が2つだけです。`;
-  }
-  // ③ 行・列・ブロックの中で、2つの数字がどちらも同じ2マスにしか入らない組（ペア）を、すべて組ごとの色で示す
+  // ②③ 行・列・ブロックの中で、2つ（3つ）の数字が同じ2マス（3マス）にしか入らない組を、組ごとの色で示す
   // 青い候補かどうかは関係なく、入れられる数字（消した候補・確定済みの数字を除く）で調べる
   const PAIR_COLORS = ["#2f7de1", "#e07b00", "#2e9d4f", "#d6408f", "#0f9a92", "#8a5cd1", "#b8860b", "#c0392b"];
-  function showPairs() {
+  // k=2: 同じ2マスにしか入らない2つの数字の組、k=3: 同じ3マスにしか入らない3つの数字の組
+  function showPairs(k = 2) {
     if (board.dataset.mode !== "solve") return;
     markConflicts();
     const cells = [...board.querySelectorAll(".cell")];
@@ -2174,26 +2158,37 @@ p.msg:empty { display: none; }
       const inUnit = cells.filter(has);
       const spots = {};
       for (const d of digits) spots[d] = inUnit.filter((o) => can(o, d));
-      for (let i = 0; i < 9; i++) for (let j = i + 1; j < 9; j++) {
-        const a = digits[i], b = digits[j];
-        if (spots[a].length !== 2 || spots[b].length !== 2 || !spots[a].every((o) => spots[b].includes(o))) continue;
-        // 行とブロックで同じ組が見つかったときは1つにまとめる
-        const key = a + b + spots[a].map((o) => cells.indexOf(o)).join(",");
-        if (seen.has(key)) continue;
-        seen.add(key);
-        found.push({ a, b, two: spots[a] });
-      }
+      // その単位で2〜k マスに入れられる数字から k 個を選び、入れられるマスを合わせて k マスになる組
+      const ds = digits.filter((d) => spots[d].length >= 2 && spots[d].length <= k);
+      const pick = (start, chosen) => {
+        if (chosen.length === k) {
+          const where = [...new Set(chosen.flatMap((d) => spots[d]))];
+          if (where.length !== k) return;
+          // 3つの組の中に2つの組が含まれるときは、2つの組のほうで分かるので出さない
+          if (k === 3 && chosen.some((a, i) => chosen.some((b, j) => j > i && spots[a].length === 2 && spots[b].length === 2 && spots[a].every((o) => spots[b].includes(o))))) return;
+          // 行とブロックで同じ組が見つかったときは1つにまとめる
+          const key = chosen.join("") + where.map((o) => cells.indexOf(o)).sort((x, y) => x - y).join(",");
+          if (seen.has(key)) return;
+          seen.add(key);
+          found.push({ ds: chosen, where });
+          return;
+        }
+        for (let i = start; i < ds.length; i++) pick(i + 1, [...chosen, ds[i]]);
+      };
+      pick(0, []);
     }
     workMsg.classList.remove("err");
+    const kk = k === 3 ? "3" : "2";
     if (!found.length) {
-      workMsg.textContent = "ヒント：同じ2マスにしか入らない2つの数字の組は、今はありません。";
+      workMsg.textContent = `ヒント：同じ${kk}マスにしか入らない${kk}つの数字の組は、今はありません。`;
       return;
     }
     hintsUsed++;
     drawHints();
     found.forEach((p, i) => {
       const color = PAIR_COLORS[i % PAIR_COLORS.length];
-      for (const o of p.two) for (const d of [p.a, p.b]) {
+      for (const o of p.where) for (const d of p.ds) {
+        if (!can(o, d)) continue;
         const c = o.querySelector(`.cand[data-n="${d}"]`);
         if (c.classList.contains("pgrp")) { c.classList.add("pgrp2"); c.style.setProperty("--pg2", color); continue; }
         c.classList.add("pgrp");
@@ -2201,7 +2196,7 @@ p.msg:empty { display: none; }
       }
     });
     renderPad();
-    workMsg.textContent = `ヒント：同じ色の2つの数字（${found.length}組）は、その行・列・ブロックで、色の付いた2マスにしか入りません。その2マスのほかの候補は消せます。`;
+    workMsg.textContent = `ヒント：同じ色の${kk}つの数字（${found.length}組）は、その行・列・ブロックで、色の付いた${kk}マスにしか入りません。その${kk}マスのほかの候補は消せます。`;
   }
   function runHint(full) {
     if (board.dataset.mode !== "solve") return;
@@ -2867,7 +2862,7 @@ p.msg:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
     ] },
     { title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字は黄色になります。\nもう一度${TAP}で止まります。` },
-    { title: "ヒント", text: "「ヒント」で4種類から選べます。\n①注目するマス\n②青い候補が2つのマス\n③同じ2マスにしか入らない2つの数字の組\n④入る数字とその理由\n⑤でヒントの表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
+    { title: "ヒント", text: "「ヒント」で4種類から選べます。\n①注目するマス\n②同じ2マスにしか入らない2つの数字の組\n③同じ3マスにしか入らない3つの数字の組\n④入る数字とその理由\n⑤でヒントの表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
     { title: "ボタン", text: "一つ戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する\nリセット：問題だけの最初の状態に戻す\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "保存とGoogleドライブ", text: "「この状態を保存」で、名前（最初は日時）を付けて保存します。\n・保存：この端末に保存。「保存した状態に戻す」でその時点に戻れます\n・ファイルに保存：別の日や別の端末で続きを解くときに使います\n\nGoogleドライブ欄にチェックを入れると、保存先がGoogleドライブになり、PCとスマホでやり取りできます（アプリ版・Web版のみ）。" },
     { title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
