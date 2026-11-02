@@ -370,6 +370,14 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .gd-inner .msg { margin: 0; }
 .gd-inner .msg:empty { display: none; }
 .gd-inner #gd-close { justify-self: center; }
+.gd-inner .list { max-height: calc(100dvh - 180px); }
+.gd-inner .list .gd-group { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1.5px solid var(--line-cell); }
+.gd-inner .list .gd-group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.gd-inner .list .gd-group p { flex: 1; margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.gd-inner .list .gd-group small { display: block; font-weight: 500; font-size: 0.75rem; color: var(--muted); }
+.gd-inner .list .gd-item { flex-wrap: nowrap; padding-left: 12px; }
+.gd-inner .list .gd-item .open { flex: 1 1 auto; }
+.gd-inner .list .open:disabled { cursor: default; opacity: 0.6; }
 .filepick { position: relative; }
 .filepick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .filepick:focus-within { outline: 3px solid var(--answer); outline-offset: 2px; }
@@ -459,7 +467,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.105</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.106</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -2630,6 +2638,7 @@ p.msg:empty { display: none; }
     }
     // 一覧から選んで開く
     const dlg = document.getElementById("gd-box"), filesEl = document.getElementById("gd-files"), dlgMsg = document.getElementById("gd-box-msg");
+    let shown = [];
     async function openList() {
       const first = getToken();
       filesEl.textContent = "";
@@ -2642,31 +2651,110 @@ p.msg:empty { display: none; }
         const dir = await folderId();
         const q = encodeURIComponent(`'${dir}' in parents and trashed = false`);
         const files = (await (await api(`${API}/files?q=${q}&orderBy=modifiedTime desc&pageSize=100&fields=files(id,name,modifiedTime)`)).json()).files || [];
-        dlgMsg.textContent = files.length ? "" : "「Sudoku」フォルダにはまだファイルがありません。";
-        for (const f of files) {
-          const li = document.createElement("li");
-          const b = document.createElement("button");
-          b.type = "button";
-          b.className = "open";
-          const kind = /_回答中\.json$/.test(f.name) ? "回答中" : "問題";
-          b.textContent = f.name.replace(/^数独_/, "").replace(/(_回答中)?\.json$/i, "");
-          const sm = document.createElement("small");
-          sm.textContent = `${kind}・${new Date(f.modifiedTime).toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}`;
-          b.appendChild(sm);
-          b.addEventListener("click", () => openFile(f));
-          li.appendChild(b);
-          filesEl.appendChild(li);
-        }
+        // 中身を読んで、問題ごとに「問題」と「回答の途中」をまとめる
+        let k = 0;
+        const read = async () => {
+          while (k < files.length) {
+            const f = files[k++];
+            try { f.obj = JSON.parse(await (await api(`${API}/files/${f.id}?alt=media`)).text()); } catch (e) { f.obj = null; }
+          }
+        };
+        if (files.length) dlgMsg.textContent = "読み込んでいます…";
+        await Promise.all([1, 2, 3, 4, 5, 6].map(read));
+        dlgMsg.textContent = "";
+        shown = files;
+        drawGroups(files);
       } catch (e) {
         dlgMsg.classList.add("err");
         dlgMsg.textContent = e.message || "Googleドライブを開けませんでした";
       }
     }
+    const when = (t) => new Date(t).toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" });
+    function drawGroups(files) {
+      filesEl.textContent = "";
+      const groups = new Map();
+      for (const f of files) {
+        const g = f.obj && /^[0-9.]{81}$/.test(f.obj.givens || "") ? f.obj.givens.replace(/\./g, "0") : "?" + f.id;
+        if (!groups.has(g)) groups.set(g, { givens: g, prob: [], prog: [], other: [] });
+        const grp = groups.get(g);
+        (g.startsWith("?") ? grp.other : f.obj.kind === "progress" ? (/^[0-9]{81}$/.test(f.obj.sure || "") ? grp.prog : grp.other) : grp.prob).push(f);
+      }
+      if (!groups.size) { if (!dlgMsg.textContent) dlgMsg.textContent = "「Sudoku」フォルダにはまだファイルがありません。"; return; }
+      for (const grp of groups.values()) {
+        const all = [...grp.prob, ...grp.prog, ...grp.other];
+        const name = (grp.prob[0] || grp.prog[0])?.obj?.name || all[0].name.replace(/^数独_/, "").replace(/\.json$/i, "");
+        const head = document.createElement("li");
+        head.className = "gd-group";
+        const h = document.createElement("p");
+        h.textContent = name;
+        const sm = document.createElement("small");
+        sm.textContent = grp.givens.startsWith("?") ? "読めないファイル" : `問題 ${grp.givens.replace(/0/g, "").length} マス`;
+        h.appendChild(sm);
+        head.appendChild(h);
+        if (all.length > 1) head.appendChild(delButton(all, "まとめて削除", `${name} のファイルを全部削除`));
+        filesEl.appendChild(head);
+        for (const f of grp.prob) filesEl.appendChild(fileRow(f, "問題", `問題だけ（最初から解く）・${when(f.modifiedTime)}`));
+        for (const f of grp.prog) {
+          const o = f.obj;
+          const empty = (o.givens.match(/[0.]/g) || []).length;
+          const sure = (o.sure.match(/[1-9]/g) || []).length;
+          const label = f.name.replace(/^数独_/, "").replace(/\.json$/i, "").replace(safeName(String(o.name || "")) + "_", "");
+          filesEl.appendChild(fileRow(f, `回答の途中：${label}`, `確定 ${sure}/${empty} マス・経過 ${fmt(Number(o.elapsed) || 0)}・${when(f.modifiedTime)}`));
+        }
+        for (const f of grp.other) filesEl.appendChild(fileRow(f, f.name, `開けないファイル・${when(f.modifiedTime)}`, true));
+      }
+    }
+    function fileRow(f, title, meta, noOpen) {
+      const li = document.createElement("li");
+      li.className = "gd-item";
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "open";
+      b.textContent = title;
+      const sm = document.createElement("small");
+      sm.textContent = meta;
+      b.appendChild(sm);
+      if (noOpen) b.disabled = true;
+      else b.addEventListener("click", () => openFile(f));
+      li.append(b, delButton([f], "削除", `${title} を削除`));
+      return li;
+    }
+    // 1回目で「削除する」に変わり、2回目でGoogleドライブのゴミ箱に移す
+    function delButton(targets, text, aria) {
+      const del = document.createElement("button");
+      del.type = "button";
+      del.className = "del";
+      del.textContent = text;
+      del.setAttribute("aria-label", aria);
+      del.addEventListener("click", async () => {
+        if (!del.classList.contains("armed")) {
+          del.classList.add("armed");
+          del.textContent = text === "削除" ? "削除する" : "全部削除する";
+          setTimeout(() => { if (del.isConnected) { del.classList.remove("armed"); del.textContent = text; } }, 3000);
+          return;
+        }
+        del.disabled = true;
+        dlgMsg.classList.remove("err");
+        dlgMsg.textContent = "削除しています…";
+        try {
+          for (const f of targets) {
+            await api(`${API}/files/${f.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ trashed: true }) });
+            f.gone = true;
+          }
+          dlgMsg.textContent = `${targets.length}個のファイルをGoogleドライブのゴミ箱に移しました。`;
+        } catch (e) {
+          dlgMsg.classList.add("err");
+          dlgMsg.textContent = e.message || "削除できませんでした";
+        }
+        drawGroups(shown.filter((f) => !f.gone));
+      });
+      return del;
+    }
     async function openFile(f) {
       dlgMsg.classList.remove("err");
       dlgMsg.textContent = "開いています…";
       let obj = null;
-      try { obj = JSON.parse(await (await api(`${API}/files/${f.id}?alt=media`)).text()); } catch (e) { obj = null; }
+      try { obj = f.obj || JSON.parse(await (await api(`${API}/files/${f.id}?alt=media`)).text()); } catch (e) { obj = null; }
       dlg.hidden = true;
       if (obj && obj.kind === "progress") openProgressData(obj, f.name);
       else importProblemData(obj, f.name);
