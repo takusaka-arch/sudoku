@@ -467,7 +467,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.110</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.111</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -2081,6 +2081,7 @@ p.msg:empty { display: none; }
     { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
     { label: "2つの数字のペア", desc: "同じ2マスにしか入らない2つの数字の組を、組ごとに色分けします", run: () => showPairs(2) },
     { label: "3つの数字の組", desc: "同じ3マスにしか入らない3つの数字の組を、組ごとに色分けします", run: () => showPairs(3) },
+    { label: "Xウイング", desc: "2つの行（列）で長方形の角にしか入らない数字と、それで消せる候補を示します", run: () => showXWing() },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます", run: () => runHint(true) },
     { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
   ];
@@ -2232,6 +2233,62 @@ p.msg:empty { display: none; }
     });
     renderPad();
     workMsg.textContent = `ヒント：同じ色の${kk}つの数字（${found.length}組）は、その行・列・ブロックで、色の付いた${kk}マスにしか入りません。その${kk}マスのほかの候補は消せます。`;
+  }
+  // Xウイング: ある数字が、2つの行でどちらも同じ2列にしか入らないとき、その2列のほかの行の同じ数字は消せる（行と列を入れ替えても同じ）
+  // 消せる候補があるものだけを、4つの角を組ごとの色、消せる候補を赤い枠で示す
+  function showXWing() {
+    if (board.dataset.mode !== "solve") return;
+    markConflicts();
+    const cells = [...board.querySelectorAll(".cell")];
+    const val = (o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "");
+    const peers = (a, b) => a.dataset.row === b.dataset.row || a.dataset.col === b.dataset.col
+      || (Math.floor(a.dataset.row / 3) === Math.floor(b.dataset.row / 3) && Math.floor(a.dataset.col / 3) === Math.floor(b.dataset.col / 3));
+    const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
+      && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
+    const at = (r, c) => cells.find((o) => +o.dataset.row === r && +o.dataset.col === c);
+    const found = [];
+    for (const d of ["1", "2", "3", "4", "5", "6", "7", "8", "9"]) {
+      // byRow=true: 行で探して列から消す、false: 列で探して行から消す
+      for (const byRow of [true, false]) {
+        const cell = (line, k) => (byRow ? at(line, k) : at(k, line));
+        const two = [];
+        for (let line = 0; line < 9; line++) {
+          const ks = [];
+          for (let k = 0; k < 9; k++) if (can(cell(line, k), d)) ks.push(k);
+          if (ks.length === 2) two.push({ line, ks });
+        }
+        for (let i = 0; i < two.length; i++) for (let j = i + 1; j < two.length; j++) {
+          const a = two[i], b = two[j];
+          if (a.ks[0] !== b.ks[0] || a.ks[1] !== b.ks[1]) continue;
+          const gone = [];
+          for (let line = 0; line < 9; line++) {
+            if (line === a.line || line === b.line) continue;
+            for (const k of a.ks) if (can(cell(line, k), d)) gone.push(cell(line, k));
+          }
+          if (gone.length) found.push({ d, corners: [cell(a.line, a.ks[0]), cell(a.line, a.ks[1]), cell(b.line, b.ks[0]), cell(b.line, b.ks[1])], gone });
+        }
+      }
+    }
+    workMsg.classList.remove("err");
+    if (!found.length) {
+      workMsg.textContent = "ヒント：今はXウイングで消せる候補はありません。";
+      return;
+    }
+    hintsUsed++;
+    drawHints();
+    found.forEach((x, i) => {
+      const color = PAIR_COLORS[i % PAIR_COLORS.length];
+      for (const o of x.corners) {
+        const c = o.querySelector(`.cand[data-n="${x.d}"]`);
+        if (c.classList.contains("pgrp")) { c.classList.add("pgrp2"); c.style.setProperty("--pg2", color); continue; }
+        c.classList.add("pgrp");
+        c.style.setProperty("--pg", color);
+      }
+      for (const o of x.gone) o.querySelector(`.cand[data-n="${x.d}"]`).classList.add("hint");
+    });
+    renderPad();
+    const ds = [...new Set(found.map((x) => `「${x.d}」`))].join("");
+    workMsg.textContent = `ヒント：同じ色の4マスの${ds}がXウイングです（${found.length}組）。長方形の角の2行（または2列）で、その数字は角のマスにしか入らないので、赤い枠の同じ数字は消せます。`;
   }
   function runHint(full) {
     if (board.dataset.mode !== "solve") return;
@@ -2897,7 +2954,7 @@ p.msg:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
     ] },
     { title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字は黄色になります。\nもう一度${TAP}で止まります。` },
-    { title: "ヒント", text: "「ヒント」で4種類から選べます。\n①注目するマス\n②同じ2マスにしか入らない2つの数字の組\n③同じ3マスにしか入らない3つの数字の組\n④入る数字とその理由\n⑤でヒントの表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
+    { title: "ヒント", text: "「ヒント」で5種類から選べます。\n①注目するマス\n②同じ2マスにしか入らない2つの数字の組\n③同じ3マスにしか入らない3つの数字の組\n④Xウイング（長方形の角にしか入らない数字）\n⑤入る数字とその理由\n⑥でヒントの表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
     { title: "ボタン", text: "一つ戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する\nリセット：問題だけの最初の状態に戻す\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "保存とGoogleドライブ", text: "「この状態を保存」で、名前（最初は日時）を付けて保存します。\n・保存：この端末に保存。「保存した状態に戻す」でその時点に戻れます\n・ファイルに保存：別の日や別の端末で続きを解くときに使います\n\nGoogleドライブ欄にチェックを入れると、保存先がGoogleドライブになり、PCとスマホでやり取りできます（アプリ版・Web版のみ）。" },
     { title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
