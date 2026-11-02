@@ -272,6 +272,15 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .crop-inner { background: var(--paper); color: var(--ink); border-radius: 8px; padding: 14px; display: grid; gap: 10px; max-width: 100%; justify-items: center; }
 .crop-inner p { margin: 0; font-size: 0.9rem; line-height: 1.6; }
 .clear-inner { padding: 28px 36px; gap: 14px; text-align: center; }
+.gen-inner { width: min(100%, 420px); box-sizing: border-box; justify-items: stretch; }
+.gen-inner .gen-title { font-size: 1.1rem; font-weight: 700; }
+.gen-inner #gen-close { justify-self: center; }
+.gen-inner .msg:empty { display: none; }
+.gen-levels { display: grid; gap: 6px; }
+.gen-levels button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1rem var(--font-ui); cursor: pointer; }
+.gen-levels button small { font-weight: 500; font-size: 0.8rem; color: var(--muted); }
+.gen-levels button:hover { background: var(--hover); }
+.gen-levels button:disabled { opacity: 0.5; cursor: default; }
 .clear-inner .btn { justify-self: center; }
 .clear-inner .clear-title { font-size: 1.5rem; font-weight: 700; }
 .clear-inner .clear-time { font: 700 1.1rem var(--font-num); color: var(--muted); }
@@ -467,7 +476,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.111</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.112</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -475,6 +484,7 @@ p.msg:empty { display: none; }
     <p class="msg" id="file-msg" aria-live="polite"></p>
     <div class="row">
       <button type="button" class="btn" id="new">新しい問題を作る</button>
+      <button type="button" class="btn" id="gen-open">問題を自動で作る</button>
       <label class="btn sub filepick">問題を選択して開く
         <input type="file" id="import-file">
       </label>
@@ -594,6 +604,15 @@ p.msg:empty { display: none; }
       <button type="button" class="btn" id="tut-next">次へ</button>
       <button type="button" class="btn sub" id="tut-skip">閉じる</button>
     </div>
+  </div>
+</div>
+<div class="crop" id="gen-box" role="dialog" aria-modal="true" aria-labelledby="gen-title" hidden>
+  <div class="crop-inner gen-inner">
+    <p class="gen-title" id="gen-title">問題を自動で作る</p>
+    <p>レベルを選んでください。</p>
+    <div class="gen-levels" id="gen-levels"></div>
+    <p class="msg" id="gen-msg" aria-live="polite"></p>
+    <button type="button" class="btn sub" id="gen-close">閉じる</button>
   </div>
 </div>
 <div class="crop" id="clear" role="dialog" aria-modal="true" aria-labelledby="clear-msg" hidden>
@@ -2933,6 +2952,7 @@ p.msg:empty { display: none; }
     { title: "問題を作る：手で入力する", text: `小さな数字を${TAP}すると、問題の数字として入ります。まちがえたら、大きな数字を${TAP}して消します。\n全部入れたら「問題登録完了」を押します。`,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
+    { title: "問題を自動で作る", text: "「問題を自動で作る」でレベル（初級・中級・難問・最難関）を選ぶと、新しい問題を作って一覧に保存します。\n最難関は作るのに時間がかかるため、アプリを開いている間に裏で作り置きしています。" },
     { title: "問題を作る：写真から読み取る", text: `「写真から問題を読み取る」で、撮影・画像ファイル・貼り付けのどれかを選びます。\n四隅のオレンジの丸を盤の角に合わせて「読み取る」を押します。\n読み取った数字は写真と見比べて、まちがいを直してください。自信のない数字には「?」が付きます。\n\nコツ：真上から明るい場所で撮る`,
       tryPhoto: true },
     { title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
@@ -3139,6 +3159,359 @@ p.msg:empty { display: none; }
   document.getElementById("tut-prev").addEventListener("click", () => { if (tutIdx > 0) { tutIdx--; renderTut(); } });
   document.getElementById("tut-skip").addEventListener("click", () => { tutEl.hidden = true; });
   document.getElementById("tut-open").addEventListener("click", openTutorial);
+
+  // 問題を作る処理（裏の計算用 Worker でも、使えないときは画面側でも動く）
+  // self: postMessage / onmessage を持つもの。レベル 1=初級 2=中級 3=難問 4=最難関
+  function sudokuGen(self) {
+    const units = [];
+    for (let i = 0; i < 9; i++) {
+      units.push([...Array(9)].map((_, k) => i * 9 + k));
+      units.push([...Array(9)].map((_, k) => k * 9 + i));
+      units.push([...Array(9)].map((_, k) => (Math.floor(i / 3) * 3 + Math.floor(k / 3)) * 9 + (i % 3) * 3 + (k % 3)));
+    }
+    const rowOf = (i) => Math.floor(i / 9), colOf = (i) => i % 9, boxOf = (i) => Math.floor(i / 27) * 3 + Math.floor((i % 9) / 3);
+    const peers = [...Array(81)].map((_, i) => [...Array(81).keys()].filter((j) => j !== i && (rowOf(j) === rowOf(i) || colOf(j) === colOf(i) || boxOf(j) === boxOf(i))));
+    const ALL = 0x3fe;
+    const bits = (m) => { const r = []; for (let d = 1; d <= 9; d++) if (m & (1 << d)) r.push(d); return r; };
+    const pop = (m) => { let n = 0; while (m) { m &= m - 1; n++; } return n; };
+    const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+    // 答えの数を数える（limit 個見つけたら止める）
+    function count(g, limit) {
+      const row = new Array(9).fill(0), col = new Array(9).fill(0), box = new Array(9).fill(0);
+      const a = g.slice();
+      for (let i = 0; i < 81; i++) if (a[i]) {
+        const b = 1 << a[i];
+        if ((row[rowOf(i)] | col[colOf(i)] | box[boxOf(i)]) & b) return 0;
+        row[rowOf(i)] |= b; col[colOf(i)] |= b; box[boxOf(i)] |= b;
+      }
+      let n = 0;
+      (function rec() {
+        let best = -1, bm = 0, bc = 10;
+        for (let i = 0; i < 81; i++) if (!a[i]) {
+          const m = ALL & ~(row[rowOf(i)] | col[colOf(i)] | box[boxOf(i)]);
+          const c = pop(m);
+          if (c < bc) { bc = c; best = i; bm = m; if (c <= 1) break; }
+        }
+        if (best < 0) { n++; return; }
+        for (const d of bits(bm)) {
+          const b = 1 << d;
+          a[best] = d; row[rowOf(best)] |= b; col[colOf(best)] |= b; box[boxOf(best)] |= b;
+          rec();
+          a[best] = 0; row[rowOf(best)] &= ~b; col[colOf(best)] &= ~b; box[boxOf(best)] &= ~b;
+          if (n >= limit) return;
+        }
+      })();
+      return n;
+    }
+    // ランダムに埋まった正しい盤
+    function full() {
+      const a = new Array(81).fill(0);
+      (function rec(i) {
+        if (i === 81) return true;
+        const used = new Set(peers[i].map((p) => a[p]));
+        for (const d of shuffle([1, 2, 3, 4, 5, 6, 7, 8, 9])) {
+          if (used.has(d)) continue;
+          a[i] = d;
+          if (rec(i + 1)) return true;
+        }
+        a[i] = 0;
+        return false;
+      })(0);
+      return a;
+    }
+    // 人の解き方で解いて、必要だった一番難しい解き方のレベルを返す（解き切れなければ 4）
+    function grade(g) {
+      const v = g.slice(), cand = new Array(81).fill(ALL);
+      const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
+      for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
+      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { cand[i] &= ~m; return true; } return false; };
+      const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
+      // 初級: そのマスに入る数字が1つだけ／その行・列・ブロックでその数字が入るマスが1つだけ
+      function singles() {
+        for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 1) { place(i, bits(cand[i])[0]); return true; }
+        for (const u of units) for (let d = 1; d <= 9; d++) {
+          if (u.some((i) => v[i] === d)) continue;
+          const w = where(u, d);
+          if (w.length === 1) { place(w[0], d); return true; }
+        }
+        return false;
+      }
+      // 中級: 2つの数字のペア（2マスに同じ2つの候補だけ／2つの数字が同じ2マスにしか入らない）
+      function pairs() {
+        let ch = false;
+        for (const u of units) {
+          const e = u.filter((i) => !v[i]);
+          for (const a of e) if (pop(cand[a]) === 2) for (const b of e) if (b > a && cand[b] === cand[a]) {
+            for (const i of e) if (i !== a && i !== b) ch = elim(i, cand[a]) || ch;
+          }
+          if (ch) return true;
+          for (let d1 = 1; d1 <= 9; d1++) for (let d2 = d1 + 1; d2 <= 9; d2++) {
+            const w1 = where(u, d1), w2 = where(u, d2);
+            if (w1.length === 2 && w2.length === 2 && w1[0] === w2[0] && w1[1] === w2[1]) {
+              const keep = (1 << d1) | (1 << d2);
+              for (const i of w1) ch = elim(i, ALL & ~keep) || ch;
+            }
+          }
+          if (ch) return true;
+        }
+        return false;
+      }
+      // 難問: ブロックと行・列の関係、3つの数字の組、Xウイング
+      function hard() {
+        let ch = false;
+        for (let b = 0; b < 9; b++) {
+          const box = units[b * 3 + 2];
+          for (let d = 1; d <= 9; d++) {
+            const w = where(box, d);
+            if (w.length < 2) continue;
+            for (const [f, k] of [[rowOf, 0], [colOf, 1]]) {
+              if (!w.every((i) => f(i) === f(w[0]))) continue;
+              const line = units[f(w[0]) * 3 + k];
+              for (const i of line) if (!box.includes(i)) ch = elim(i, 1 << d) || ch;
+            }
+          }
+        }
+        if (ch) return true;
+        for (let L = 0; L < 9; L++) for (const k of [0, 1]) {
+          const line = units[L * 3 + k];
+          for (let d = 1; d <= 9; d++) {
+            const w = where(line, d);
+            if (w.length < 2 || !w.every((i) => boxOf(i) === boxOf(w[0]))) continue;
+            for (const i of units[boxOf(w[0]) * 3 + 2]) if (!line.includes(i)) ch = elim(i, 1 << d) || ch;
+          }
+        }
+        if (ch) return true;
+        for (const u of units) {
+          const e = u.filter((i) => !v[i] && pop(cand[i]) <= 3);
+          for (let x = 0; x < e.length; x++) for (let y = x + 1; y < e.length; y++) for (let z = y + 1; z < e.length; z++) {
+            const m = cand[e[x]] | cand[e[y]] | cand[e[z]];
+            if (pop(m) !== 3) continue;
+            for (const i of u) if (i !== e[x] && i !== e[y] && i !== e[z]) ch = elim(i, m) || ch;
+          }
+          if (ch) return true;
+          const ds = [];
+          for (let d = 1; d <= 9; d++) { const w = where(u, d); if (w.length >= 2 && w.length <= 3) ds.push([d, w]); }
+          for (let x = 0; x < ds.length; x++) for (let y = x + 1; y < ds.length; y++) for (let z = y + 1; z < ds.length; z++) {
+            const cells = new Set([...ds[x][1], ...ds[y][1], ...ds[z][1]]);
+            if (cells.size !== 3) continue;
+            const keep = (1 << ds[x][0]) | (1 << ds[y][0]) | (1 << ds[z][0]);
+            for (const i of cells) ch = elim(i, ALL & ~keep) || ch;
+          }
+          if (ch) return true;
+        }
+        // Xウイング（行で見つけて列から消す／列で見つけて行から消す）
+        for (let d = 1; d <= 9; d++) for (const k of [0, 1]) {
+          const lines = [];
+          for (let L = 0; L < 9; L++) {
+            const w = where(units[L * 3 + k], d);
+            if (w.length === 2) lines.push({ L, at: w.map(k ? rowOf : colOf) });
+          }
+          for (let x = 0; x < lines.length; x++) for (let y = x + 1; y < lines.length; y++) {
+            const A = lines[x], B = lines[y];
+            if (A.at[0] !== B.at[0] || A.at[1] !== B.at[1]) continue;
+            for (const o of A.at) for (const i of units[o * 3 + (k ? 0 : 1)]) {
+              const L = k ? colOf(i) : rowOf(i);
+              if (L !== A.L && L !== B.L) ch = elim(i, 1 << d) || ch;
+            }
+          }
+          if (ch) return true;
+        }
+        // ソードフィッシュ（Xウイングの3行・3列版）
+        for (let d = 1; d <= 9; d++) for (const k of [0, 1]) {
+          const lines = [];
+          for (let L = 0; L < 9; L++) {
+            const w = where(units[L * 3 + k], d);
+            if (w.length >= 2 && w.length <= 3) lines.push({ L, at: w.map(k ? rowOf : colOf) });
+          }
+          for (let x = 0; x < lines.length; x++) for (let y = x + 1; y < lines.length; y++) for (let z = y + 1; z < lines.length; z++) {
+            const at = new Set([...lines[x].at, ...lines[y].at, ...lines[z].at]);
+            if (at.size !== 3) continue;
+            const own = [lines[x].L, lines[y].L, lines[z].L];
+            for (const o of at) for (const i of units[o * 3 + (k ? 0 : 1)]) {
+              if (!own.includes(k ? colOf(i) : rowOf(i))) ch = elim(i, 1 << d) || ch;
+            }
+          }
+          if (ch) return true;
+        }
+        // XYウイング: 候補が2つのマス3つ（XY・XZ・YZ）で、XYが両方と同じ単位にあれば、XZとYZの両方から見えるマスのZを消せる
+        const bi = [...Array(81).keys()].filter((i) => !v[i] && pop(cand[i]) === 2);
+        const sees = (a, b) => peers[a].includes(b);
+        for (const p of bi) {
+          const [x, y] = bits(cand[p]);
+          const wa = bi.filter((q) => q !== p && sees(p, q) && (cand[q] & (1 << x)) && !(cand[q] & (1 << y)));
+          const wb = bi.filter((q) => q !== p && sees(p, q) && (cand[q] & (1 << y)) && !(cand[q] & (1 << x)));
+          for (const a of wa) for (const b of wb) {
+            const zm = cand[a] & ~(1 << x);
+            if (zm !== (cand[b] & ~(1 << y))) continue;
+            for (let i = 0; i < 81; i++) if (i !== a && i !== b && i !== p && sees(i, a) && sees(i, b)) ch = elim(i, zm) || ch;
+            if (ch) return true;
+          }
+        }
+        return false;
+      }
+      let level = 1;
+      for (;;) {
+        if (v.every((x) => x)) return level;
+        for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) return 4;
+        if (singles()) continue;
+        if (pairs()) { level = Math.max(level, 2); continue; }
+        if (hard()) { level = Math.max(level, 3); continue; }
+        return 4;
+      }
+    }
+    // 1回だけ作ってみる。レベルが合えば問題（81桁の文字列）、合わなければ null
+    const FLOOR = { 1: 36, 2: 28, 3: 24, 4: 17 };
+    function attempt(level) {
+      const g = full();
+      let left = 81;
+      for (const i of shuffle([...Array(81).keys()])) {
+        if (left <= FLOOR[level]) break;
+        const keep = g[i];
+        g[i] = 0;
+        if (count(g, 2) !== 1 || (level < 4 && grade(g) > level)) g[i] = keep;
+        else left--;
+      }
+      return grade(g) === level ? g.join("") : null;
+    }
+    // 頼まれた問題を先に作り、手が空いたら最難関を探してストックに回す
+    const jobs = [];
+    let hunt = false, busy = false;
+    function tick() {
+      busy = false;
+      const job = jobs[0];
+      if (job) {
+        const p = attempt(job.level);
+        if (p) { jobs.shift(); self.postMessage({ type: "made", id: job.id, level: job.level, givens: p }); }
+      } else if (hunt) {
+        const p = attempt(4);
+        if (p) self.postMessage({ type: "stock", givens: p });
+      } else return;
+      busy = true;
+      setTimeout(tick, 0);
+    }
+    const kick = () => { if (!busy) { busy = true; setTimeout(tick, 0); } };
+    self.onmessage = (e) => {
+      const m = e.data || {};
+      if (m.type === "make") jobs.push({ id: m.id, level: m.level });
+      else if (m.type === "cancel") { const k = jobs.findIndex((j) => j.id === m.id); if (k >= 0) jobs.splice(k, 1); }
+      else if (m.type === "hunt") hunt = !!m.on;
+      kick();
+    };
+    return { grade, count, attempt };
+  }
+
+  // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
+  const GEN_STOCK_KEY = "sudoku-gen-stock", GEN_STOCK_MAX = 10;
+  const genLevels = [
+    { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
+    { label: "中級", desc: "2つの数字のペアなどを使うと解けます" },
+    { label: "難問", desc: "3つの数字の組、ブロックと行・列の関係、Xウイングなどが必要です" },
+    { label: "最難関", desc: "解き方だけでは最後まで進めず、仮に置いて矛盾したら消す、が必要です" },
+  ];
+  const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");
+  const genStock = (list) => {
+    try {
+      if (list) localStorage.setItem(GEN_STOCK_KEY, JSON.stringify(list.slice(0, GEN_STOCK_MAX)));
+      const a = JSON.parse(localStorage.getItem(GEN_STOCK_KEY) || "[]");
+      return Array.isArray(a) ? a.filter((g) => /^[0-9]{81}$/.test(g)) : [];
+    } catch (e) { return []; }
+  };
+  // 裏の計算（Worker）。使えないときは画面側で少しずつ計算する
+  let genWorker = null;
+  const genHandlers = [];
+  function onGen(m) { genHandlers.forEach((h) => h(m)); }
+  const sent = [];  // Worker が途中で使えなくなったときに、画面側で同じ頼みごとをやり直すため
+  function genOnPage() {
+    const fake = { postMessage: (m) => setTimeout(() => onGen(m), 0), onmessage: null };
+    sudokuGen(fake);
+    genWorker = { postMessage: (m) => setTimeout(() => fake.onmessage({ data: m }), 0) };
+    sent.forEach((m) => genWorker.postMessage(m));
+  }
+  try {
+    const w = new Worker(URL.createObjectURL(new Blob([`(${sudokuGen})(self)`], { type: "text/javascript" })));
+    w.onmessage = (e) => onGen(e.data);
+    w.onerror = () => { w.terminate(); genOnPage(); };
+    genWorker = { postMessage: (m) => { sent.push(m); if (sent.length > 50) sent.shift(); w.postMessage(m); } };
+  } catch (e) { genOnPage(); }
+  const genHunt = () => genWorker.postMessage({ type: "hunt", on: genStock().length < GEN_STOCK_MAX });
+  genHandlers.push((m) => {
+    if (m.type !== "stock") return;
+    const list = genStock();
+    if (list.length < GEN_STOCK_MAX && !list.includes(m.givens)) genStock([...list, m.givens]);
+    genHunt();
+    drawGenLevels();
+  });
+  let genWaiting = null, genSeq = 0;
+  function drawGenLevels() {
+    genLevelsEl.textContent = "";
+    genLevels.forEach((lv, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = lv.label;
+      const sm = document.createElement("small");
+      sm.textContent = lv.desc + (i === 3 ? `（作り置き ${genStock().length}問）` : "");
+      b.appendChild(sm);
+      b.disabled = !!genWaiting;
+      b.addEventListener("click", () => makeProblem(i + 1));
+      genLevelsEl.appendChild(b);
+    });
+  }
+  function finishGen(level, givens) {
+    genWaiting = null;
+    genBox.hidden = true;
+    const d = new Date(), p2 = (n) => String(n).padStart(2, "0");
+    const base = `${genLevels[level - 1].label} ${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${p2(d.getMinutes())}`;
+    const list = loadAll();
+    let name = base;
+    for (let i = 2; list.some((q) => q.name === name); i++) name = `${base} (${i})`;
+    const p = { name, givens, saved: d.toISOString() };
+    list.push(p);
+    saveAll(list);
+    openProblem(p);
+  }
+  function makeProblem(level) {
+    if (level === 4) {
+      const list = genStock();
+      if (list.length) {
+        genStock(list.slice(1));
+        genHunt();
+        return finishGen(4, list[0]);
+      }
+    }
+    const id = ++genSeq;
+    genWaiting = { id, level };
+    genMsg.classList.remove("err");
+    genMsg.textContent = level === 4
+      ? "最難関の問題を作っています。見つかるまで時間がかかることがあります（この画面のままお待ちください）…"
+      : `${genLevels[level - 1].label}の問題を作っています…`;
+    drawGenLevels();
+    genWorker.postMessage(level === 4 ? { type: "hunt", on: true } : { type: "make", id, level });
+  }
+  genHandlers.push((m) => {
+    if (!genWaiting) return;
+    if (m.type === "made" && m.id === genWaiting.id) return finishGen(m.level, m.givens);
+    // 最難関を待っている間に見つかったら、ストックから取り出して開く
+    if (m.type === "stock" && genWaiting.level === 4) {
+      const list = genStock();
+      if (list.length) { genStock(list.slice(1)); genHunt(); finishGen(4, list[0]); }
+    }
+  });
+  function closeGen() {
+    if (genWaiting && genWaiting.level !== 4) genWorker.postMessage({ type: "cancel", id: genWaiting.id });
+    genWaiting = null;
+    genMsg.textContent = "";
+    genBox.hidden = true;
+  }
+  document.getElementById("gen-open").addEventListener("click", () => {
+    genMsg.textContent = "";
+    drawGenLevels();
+    genBox.hidden = false;
+    genLevelsEl.querySelector("button").focus();
+  });
+  document.getElementById("gen-close").addEventListener("click", closeGen);
+  // アプリを開いている間は、最難関の作り置きを続ける（10問たまったら止める）
+  genHunt();
 
   showStart();
   // 前回、解いている途中で閉じた場合は一時停止の状態で続きを開く
