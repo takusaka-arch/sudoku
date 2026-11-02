@@ -81,7 +81,7 @@ main {
   main { grid-template-columns: minmax(0, 1fr); }
 }
 .head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-h1 .ver { font: 500 0.7rem var(--font-num); color: var(--muted); letter-spacing: 0; }
+h1 .ver { font: 500 0.7rem var(--font-num); color: var(--muted); letter-spacing: 0; display: inline-block; padding: 8px 6px; margin: -8px -6px; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 h1 { font-size: 1.35rem; font-weight: 700; margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
 p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 
@@ -467,7 +467,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.109</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.110</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1917,6 +1917,15 @@ p.msg:empty { display: none; }
     if (!(e.ctrlKey && e.shiftKey && e.altKey && (e.key === "Delete" || e.key === "Backspace" || e.code === "Delete" || e.code === "Backspace"))) return;
     if (board.dataset.mode !== "solve") return;
     e.preventDefault();
+    eliminateAll();
+  });
+  // 同じ隠し機能: タイトル横の「ver.」を5回続けて押す（スマホ・PC共通）
+  let verTaps = 0, verTimer = null;
+  document.querySelector("h1 .ver").addEventListener("click", () => {
+    clearTimeout(verTimer);
+    verTimer = setTimeout(() => { verTaps = 0; }, 700);
+    if (++verTaps < 5) return;
+    verTaps = 0;
     eliminateAll();
   });
   function undo() {
