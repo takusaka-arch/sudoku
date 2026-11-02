@@ -459,7 +459,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.102</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.103</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1887,9 +1887,18 @@ p.msg:empty { display: none; }
       clearAutoSave();
       // 完成した盤と解いた順番を残し、一覧の「完成を見る」からあとで開けるようにする
       try {
+        const rec = progressObj();
         const all = JSON.parse(localStorage.getItem(SOLVED_KEY) || "{}");
-        all[progressObj().givens] = progressObj();
+        all[rec.givens] = rec;
         localStorage.setItem(SOLVED_KEY, JSON.stringify(all));
+        // 回答中のファイルやGoogleドライブから開いた問題は一覧に無いので、一覧に加えて「完成を見る」を出せるようにする
+        const list = loadAll();
+        if (!list.some((q) => q.givens === rec.givens)) {
+          let name = currentName || "完成した問題";
+          for (let i = 2; list.some((q) => q.name === name); i++) name = `${currentName || "完成した問題"} (${i})`;
+          list.push({ name, givens: rec.givens, saved: new Date().toISOString() });
+          saveAll(list);
+        }
       } catch (e) {}
     }
     selectCell(null);
