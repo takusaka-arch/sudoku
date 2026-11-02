@@ -275,6 +275,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .gen-inner { width: min(100%, 420px); box-sizing: border-box; justify-items: stretch; }
 .gen-inner .gen-title { font-size: 1.1rem; font-weight: 700; }
 .gen-inner #gen-close { justify-self: center; }
+.gen-inner .gen-sub { margin: 6px 0 0; font-weight: 700; }
 .gen-inner .msg:empty { display: none; }
 .gen-levels { display: grid; gap: 6px; }
 .gen-levels button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1rem var(--font-ui); cursor: pointer; }
@@ -476,7 +477,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.112</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.113</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -484,7 +485,6 @@ p.msg:empty { display: none; }
     <p class="msg" id="file-msg" aria-live="polite"></p>
     <div class="row">
       <button type="button" class="btn" id="new">新しい問題を作る</button>
-      <button type="button" class="btn" id="gen-open">問題を自動で作る</button>
       <label class="btn sub filepick">問題を選択して開く
         <input type="file" id="import-file">
       </label>
@@ -608,8 +608,9 @@ p.msg:empty { display: none; }
 </div>
 <div class="crop" id="gen-box" role="dialog" aria-modal="true" aria-labelledby="gen-title" hidden>
   <div class="crop-inner gen-inner">
-    <p class="gen-title" id="gen-title">問題を自動で作る</p>
-    <p>レベルを選んでください。</p>
+    <p class="gen-title" id="gen-title">新しい問題を作る</p>
+    <div class="gen-levels"><button type="button" id="gen-self">自分で入力する<small>手で数字を入れるか、写真から読み取ります</small></button></div>
+    <p class="gen-sub">自動で作成する（レベルを選ぶ）</p>
     <div class="gen-levels" id="gen-levels"></div>
     <p class="msg" id="gen-msg" aria-live="polite"></p>
     <button type="button" class="btn sub" id="gen-close">閉じる</button>
@@ -2920,7 +2921,8 @@ p.msg:empty { display: none; }
     showReady(p.givens.replace(/0/g, "").length);
     markConflicts();
   }
-  document.getElementById("new").addEventListener("click", () => {
+  // 「新しい問題を作る」→「自分で入力する」: 手で入力するか、写真から読み取る
+  function startRegister() {
     clearBoard();
     currentName = "";
     board.dataset.mode = "register";
@@ -2932,7 +2934,7 @@ p.msg:empty { display: none; }
     pause.hidden = true;
     showRegister();
     pname.focus();
-  });
+  }
   document.getElementById("back").addEventListener("click", showStart);
   // ---- 使い方ガイド: 小さな盤で実際にタップを試しながら、1つずつ説明する ----
   const TUT_KEY = "sudoku-tutorial-hide";
@@ -2948,11 +2950,11 @@ p.msg:empty { display: none; }
   const TAP3 = isMouse ? "トリプルクリック" : "トリプルタップ";
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
-    { title: "ようこそ", text: `使い方を、実際に試しながら説明します。\n\n1. 「新しい問題を作る」で問題を入れる\n2. 「問題登録完了」→「回答スタート」\n3. 小さな数字（候補）を${TAP}して解く` },
+    { title: "ようこそ", text: `使い方を、実際に試しながら説明します。\n\n1. 「新しい問題を作る」で問題を入れる（自分で入力するか、自動で作成）\n2. 「問題登録完了」→「回答スタート」\n3. 小さな数字（候補）を${TAP}して解く` },
     { title: "問題を作る：手で入力する", text: `小さな数字を${TAP}すると、問題の数字として入ります。まちがえたら、大きな数字を${TAP}して消します。\n全部入れたら「問題登録完了」を押します。`,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
-    { title: "問題を自動で作る", text: "「問題を自動で作る」でレベル（初級・中級・難問・最難関）を選ぶと、新しい問題を作って一覧に保存します。\n最難関は作るのに時間がかかるため、アプリを開いている間に裏で作り置きしています。" },
+    { title: "問題を自動で作る", text: "「新しい問題を作る」→「自動で作成する」でレベル（初級・中級・難問・最難関）を選ぶと、新しい問題を作って一覧に保存します。\n最難関は作るのに時間がかかるため、アプリを開いている間に裏で作り置きしています。" },
     { title: "問題を作る：写真から読み取る", text: `「写真から問題を読み取る」で、撮影・画像ファイル・貼り付けのどれかを選びます。\n四隅のオレンジの丸を盤の角に合わせて「読み取る」を押します。\n読み取った数字は写真と見比べて、まちがいを直してください。自信のない数字には「?」が付きます。\n\nコツ：真上から明るい場所で撮る`,
       tryPhoto: true },
     { title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
@@ -3117,7 +3119,7 @@ p.msg:empty { display: none; }
       return;
     }
     tutEl.hidden = true;
-    if (board.dataset.mode === "start") document.getElementById("new").click();
+    if (board.dataset.mode === "start") startRegister();
     pname.value = "見本の問題";
     trialBox.hidden = false;
     const bin = atob(SAMPLE_PHOTO.split(",")[1]);
@@ -3503,7 +3505,8 @@ p.msg:empty { display: none; }
     genMsg.textContent = "";
     genBox.hidden = true;
   }
-  document.getElementById("gen-open").addEventListener("click", () => {
+  document.getElementById("gen-self").addEventListener("click", () => { closeGen(); startRegister(); });
+  document.getElementById("new").addEventListener("click", () => {
     genMsg.textContent = "";
     drawGenLevels();
     genBox.hidden = false;
