@@ -459,7 +459,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.101</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.102</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -526,7 +526,6 @@ p.msg:empty { display: none; }
     <button type="button" class="btn" id="go" hidden>回答スタート</button>
     <button type="button" class="btn" id="pause" hidden>一時停止</button>
     <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
-    <button type="button" class="btn sub" id="hint-clear" hidden>ヒントを消す</button>
     <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
     <button type="button" class="btn" id="replay" hidden>解いた順に再生</button>
     <button type="button" id="reset" hidden>リセット</button>
@@ -676,8 +675,6 @@ p.msg:empty { display: none; }
     if (msg.textContent.startsWith("ヒント")) msg.textContent = "";
     board.querySelectorAll(".cand.hint, .cand.pair, .cell.hint-cell, .cell.pair-cell, .cell.two-cell").forEach((s) => s.classList.remove("hint", "pair", "hint-cell", "pair-cell", "two-cell"));
     board.querySelectorAll(".cand.pgrp").forEach((s) => { s.classList.remove("pgrp", "pgrp2"); s.style.removeProperty("--pg"); s.style.removeProperty("--pg2"); });
-    const hc = document.getElementById("hint-clear");
-    if (hc) hc.hidden = true;
     if (typeof renderPad === "function") renderPad();
   }
   // 同じ行・列・3x3ブロックに同じ数字があるマスを赤くする
@@ -1170,7 +1167,6 @@ p.msg:empty { display: none; }
     snapOpen.hidden = true;
     closeSnapUI();
     hintBtn.hidden = true;
-    document.getElementById("hint-clear").hidden = true;
     document.getElementById("hint-menu").hidden = true;
     viewBtn.hidden = true;
     document.getElementById("view-menu").hidden = true;
@@ -1718,7 +1714,6 @@ p.msg:empty { display: none; }
     snapOpen.hidden = true;
     closeSnapUI();
     hintBtn.hidden = true;
-    document.getElementById("hint-clear").hidden = true;
     document.getElementById("hint-menu").hidden = true;
     viewBtn.hidden = true;
     document.getElementById("view-menu").hidden = true;
@@ -1902,7 +1897,6 @@ p.msg:empty { display: none; }
     note.textContent = "「リセット」で最初から解き直せます。";
     pause.hidden = true;
     hintBtn.hidden = true;
-    document.getElementById("hint-clear").hidden = true;
     document.getElementById("hint-menu").hidden = true;
     viewBtn.hidden = true;
     document.getElementById("view-menu").hidden = true;
@@ -1992,6 +1986,7 @@ p.msg:empty { display: none; }
     { label: "候補が2つのマス", desc: "青い候補が2つだけのマスに色を付けます", run: () => showTwoCells() },
     { label: "2つの数字のペア", desc: "同じ2マスにしか入らない2つの数字の組を、組ごとに色分けします", run: () => showPairs() },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます", run: () => runHint(true) },
+    { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
   ];
   const hintMenu = document.getElementById("hint-menu");
   hintKinds.forEach((k, i) => {
@@ -2005,13 +2000,9 @@ p.msg:empty { display: none; }
       closeHintMenu();
       clearHints();
       k.run();
-      // 色か「ヒント…」のメッセージが出ていれば、消すボタンを出す
-      const shown = board.querySelector(".cand.hint, .cand.pair, .cand.pgrp, .cell.hint-cell, .cell.pair-cell, .cell.two-cell") || workMsg.textContent.startsWith("ヒント");
-      document.getElementById("hint-clear").hidden = !shown;
     });
     hintMenu.appendChild(b);
   });
-  document.getElementById("hint-clear").addEventListener("click", () => { clearHints(); hintBtn.focus(); });
   function closeHintMenu() {
     hintMenu.hidden = true;
     hintBtn.setAttribute("aria-expanded", "false");
@@ -2733,7 +2724,7 @@ p.msg:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
     ] },
     { title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字は黄色になります。\nもう一度${TAP}で止まります。` },
-    { title: "ヒント", text: "「ヒント」で4種類から選べます。\n①注目するマス\n②青い候補が2つのマス\n③同じ2マスにしか入らない2つの数字の組\n④入る数字とその理由\n\n使った回数はタイマーの右に出ます。" },
+    { title: "ヒント", text: "「ヒント」で4種類から選べます。\n①注目するマス\n②青い候補が2つのマス\n③同じ2マスにしか入らない2つの数字の組\n④入る数字とその理由\n⑤でヒントの表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
     { title: "ボタン", text: "一つ戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する\nリセット：問題だけの最初の状態に戻す\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
     { title: "保存とGoogleドライブ", text: "「この状態を保存」で、名前（最初は日時）を付けて保存します。\n・保存：この端末に保存。「保存した状態に戻す」でその時点に戻れます\n・ファイルに保存：別の日や別の端末で続きを解くときに使います\n\nGoogleドライブ欄にチェックを入れると、保存先がGoogleドライブになり、PCとスマホでやり取りできます（アプリ版・Web版のみ）。" },
     { title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
