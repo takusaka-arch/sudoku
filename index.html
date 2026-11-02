@@ -459,7 +459,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.103</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.104</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1738,7 +1738,24 @@ p.msg:empty { display: none; }
     renderList();
     updatePhoto();
   }
+  // 完成の記録があるのに一覧に無い問題（ver.103 より前に、回答中のファイルやドライブから開いて完成させたもの）を一覧に加える
+  function addSolvedToList() {
+    let solved = {};
+    try { solved = JSON.parse(localStorage.getItem("sudoku-solved") || "{}"); } catch (e) {}
+    const list = loadAll();
+    let added = false;
+    for (const [givens, rec] of Object.entries(solved)) {
+      if (!/^[0-9]{81}$/.test(givens) || list.some((q) => q.givens === givens)) continue;
+      const base = String(rec.name || "").trim().slice(0, 40) || "完成した問題";
+      let name = base;
+      for (let i = 2; list.some((q) => q.name === name); i++) name = `${base} (${i})`;
+      list.push({ name, givens, saved: rec.saved || new Date().toISOString() });
+      added = true;
+    }
+    if (added) saveAll(list);
+  }
   function renderList() {
+    addSolvedToList();
     const list = loadAll().sort((a, b) => (b.saved || "").localeCompare(a.saved || ""));
     listEl.innerHTML = "";
     document.getElementById("empty").hidden = list.length > 0;
