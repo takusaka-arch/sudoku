@@ -261,6 +261,14 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
   padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
 }
 .crop[hidden] { display: none; }
+/* 右クリック・長押しのメニュー */
+.ctx { position: fixed; z-index: 60; display: grid; gap: 4px; padding: 6px; min-width: 200px; max-width: calc(100vw - 16px); box-sizing: border-box; background: var(--paper); color: var(--ink); border: 1.5px solid var(--line-cell); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); }
+.ctx[hidden] { display: none; }
+.ctx p { margin: 2px 6px 4px; font-size: 0.8rem; color: var(--muted); }
+.ctx button { font: 500 0.95rem var(--font-ui); text-align: left; padding: 10px 12px; border: none; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; }
+.ctx button:hover, .ctx button:focus-visible { background: var(--hover); outline: none; }
+.ctx button.cancel { color: var(--muted); }
+#board, #pad { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .crop-inner { background: var(--paper); color: var(--ink); border-radius: 8px; padding: 14px; display: grid; gap: 10px; max-width: 100%; justify-items: center; }
 .crop-inner p { margin: 0; font-size: 0.9rem; line-height: 1.6; }
 .clear-inner { padding: 28px 36px; gap: 14px; text-align: center; }
@@ -449,8 +457,9 @@ p.msg:empty { display: none; }
     <div class="keys" id="keys"></div>
     <p class="note" id="pad-note"></p>
   </div>
+  <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.99</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.100</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -938,8 +947,8 @@ p.msg:empty { display: none; }
     }
     padNote.textContent = mode === "register"
       ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
-      : given ? "問題の数字は変えられません。この数字をトリプルタップすると、同じ行・列・ブロックの同じ数字の候補を消す・戻すができます。"
-      : "1回タップ：候補（青）の選択・解除　ダブルタップ：確定候補にする・戻す　トリプルタップ：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（問題の数字・確定候補をトリプルタップ：その行・列・ブロックの同じ数字を消す・戻す）";
+      : given ? "問題の数字は変えられません。この数字をトリプルタップ（または長押しでメニュー）すると、同じ行・列・ブロックの同じ数字の候補を消す・戻すができます。"
+      : "1回タップ：候補（青）の選択・解除　ダブルタップ：確定候補にする・戻す　トリプルタップ：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（問題の数字・確定候補をトリプルタップ：その行・列・ブロックの同じ数字を消す・戻す）　長押し：メニューから選ぶ";
   }
   let lastTap = { key: null, t: 0 };
   pad.addEventListener("click", (e) => {
@@ -954,6 +963,92 @@ p.msg:empty { display: none; }
     countTap(cand, sel);
   });
   phoneMQ.addEventListener?.("change", renderPad);
+
+  // 右クリック（スマホは長押し）: ダブル・トリプルが難しいときに、動作をメニューから選ぶ
+  const ctx = document.getElementById("ctx");
+  function closeCtx() { ctx.hidden = true; }
+  function openCtx(target, cell, x, y) {
+    if (board.dataset.mode !== "solve" || !cell) return false;
+    flushTap();
+    const big = cell.classList.contains("given") || cell.classList.contains("tent");
+    if (!big && !target.classList.contains("cand")) return false;
+    const n = big ? cell.dataset.value || cell.querySelector(".big").textContent : target.dataset.n;
+    const t = big ? cell.querySelector(".big") : target;
+    const items = cell.classList.contains("given") ? [[`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
+      : cell.classList.contains("tent") ? [[`確定候補 ${n} を元に戻す`, 2], [`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
+      : target.classList.contains("off") ? [[`消した ${n} を戻す`, 3]]
+      : [[target.classList.contains("pick") ? `候補 ${n} を外す` : `${n} を候補（青）にする`, 1], [`${n} を確定候補にする`, 2], [`${n} を消す`, 3]];
+    ctx.textContent = "";
+    const head = document.createElement("p");
+    head.textContent = `${+cell.dataset.row + 1}行${+cell.dataset.col + 1}列`;
+    ctx.appendChild(head);
+    for (const [label, k] of items) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "menuitem");
+      b.textContent = label;
+      b.addEventListener("click", () => { closeCtx(); if (board.dataset.mode === "solve") runTap(t, cell, k); });
+      ctx.appendChild(b);
+    }
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "cancel";
+    cancel.textContent = "キャンセル";
+    cancel.addEventListener("click", closeCtx);
+    ctx.appendChild(cancel);
+    ctx.hidden = false;
+    const w = ctx.offsetWidth, h = ctx.offsetHeight;
+    ctx.style.left = `${Math.max(8, Math.min(x, innerWidth - w - 8))}px`;
+    ctx.style.top = `${Math.max(8, Math.min(y, innerHeight - h - 8))}px`;
+    ctx.querySelector("button").focus({ preventScroll: true });
+    return true;
+  }
+  // 盤・パッドで押した場所から、対象の数字とマスを決める
+  function ctxTarget(el) {
+    const k = el.closest("#pad .key");
+    if (k) return sel && !k.disabled ? [sel.classList.contains("given") ? sel.querySelector(".big") : sel.querySelector(`.cand[data-n="${k.dataset.n}"]`), sel] : null;
+    const cell = el.closest("#board .cell");
+    return cell ? [el.closest(".cand, .big") || el, cell] : null;
+  }
+  let longPressed = 0;
+  for (const area of [board, pad]) {
+    area.addEventListener("contextmenu", (e) => {
+      if (board.dataset.mode !== "solve") return;
+      e.preventDefault();
+      if (Date.now() - longPressed < 1000) return;  // 長押しですでに開いている
+      const tg = ctxTarget(e.target);
+      if (tg) openCtx(tg[0], tg[1], e.clientX, e.clientY);
+    });
+    let press = null;
+    area.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" || board.dataset.mode !== "solve") return;
+      const x = e.clientX, y = e.clientY, el = e.target;
+      clearTimeout(press?.timer);
+      press = { x, y, timer: setTimeout(() => {
+        press = null;
+        const tg = ctxTarget(el);
+        if (!tg) return;
+        if (area === board && isPhone() && tg[1] !== sel) selectCell(tg[1]);
+        if (openCtx(tg[0], tg[1], x, y)) { longPressed = Date.now(); navigator.vibrate?.(15); }
+      }, 500) };
+    });
+    const cancelPress = (e) => {
+      if (!press) return;
+      if (e.type === "pointermove" && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 10) return;
+      clearTimeout(press.timer);
+      press = null;
+    };
+    for (const ev of ["pointerup", "pointercancel", "pointermove"]) area.addEventListener(ev, cancelPress);
+    // 長押しのあとに来るタップは数えない
+    area.addEventListener("click", (e) => {
+      if (Date.now() - longPressed < 1000) { e.stopImmediatePropagation(); e.preventDefault(); }
+    }, true);
+  }
+  document.addEventListener("pointerdown", (e) => {
+    if (!ctx.hidden && !ctx.contains(e.target) && Date.now() - longPressed > 600) closeCtx();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !ctx.hidden) closeCtx(); });
+  addEventListener("scroll", () => { if (Date.now() - longPressed > 600) closeCtx(); }, { passive: true });
 
   // 問題登録完了: この時点で入っている数字を問題（変更不可）として確定する
   const done = document.getElementById("done");
@@ -1078,7 +1173,7 @@ p.msg:empty { display: none; }
     board.dataset.mode = "solve";
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
     const [t1, t2, t3] = matchMedia("(hover: hover) and (pointer: fine)").matches ? ["1回クリック", "ダブルクリック", "トリプルクリック"] : ["1回タップ", "ダブルタップ", "トリプルタップ"];
-    note.textContent = `小さな数字を ${t1}：候補（青）の選択・解除　${t2}：確定候補にする（大きな数字を${t2}で戻す）　${t3}：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（問題の数字・確定候補を${t3}：その行・列・ブロックの同じ数字を消す・戻す）`;
+    note.textContent = `小さな数字を ${t1}：候補（青）の選択・解除　${t2}：確定候補にする（大きな数字を${t2}で戻す）　${t3}：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（問題の数字・確定候補を${t3}：その行・列・ブロックの同じ数字を消す・戻す）　${t1 === "1回クリック" ? "右クリック" : "長押し"}：メニューから選ぶ`;
     go.hidden = true;
     pause.hidden = false;
     pause.textContent = "一時停止";
@@ -2612,6 +2707,7 @@ p.msg:empty { display: none; }
     { title: `大きな数字を${TAP3}`, text: `大きな数字を${TAP3}すると、同じ行・列・ブロックにある同じ数字の候補がまとめて消えます。`,
       cells: ["8", 0, 0], target: [0, "8"], ask: `左の大きな「8」を${TAP3}してみてください。`,
       goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」が消えました。" },
+    { title: "メニューから選ぶ", text: `ダブル・トリプル${TAP}が難しいときは、数字を${isMouse ? "右クリック" : "長押し"}してください。\nメニューから「候補にする」「確定候補にする」「消す」などを選べます。` },
     { title: "色の意味", text: "数字の色の意味です。", colors: [
       ["blue", "5", "青", "選んだ候補"],
       ["red", "3", "赤", "数字の重複"],
