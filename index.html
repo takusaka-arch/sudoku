@@ -459,7 +459,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.104</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.105</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1783,7 +1783,16 @@ p.msg:empty { display: none; }
           setTimeout(() => { del.classList.remove("armed"); del.textContent = "削除"; }, 3000);
           return;
         }
-        saveAll(loadAll().filter((q) => q.name !== p.name));
+        const rest = loadAll().filter((q) => q.name !== p.name);
+        saveAll(rest);
+        // 完成の記録も消す（残っていると一覧に戻ってしまうため）
+        if (!rest.some((q) => q.givens === p.givens)) {
+          try {
+            const solved = JSON.parse(localStorage.getItem("sudoku-solved") || "{}");
+            delete solved[p.givens];
+            localStorage.setItem("sudoku-solved", JSON.stringify(solved));
+          } catch (e) {}
+        }
         renderList();
       });
       const share = document.createElement("button");
