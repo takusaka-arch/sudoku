@@ -275,7 +275,10 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .gen-inner { width: min(100%, 420px); box-sizing: border-box; justify-items: stretch; }
 .gen-inner .gen-title { font-size: 1.1rem; font-weight: 700; }
 .gen-inner #gen-close { justify-self: center; }
-.gen-inner .gen-sub { margin: 6px 0 0; font-weight: 700; }
+.gen-inner .gen-sub { margin: 0 0 8px; font-weight: 700; }
+#gen-step2 { display: grid; gap: 8px; }
+#gen-step1[hidden], #gen-step2[hidden] { display: none; }
+#gen-step2 #gen-backstep { justify-self: start; }
 .gen-inner .msg:empty { display: none; }
 .gen-levels { display: grid; gap: 6px; }
 .gen-levels button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1rem var(--font-ui); cursor: pointer; }
@@ -477,7 +480,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.113</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.114</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -609,9 +612,15 @@ p.msg:empty { display: none; }
 <div class="crop" id="gen-box" role="dialog" aria-modal="true" aria-labelledby="gen-title" hidden>
   <div class="crop-inner gen-inner">
     <p class="gen-title" id="gen-title">新しい問題を作る</p>
-    <div class="gen-levels"><button type="button" id="gen-self">自分で入力する<small>手で数字を入れるか、写真から読み取ります</small></button></div>
-    <p class="gen-sub">自動で作成する（レベルを選ぶ）</p>
-    <div class="gen-levels" id="gen-levels"></div>
+    <div class="gen-levels" id="gen-step1">
+      <button type="button" id="gen-self">自分で入力する<small>手で数字を入れるか、写真から読み取ります</small></button>
+      <button type="button" id="gen-auto">自動で作成する<small>レベルを選ぶと、新しい問題を作ります</small></button>
+    </div>
+    <div id="gen-step2" hidden>
+      <p class="gen-sub">自動で作成する：レベルを選んでください</p>
+      <div class="gen-levels" id="gen-levels"></div>
+      <button type="button" class="btn sub small" id="gen-backstep">← 戻る</button>
+    </div>
     <p class="msg" id="gen-msg" aria-live="polite"></p>
     <button type="button" class="btn sub" id="gen-close">閉じる</button>
   </div>
@@ -3505,12 +3514,25 @@ p.msg:empty { display: none; }
     genMsg.textContent = "";
     genBox.hidden = true;
   }
+  // 1段目: 自分で入力するか自動で作成するか。自動を選ぶと2段目でレベルを選ぶ
+  const genStep = (n) => {
+    document.getElementById("gen-step1").hidden = n !== 1;
+    document.getElementById("gen-step2").hidden = n !== 2;
+    (n === 1 ? document.getElementById("gen-self") : genLevelsEl.querySelector("button")).focus();
+  };
   document.getElementById("gen-self").addEventListener("click", () => { closeGen(); startRegister(); });
+  document.getElementById("gen-auto").addEventListener("click", () => { drawGenLevels(); genStep(2); });
+  document.getElementById("gen-backstep").addEventListener("click", () => {
+    if (genWaiting && genWaiting.level !== 4) genWorker.postMessage({ type: "cancel", id: genWaiting.id });
+    genWaiting = null;
+    genMsg.textContent = "";
+    genStep(1);
+  });
   document.getElementById("new").addEventListener("click", () => {
     genMsg.textContent = "";
     drawGenLevels();
     genBox.hidden = false;
-    genLevelsEl.querySelector("button").focus();
+    genStep(1);
   });
   document.getElementById("gen-close").addEventListener("click", closeGen);
   // アプリを開いている間は、最難関の作り置きを続ける（10問たまったら止める）
