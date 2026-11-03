@@ -409,6 +409,14 @@ p.msg:empty { display: none; }
 .hint-menu button { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; text-align: left; padding: 8px 10px; border: 1px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
 .hint-menu button:hover { background: var(--hover); }
 .hint-menu button:focus-visible { outline: 3px solid var(--answer); outline-offset: 1px; }
+#hint-menu { gap: 4px; }
+#hint-menu .hm-item { display: grid; grid-template-columns: 1fr auto; gap: 4px 6px; align-items: center; }
+#hint-menu .hm-go { grid-template-columns: auto 1fr; padding: 8px 10px; }
+#hint-menu .hm-go .hm-no { grid-row: auto; }
+#hint-menu .hm-q { display: block; width: 40px; height: 100%; min-height: 40px; padding: 0; justify-content: center; font-weight: 700; color: var(--muted); text-align: center; }
+#hint-menu .hm-q[aria-expanded="true"] { color: var(--paper); background: var(--answer); border-color: var(--answer); }
+#hint-menu .hm-desc { grid-column: 1 / -1; margin: 0 2px 4px; padding: 6px 10px; font-size: 0.85rem; line-height: 1.5; color: var(--ink); background: var(--hover); border-radius: 6px; }
+#hint-menu .hm-desc[hidden] { display: none; }
 .hint-menu .hm-no { grid-row: span 2; font: 700 1.1rem var(--font-num); color: var(--answer); }
 .hint-menu .hm-label { font-weight: 700; font-size: 0.92rem; }
 .hint-menu .hm-check { grid-row: span 2; width: 1.2em; text-align: center; font-weight: 700; color: var(--answer); }
@@ -481,7 +489,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.116</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.117</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -2116,22 +2124,45 @@ p.msg:empty { display: none; }
     { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
   ];
   const hintMenu = document.getElementById("hint-menu");
+  // 1行に「番号とタイトル」と「？」。「？」を押すと、その下に説明が開く（もう一度で閉じる。開くのは1つだけ）
   hintKinds.forEach((k, i) => {
+    const item = document.createElement("div");
+    item.className = "hm-item";
     const b = document.createElement("button");
     b.type = "button";
+    b.className = "hm-go";
     b.setAttribute("role", "menuitem");
-    b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨"[i]}</span><span class="hm-label"></span><span class="hm-desc"></span>`;
+    b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨⑩⑪⑫"[i]}</span><span class="hm-label"></span>`;
     b.querySelector(".hm-label").textContent = k.label;
-    b.querySelector(".hm-desc").textContent = k.desc;
+    const q = document.createElement("button");
+    q.type = "button";
+    q.className = "hm-q";
+    q.textContent = "？";
+    q.setAttribute("aria-label", `${k.label}の説明`);
+    q.setAttribute("aria-expanded", "false");
+    const desc = document.createElement("p");
+    desc.className = "hm-desc";
+    desc.textContent = k.desc;
+    desc.hidden = true;
+    q.addEventListener("click", () => {
+      const open = desc.hidden;
+      hintMenu.querySelectorAll(".hm-desc").forEach((x) => { x.hidden = true; });
+      hintMenu.querySelectorAll(".hm-q").forEach((x) => x.setAttribute("aria-expanded", "false"));
+      desc.hidden = !open;
+      q.setAttribute("aria-expanded", String(open));
+    });
+    item.append(b, q, desc);
     b.addEventListener("click", () => {
       closeHintMenu();
       clearHints();
       k.run();
     });
-    hintMenu.appendChild(b);
+    hintMenu.appendChild(item);
   });
   function closeHintMenu() {
     hintMenu.hidden = true;
+    hintMenu.querySelectorAll(".hm-desc").forEach((x) => { x.hidden = true; });
+    hintMenu.querySelectorAll(".hm-q").forEach((x) => x.setAttribute("aria-expanded", "false"));
     hintBtn.setAttribute("aria-expanded", "false");
   }
   hintBtn.addEventListener("click", () => {
