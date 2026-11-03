@@ -179,6 +179,8 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 .cell.pair-cell .cand, .cell.pair-cell .cand.pick { background: var(--pair-bg); }
 .cell.two-cell .cand, .cell.two-cell .cand.pick { background: var(--two-bg); }
 /* ③ ペアの組ごとの色（--pg に組の色が入る） */
+.cell[data-chain-no] { position: relative; }
+.cell[data-chain-no]::after { content: attr(data-chain-no); position: absolute; top: 1px; left: 1px; z-index: 2; min-width: 1.3em; height: 1.3em; padding: 0 2px; box-sizing: border-box; border-radius: 0.65em; background: var(--answer); color: #fff; font: 700 0.62rem/1.3em var(--font-num); text-align: center; pointer-events: none; }
 .cell .cand.pgrp, .cell .cand.pick.pgrp { color: var(--pg); background: color-mix(in srgb, var(--pg) 20%, var(--paper)); font-weight: 700; box-shadow: inset 0 0 0 2px var(--pg); text-decoration: none; }
 /* 2つの組に入っている数字は、2色を斜めに分けて示す */
 .cell .cand.pgrp.pgrp2 { background: linear-gradient(135deg, color-mix(in srgb, var(--pg) 30%, var(--paper)) 50%, color-mix(in srgb, var(--pg2) 30%, var(--paper)) 50%); box-shadow: inset 0 0 0 2px var(--pg), inset 0 0 0 4px var(--pg2); }
@@ -417,6 +419,8 @@ p.msg:empty { display: none; }
 #hint-menu .hm-q[aria-expanded="true"] { color: var(--paper); background: var(--answer); border-color: var(--answer); }
 #hint-menu .hm-desc { grid-column: 1 / -1; margin: 0 2px 4px; padding: 6px 10px; font-size: 0.85rem; line-height: 1.5; color: var(--ink); background: var(--hover); border-radius: 6px; }
 #hint-menu .hm-desc[hidden] { display: none; }
+#hint-menu .hm-head { margin: 4px 2px 0; font-size: 0.75rem; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--line-sub); }
+#hint-menu .hm-head:first-child { margin-top: 0; }
 .hint-menu .hm-no { grid-row: span 2; font: 700 1.1rem var(--font-num); color: var(--answer); }
 .hint-menu .hm-label { font-weight: 700; font-size: 0.92rem; }
 .hint-menu .hm-check { grid-row: span 2; width: 1.2em; text-align: center; font-weight: 700; color: var(--answer); }
@@ -511,7 +515,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.120</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.121</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -745,6 +749,7 @@ p.msg:empty { display: none; }
     if (msg.textContent.startsWith("ヒント")) msg.textContent = "";
     board.querySelectorAll(".cand.hint, .cand.pair, .cell.hint-cell, .cell.pair-cell, .cell.two-cell").forEach((s) => s.classList.remove("hint", "pair", "hint-cell", "pair-cell", "two-cell"));
     board.querySelectorAll(".cand.pgrp").forEach((s) => { s.classList.remove("pgrp", "pgrp2"); s.style.removeProperty("--pg"); s.style.removeProperty("--pg2"); });
+    board.querySelectorAll(".cell[data-chain-no]").forEach((s) => { delete s.dataset.chainNo; });
     if (typeof renderPad === "function") renderPad();
   }
   // 同じ行・列・3x3ブロックに同じ数字があるマスを赤くする
@@ -2138,24 +2143,45 @@ p.msg:empty { display: none; }
   }
   // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
   const hintKinds = [
+    { head: "基本" },
     { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
     { label: "ポインティング", desc: "ブロックの中で1つの行（列）にしか入らない数字と、それでブロックの外から消せる候補を示します", run: () => showPointing() },
     { label: "2つの数字のペア", desc: "隠れペア（2つの数字が同じ2マスにしか入らない）と、ネイキッドペア（候補が同じ2つだけのマスが2つある）を、組ごとに色分けします", run: () => showPairs(2) },
-    { label: "3つの数字の組", desc: "同じ3マスにしか入らない3つの数字の組を、組ごとに色分けします", run: () => showPairs(3) },
+    { label: "3つの数字の組", desc: "隠れた3つの組と、ネイキッド3つの組（3マスの候補を合わせると3つの数字だけ）を、消せる候補と一緒に示します", run: () => showSubsets(3) },
+    { label: "4つの数字の組", desc: "3つの組と同じ考え方を、4つの数字と4マスで使います", run: () => showSubsets(4) },
+    { head: "上級" },
     { label: "Xウイング", desc: "2つの行（列）で長方形の角にしか入らない数字と、それで消せる候補を示します", run: () => showXWing() },
+    { label: "ソードフィッシュ", desc: "Xウイングを3つの行（列）に広げたものです", run: () => showSwordfish() },
+    { label: "スカイスクレイパー", desc: "2か所にしか入らない行（列）を2本使い、端どうしの両方から見えるマスの候補を消します", run: () => showSkyscraper() },
+    { label: "XYウイング", desc: "候補が2つのマス3つ（AB・AC・BC）を使い、両端から見えるマスのCを消します。Y-Wingとも呼びます", run: () => showWing(false) },
+    { label: "XYZウイング", desc: "軸のマスの候補が3つ（ABC）のXYウイングです。3マスすべてから見えるマスのCを消します", run: () => showWing(true) },
+    { head: "最上級" },
+    { label: "リモートペア", desc: "候補が同じ2つのマスが4つ以上つながるとき、交互に入る数字を使って候補を消します", run: () => showRemotePair() },
+    { label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
+    { label: "背理法", desc: "候補が2つのマスに片方を仮に入れ、矛盾が出たらもう一方が答えだと分かります", run: () => showContradiction() },
+    { head: "答え" },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます", run: () => runHint(true) },
     { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
   ];
   const hintMenu = document.getElementById("hint-menu");
   // 1行に「番号とタイトル」と「？」。「？」を押すと、その下に説明が開く（もう一度で閉じる。開くのは1つだけ）
-  hintKinds.forEach((k, i) => {
+  let hintNo = 0;
+  hintKinds.forEach((k) => {
+    if (k.head) {
+      const h = document.createElement("div");
+      h.className = "hm-head";
+      h.textContent = k.head;
+      hintMenu.appendChild(h);
+      return;
+    }
+    const i = hintNo++;
     const item = document.createElement("div");
     item.className = "hm-item";
     const b = document.createElement("button");
     b.type = "button";
     b.className = "hm-go";
     b.setAttribute("role", "menuitem");
-    b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨⑩⑪⑫"[i]}</span><span class="hm-label"></span>`;
+    b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"[i]}</span><span class="hm-label"></span>`;
     b.querySelector(".hm-label").textContent = k.label;
     const q = document.createElement("button");
     q.type = "button";
@@ -2386,6 +2412,327 @@ p.msg:empty { display: none; }
     });
     renderPad();
     workMsg.textContent = `ヒント：ポインティング（${found.length}組）：同じ色の数字は、そのブロックの中では1つの行（列）にしか入りません。なので、その行（列）のブロックの外にある同じ数字（赤い枠）は消せます。`;
+  }
+  // ===== 上級のヒント（3つ・4つの組、ソードフィッシュ、スカイスクレイパー、XY/XYZウイング、リモートペア、XYチェーン、背理法） =====
+  // マスは i = 行*9+列 で表す。盤の DOM の並びは行順ではないので、必ず data-row / data-col から作る
+  const DIGS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+  const BOX_NAMES = ["左上", "上", "右上", "左", "真ん中", "右", "左下", "下", "右下"];
+  const rowOf = (i) => Math.floor(i / 9), colOf = (i) => i % 9;
+  const boxOf = (i) => Math.floor(rowOf(i) / 3) * 3 + Math.floor(colOf(i) / 3);
+  const sees = (i, j) => i !== j && (rowOf(i) === rowOf(j) || colOf(i) === colOf(j) || boxOf(i) === boxOf(j));
+  const UNITS = [];
+  for (let k = 0; k < 9; k++) UNITS.push({ name: `${k + 1}行目`, ids: [...Array(9)].map((_, c) => k * 9 + c) });
+  for (let k = 0; k < 9; k++) UNITS.push({ name: `${k + 1}列目`, ids: [...Array(9)].map((_, r) => r * 9 + k) });
+  for (let k = 0; k < 9; k++) UNITS.push({ name: `${BOX_NAMES[k]}のブロック`, ids: [...Array(81).keys()].filter((i) => boxOf(i) === k) });
+  const cellName = (i) => `${rowOf(i) + 1}行${colOf(i) + 1}列`;
+  const combos = (arr, k) => {
+    const out = [];
+    const go = (s, ch) => { if (ch.length === k) { out.push(ch); return; } for (let i = s; i < arr.length; i++) go(i + 1, [...ch, arr[i]]); };
+    go(0, []);
+    return out;
+  };
+  // 今の盤の状態：確定している数字（問題の数字・確定候補）と、各マスに入れられる候補
+  function hintState() {
+    if (board.dataset.mode !== "solve") return null;
+    markConflicts();
+    const el = [];
+    board.querySelectorAll(".cell").forEach((o) => { el[+o.dataset.row * 9 + +o.dataset.col] = o; });
+    const fixed = el.map((o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : ""));
+    const cand = el.map((o, i) => fixed[i] ? [] : DIGS.filter((d) => !o.querySelector(`.cand[data-n="${d}"]`).classList.contains("off")
+      && !fixed.some((v, j) => v === d && sees(i, j))));
+    return { el, fixed, cand };
+  }
+  // groups: [{ marks: [[i, d], ...] }] を組ごとの色で、gone: [[i, d], ...] を赤い枠で、order: 鎖の順番の番号
+  function paintHint(st, groups, gone, msg, extra = {}) {
+    hintsUsed++;
+    drawHints();
+    groups.forEach((g, n) => {
+      const color = g.color || PAIR_COLORS[n % PAIR_COLORS.length];
+      for (const [i, d] of g.marks) {
+        const c = st.el[i].querySelector(`.cand[data-n="${d}"]`);
+        if (c.classList.contains("pgrp")) { c.classList.add("pgrp2"); c.style.setProperty("--pg2", color); continue; }
+        c.classList.add("pgrp");
+        c.style.setProperty("--pg", color);
+      }
+    });
+    for (const [i, d] of gone) st.el[i].querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
+    (extra.order || []).forEach((i, n) => { st.el[i].dataset.chainNo = n + 1; });
+    (extra.cells || []).forEach((i) => st.el[i].classList.add("hint-cell"));
+    renderPad();
+    workMsg.classList.remove("err");
+    workMsg.textContent = "ヒント：" + msg;
+  }
+  const noHint = (name) => { workMsg.classList.remove("err"); workMsg.textContent = `ヒント：今は${name}で消せる候補はありません。`; };
+  const KNUM = { 3: "3つ", 4: "4つ" };
+
+  // 3つ・4つの数字の組（隠れた組とネイキッドの組）。消せる候補があるものだけを出す
+  function showSubsets(k) {
+    const st = hintState();
+    if (!st) return;
+    const { cand } = st;
+    const found = [], seen = new Set();
+    for (const u of UNITS) {
+      const empt = u.ids.filter((i) => cand[i].length);
+      // 隠れた組：k個の数字が、この単位でちょうどk マスにしか入らない → そのk マスのほかの候補は消せる
+      const spots = {};
+      for (const d of DIGS) spots[d] = empt.filter((i) => cand[i].includes(d));
+      const ds = DIGS.filter((d) => spots[d].length >= 2 && spots[d].length <= k);
+      for (const ch of combos(ds, k)) {
+        const where = [...new Set(ch.flatMap((d) => spots[d]))];
+        if (where.length !== k) continue;
+        let smaller = false;
+        for (let m = 2; m < k && !smaller; m++) for (const sub of combos(ch, m)) if (new Set(sub.flatMap((d) => spots[d])).size === m) { smaller = true; break; }
+        if (smaller) continue;
+        const gone = where.flatMap((i) => cand[i].filter((d) => !ch.includes(d)).map((d) => [i, d]));
+        if (!gone.length) continue;
+        const key = "H" + ch.join("") + where.sort((a, b) => a - b).join(",");
+        if (seen.has(key)) continue;
+        seen.add(key);
+        found.push({ hidden: true, marks: where.flatMap((i) => ch.filter((d) => cand[i].includes(d)).map((d) => [i, d])), gone });
+      }
+      // ネイキッドの組：k マスの候補を合わせると、ちょうどk個の数字 → その数字は、この単位のほかのマスから消せる
+      const small = empt.filter((i) => cand[i].length <= k);
+      for (const ch of combos(small, k)) {
+        const uni = [...new Set(ch.flatMap((i) => cand[i]))].sort();
+        if (uni.length !== k) continue;
+        let smaller = false;
+        for (let m = 2; m < k && !smaller; m++) for (const sub of combos(ch, m)) if (new Set(sub.flatMap((i) => cand[i])).size === m) { smaller = true; break; }
+        if (smaller) continue;
+        const gone = empt.filter((i) => !ch.includes(i)).flatMap((i) => cand[i].filter((d) => uni.includes(d)).map((d) => [i, d]));
+        if (!gone.length) continue;
+        const key = "N" + uni.join("") + ch.join(",");
+        const old = found.find((f) => f.key === key);
+        if (old) { old.gone.push(...gone); continue; }
+        found.push({ hidden: false, key, marks: ch.flatMap((i) => cand[i].map((d) => [i, d])), gone });
+      }
+    }
+    if (!found.length) return noHint(`${KNUM[k]}の数字の組`);
+    const nh = found.filter((f) => f.hidden).length, nn = found.length - nh;
+    const parts = [];
+    if (nh) parts.push(`隠れた${KNUM[k]}の組（${nh}組）：同じ色の${k}つの数字は、その行・列・ブロックで色の付いた${k}マスにしか入りません。その${k}マスのほかの候補（赤い枠）は消せます。`);
+    if (nn) parts.push(`ネイキッド${KNUM[k]}の組（${nn}組）：同じ色の${k}マスには、色の付いた${k}つの数字しか入りません。同じ行・列・ブロックのほかのマスにある同じ数字（赤い枠）は消せます。`);
+    paintHint(st, found, found.flatMap((f) => f.gone), parts.join("　"));
+  }
+
+  // ソードフィッシュ：ある数字が、3つの行でどれも同じ3列（の中）にしか入らない → その3列のほかの行の同じ数字は消せる（行と列を入れ替えても同じ）
+  function showSwordfish() {
+    const st = hintState();
+    if (!st) return;
+    const { cand } = st;
+    const found = [];
+    for (const d of DIGS) for (const byRow of [true, false]) {
+      const at = (line, k) => (byRow ? line * 9 + k : k * 9 + line);
+      const lines = [];
+      for (let line = 0; line < 9; line++) {
+        const ks = [...Array(9).keys()].filter((k) => cand[at(line, k)].includes(d));
+        if (ks.length >= 2 && ks.length <= 3) lines.push({ line, ks });
+      }
+      for (const ch of combos(lines, 3)) {
+        const ks = [...new Set(ch.flatMap((x) => x.ks))];
+        if (ks.length !== 3) continue;
+        if (combos(ch, 2).some((p) => new Set(p.flatMap((x) => x.ks)).size === 2)) continue; // Xウイングで分かるもの
+        const ls = ch.map((x) => x.line);
+        const gone = [];
+        for (let line = 0; line < 9; line++) if (!ls.includes(line)) for (const k of ks) if (cand[at(line, k)].includes(d)) gone.push([at(line, k), d]);
+        if (gone.length) found.push({ marks: ch.flatMap((x) => x.ks.map((k) => [at(x.line, k), d])), gone, d, byRow });
+      }
+    }
+    if (!found.length) return noHint("ソードフィッシュ");
+    const ds = [...new Set(found.map((x) => `「${x.d}」`))].join("");
+    paintHint(st, found, found.flatMap((f) => f.gone), `同じ色の${ds}がソードフィッシュです（${found.length}組）。3つの行（または列）で、その数字は色の付いた3列（または3行）の中にしか入りません。なので、その3列（3行）のほかのマスにある同じ数字（赤い枠）は消せます。`);
+  }
+
+  // スカイスクレイパー：ある数字が2か所にしか入らない行が2本あり、片方の端が同じ列にそろう → もう片方の端どうしの両方から見えるマスの同じ数字は消せる
+  function showSkyscraper() {
+    const st = hintState();
+    if (!st) return;
+    const { cand } = st;
+    const found = [];
+    for (const d of DIGS) for (const byRow of [true, false]) {
+      const at = (line, k) => (byRow ? line * 9 + k : k * 9 + line);
+      const two = [];
+      for (let line = 0; line < 9; line++) {
+        const ks = [...Array(9).keys()].filter((k) => cand[at(line, k)].includes(d));
+        if (ks.length === 2) two.push({ line, ks });
+      }
+      for (const [a, b] of combos(two, 2)) {
+        const base = a.ks.filter((k) => b.ks.includes(k));
+        if (base.length !== 1) continue;
+        const ta = at(a.line, a.ks.find((k) => k !== base[0])), tb = at(b.line, b.ks.find((k) => k !== base[0]));
+        const four = [at(a.line, base[0]), at(b.line, base[0]), ta, tb];
+        const gone = [...Array(81).keys()].filter((i) => !four.includes(i) && sees(i, ta) && sees(i, tb) && cand[i].includes(d)).map((i) => [i, d]);
+        if (gone.length) found.push({ marks: four.map((i) => [i, d]), gone, d });
+      }
+    }
+    if (!found.length) return noHint("スカイスクレイパー");
+    const ds = [...new Set(found.map((x) => `「${x.d}」`))].join("");
+    paintHint(st, found, found.flatMap((f) => f.gone), `同じ色の4マスの${ds}がスカイスクレイパーです（${found.length}組）。2つの行（または列）で、その数字は2か所にしか入らず、片方の端が同じ列（行）にそろっています。そろっていない側の2マスのどちらかには必ずその数字が入るので、その両方から見えるマスの同じ数字（赤い枠）は消せます。`);
+  }
+
+  // XYウイング（Y-Wing）：軸のマスが候補AB、それが見える2マスがAC・BC → その2マスの両方から見えるマスのCは消せる
+  // XYZウイング：軸のマスが候補ABC、それが見える2マスがAC・BC → 3マスすべてから見えるマスのCは消せる
+  function showWing(xyz) {
+    const st = hintState();
+    if (!st) return;
+    const { cand } = st;
+    const found = [], seen = new Set();
+    const bi = [...Array(81).keys()].filter((i) => cand[i].length === 2);
+    for (let p = 0; p < 81; p++) {
+      if (cand[p].length !== (xyz ? 3 : 2)) continue;
+      const wings = bi.filter((i) => sees(i, p) && cand[i].every((d) => xyz ? cand[p].includes(d) : true));
+      for (const [x, y] of combos(wings, 2)) {
+        let z;
+        if (xyz) {
+          const c = cand[x].filter((d) => cand[y].includes(d));
+          if (c.length !== 1 || new Set([...cand[x], ...cand[y]]).size !== 3) continue;
+          z = c[0];
+        } else {
+          const [a, b] = cand[p];
+          const xa = cand[x].includes(a) && !cand[x].includes(b), yb = cand[y].includes(b) && !cand[y].includes(a);
+          const xb = cand[x].includes(b) && !cand[x].includes(a), ya = cand[y].includes(a) && !cand[y].includes(b);
+          if (!((xa && yb) || (xb && ya))) continue;
+          const zx = cand[x].find((d) => d !== a && d !== b), zy = cand[y].find((d) => d !== a && d !== b);
+          if (!zx || zx !== zy) continue;
+          z = zx;
+        }
+        const gone = [...Array(81).keys()].filter((i) => i !== p && i !== x && i !== y && sees(i, x) && sees(i, y) && (!xyz || sees(i, p)) && cand[i].includes(z)).map((i) => [i, z]);
+        const key = [p, x, y].sort((m, n) => m - n).join(",") + z;
+        if (!gone.length || seen.has(key)) continue;
+        seen.add(key);
+        found.push({ marks: [p, x, y].flatMap((i) => cand[i].map((d) => [i, d])), gone, z, p });
+      }
+    }
+    const name = xyz ? "XYZウイング" : "XYウイング";
+    if (!found.length) return noHint(name);
+    const f = found[0];
+    paintHint(st, [f], f.gone, xyz
+      ? `色の付いた3マスがXYZウイングです。番号①の軸のマス（候補3つ）と、それが見える2マス（候補2つ）を合わせると、どれかに必ず「${f.z}」が入ります。なので、3マスすべてから見えるマスの「${f.z}」（赤い枠）は消せます。${found.length > 1 ? `（ほかにも${found.length - 1}組あります）` : ""}`
+      : `色の付いた3マスがXYウイングです。番号①の軸のマスがどちらの数字になっても、両端のどちらかが「${f.z}」になります。なので、両端の2マスの両方から見えるマスの「${f.z}」（赤い枠）は消せます。${found.length > 1 ? `（ほかにも${found.length - 1}組あります）` : ""}`,
+      { order: [f.p] });
+  }
+
+  // リモートペア：候補が同じ2つ（AB）のマスが、互いに見える形で4つ以上つながる。つながりの順に交互にA・Bになるので、
+  // 交互の反対側どうしの両方から見えるマスのA・Bは消せる
+  function showRemotePair() {
+    const st = hintState();
+    if (!st) return;
+    const { cand } = st;
+    const done = new Set();
+    for (let s = 0; s < 81; s++) {
+      if (cand[s].length !== 2 || done.has(s)) continue;
+      const pair = cand[s].join("");
+      const color = new Map([[s, 0]]);
+      const order = [s];
+      let ok = true;
+      for (let q = 0; q < order.length; q++) {
+        const i = order[q];
+        for (let j = 0; j < 81; j++) {
+          if (cand[j].join("") !== pair || !sees(i, j)) continue;
+          if (!color.has(j)) { color.set(j, 1 - color.get(i)); order.push(j); } else if (color.get(j) === color.get(i)) ok = false;
+        }
+      }
+      order.forEach((i) => done.add(i));
+      if (!ok || order.length < 4) continue;
+      const c0 = order.filter((i) => color.get(i) === 0), c1 = order.filter((i) => color.get(i) === 1);
+      const gone = [];
+      for (let i = 0; i < 81; i++) {
+        if (color.has(i) || !c0.some((j) => sees(i, j)) || !c1.some((j) => sees(i, j))) continue;
+        for (const d of cand[s]) if (cand[i].includes(d)) gone.push([i, d]);
+      }
+      if (!gone.length) continue;
+      const [a, b] = cand[s];
+      return paintHint(st, [{ marks: c0.flatMap((i) => [[i, a], [i, b]]), color: PAIR_COLORS[0] }, { marks: c1.flatMap((i) => [[i, a], [i, b]]), color: PAIR_COLORS[1] }], gone,
+        `候補が「${a}」「${b}」だけのマスが${order.length}つつながっています（リモートペア）。つながりに沿って「${a}」と「${b}」が交互に入るので、青のマスとオレンジのマスは必ず別の数字です。なので、青とオレンジの両方から見えるマスの「${a}」「${b}」（赤い枠）は消せます。`);
+    }
+    noHint("リモートペア");
+  }
+
+  // XYチェーン：候補が2つのマスを、同じ数字でつないでいく。最初のマスがZでないと、つないだ先の最後のマスがZになる
+  // → 最初か最後のどちらかは必ずZなので、両方から見えるマスのZは消せる（4マス以上のもの。3マスはXYウイング）
+  function showXYChain() {
+    const st = hintState();
+    if (!st) return;
+    const { cand } = st;
+    const bi = [...Array(81).keys()].filter((i) => cand[i].length === 2);
+    const other = (i, d) => cand[i].find((x) => x !== d);
+    let best = null;
+    for (const s of bi) for (const z of cand[s]) {
+      // 状態 = [マス, そのマスに入る数字]。最初のマスは z でない、つまり other(s, z)
+      const start = [s, other(s, z)];
+      const prev = new Map([[s + ":" + start[1], null]]);
+      const queue = [start];
+      for (let q = 0; q < queue.length; q++) {
+        const [i, v] = queue[q];
+        const path = [];
+        for (let k = i + ":" + v; k; k = prev.get(k)) path.unshift(+k.split(":")[0]);
+        if (best && path.length >= best.path.length) break;
+        if (path.length > 12) break;
+        for (const j of bi) {
+          if (!sees(i, j) || !cand[j].includes(v) || path.includes(j)) continue;
+          const w = other(j, v); // j は v ではないので、もう一方の数字
+          const key = j + ":" + w;
+          if (prev.has(key)) continue;
+          prev.set(key, i + ":" + v);
+          const np = [...path, j];
+          if (w === z && np.length >= 4) {
+            const gone = [...Array(81).keys()].filter((x) => !np.includes(x) && sees(x, s) && sees(x, j) && cand[x].includes(z)).map((x) => [x, z]);
+            if (gone.length && (!best || np.length < best.path.length)) best = { path: np, z, gone };
+          }
+          queue.push([j, w]);
+        }
+      }
+    }
+    if (!best) return noHint("XYチェーン");
+    const { path, z, gone } = best;
+    const marks = path.flatMap((i) => cand[i].map((d) => [i, d]));
+    paintHint(st, [{ marks }], gone,
+      `番号の順に、候補が2つのマスが${path.length}つつながっています（XYチェーン）。①のマスが「${z}」でないとすると、隣どうしで同じ数字は入らないので順に決まっていき、最後のマスが「${z}」になります。つまり①か最後のマスのどちらかは必ず「${z}」なので、その両方から見えるマスの「${z}」（赤い枠）は消せます。`,
+      { order: path });
+  }
+
+  // 背理法：候補が2つのマスで片方を入れたと仮定し、確実に決まる数字をたどる。どこかで矛盾したら、その仮定は誤りなので、もう一方が答え
+  function showContradiction() {
+    const st = hintState();
+    if (!st) return;
+    const { fixed, cand } = st;
+    const test = (s, v) => {
+      const c = cand.map((a, i) => (fixed[i] ? [fixed[i]] : a.slice()));
+      c[s] = [v];
+      const placed = new Set();
+      for (let guard = 0; guard < 200; guard++) {
+        let changed = false;
+        for (let i = 0; i < 81; i++) {
+          if (c[i].length === 0) return `${cellName(i)}のマスに入る数字がなくなり`;
+          if (c[i].length !== 1 || placed.has(i)) continue;
+          placed.add(i);
+          changed = true;
+          for (let j = 0; j < 81; j++) if (sees(i, j)) {
+            c[j] = c[j].filter((d) => d !== c[i][0]);
+            if (c[j].length === 0) return `${cellName(j)}のマスに入る数字がなくなり`;
+          }
+        }
+        for (const u of UNITS) for (const d of DIGS) {
+          const sp = u.ids.filter((i) => c[i].includes(d));
+          if (sp.length === 0) return `${u.name}に「${d}」を入れる場所がなくなり`;
+          if (sp.length === 1 && c[sp[0]].length > 1) { c[sp[0]] = [d]; changed = true; }
+        }
+        if (!changed) return null;
+      }
+      return null;
+    };
+    for (let s = 0; s < 81; s++) {
+      if (cand[s].length !== 2) continue;
+      for (const v of cand[s]) {
+        const why = test(s, v);
+        if (!why) continue;
+        const w = cand[s].find((d) => d !== v);
+        return paintHint(st, [{ marks: [[s, w]] }], [[s, v]],
+          `薄い赤のマスに「${v}」を入れたと仮定して、確実に決まる数字をたどっていくと、${why}、矛盾します。なので「${v}」（赤い枠）は入らず、このマスは「${w}」（色の付いた数字）です。`,
+          { cells: [s] });
+      }
+    }
+    workMsg.classList.remove("err");
+    workMsg.textContent = "ヒント：今は、候補が2つのマスで仮定を1つ置くだけでは矛盾が見つかりません。";
   }
   // Xウイング: ある数字が、2つの行でどちらも同じ2列にしか入らないとき、その2列のほかの行の同じ数字は消せる（行と列を入れ替えても同じ）
   // 消せる候補があるものだけを、4つの角を組ごとの色、消せる候補を赤い枠で示す
@@ -3121,7 +3468,7 @@ p.msg:empty { display: none; }
     { part: 2, title: "問題を作る：写真から読み取る", text: `「写真から問題を読み取る」で、撮影・画像ファイル・貼り付けのどれかを選びます。\n四隅のオレンジの丸を盤の角に合わせて「読み取る」を押します。\n読み取った数字は写真と見比べて、まちがいを直してください。自信のない数字には「?」が付きます。\n\nコツ：真上から明るい場所で撮る`,
       tryPhoto: true },
     { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字は黄色になります。\nもう一度${TAP}で止まります。` },
-    { part: 2, title: "ヒント", text: "「ヒント」で6種類から選べます。\n①注目するマス\n②ポインティング（ブロックの中で1列にしか入らない数字）\n③2つの数字のペア（隠れペア・ネイキッドペア）\n④同じ3マスにしか入らない3つの数字の組\n⑤Xウイング（長方形の角にしか入らない数字）\n⑥入る数字とその理由\n⑦でヒントの表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
+    { part: 2, title: "ヒント", text: "「ヒント」で、解き方を「基本」「上級」「最上級」から選べます。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
     { part: 2, title: "保存とGoogleドライブ", text: "「この状態を保存」で、名前（最初は日時）を付けて保存します。\n・保存：この端末に保存。「保存した状態に戻す」でその時点に戻れます\n・ファイルに保存：別の日や別の端末で続きを解くときに使います\n\nGoogleドライブ欄にチェックを入れると、保存先がGoogleドライブになり、PCとスマホでやり取りできます（アプリ版・Web版のみ）。" },
     { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・解いた順に再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
     { part: 2, title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
