@@ -392,6 +392,12 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .gd-inner .list .gd-group p { flex: 1; margin: 0; font-weight: 700; overflow-wrap: anywhere; }
 .gd-inner .list .gd-group small { display: block; font-weight: 500; font-size: 0.75rem; color: var(--muted); }
 .gd-inner .list .gd-item { flex-wrap: nowrap; padding-left: 12px; }
+.gd-mini { flex: none; width: 72px; height: 72px; }
+.gd-mini .bg { fill: var(--paper); }
+.gd-mini .thin { stroke: var(--line-sub); stroke-width: 0.5; }
+.gd-mini .thick { stroke: var(--ink); stroke-width: 1.2; }
+.gd-mini .frame { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.gd-mini text { font: 700 7.5px var(--font-num); fill: var(--ink); text-anchor: middle; }
 .gd-inner .list .gd-item .open { flex: 1 1 auto; }
 .gd-inner .list .open:disabled { cursor: default; opacity: 0.6; }
 .filepick { position: relative; }
@@ -515,7 +521,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.121</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.122</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -3296,6 +3302,7 @@ p.msg:empty { display: none; }
         const sm = document.createElement("small");
         sm.textContent = grp.givens.startsWith("?") ? "読めないファイル" : `問題 ${grp.givens.replace(/0/g, "").length} マス`;
         h.appendChild(sm);
+        if (!grp.givens.startsWith("?")) head.appendChild(miniBoard(grp.givens));
         head.appendChild(h);
         if (all.length > 1) head.appendChild(delButton(all, "まとめて削除", `${name} のファイルを全部削除`));
         filesEl.appendChild(head);
@@ -3310,6 +3317,26 @@ p.msg:empty { display: none; }
         }
         for (const f of grp.other) filesEl.appendChild(fileRow(f, f.name, `開けないファイル・${when(f.modifiedTime)}`, true));
       }
+    }
+    // 問題の数字だけを小さな盤で見せる（プレビュー）
+    function miniBoard(givens) {
+      const NS = "http://www.w3.org/2000/svg";
+      const svg = document.createElementNS(NS, "svg");
+      svg.setAttribute("viewBox", "0 0 90 90");
+      svg.setAttribute("class", "gd-mini");
+      svg.setAttribute("aria-hidden", "true");
+      let inner = '<rect x="0.5" y="0.5" width="89" height="89" class="bg"/>';
+      for (let k = 1; k < 9; k++) {
+        const cls = k % 3 ? "thin" : "thick";
+        inner += `<line x1="${k * 10}" y1="0" x2="${k * 10}" y2="90" class="${cls}"/><line x1="0" y1="${k * 10}" x2="90" y2="${k * 10}" class="${cls}"/>`;
+      }
+      for (let i = 0; i < 81; i++) {
+        const d = givens[i];
+        if (d !== "0") inner += `<text x="${(i % 9) * 10 + 5}" y="${Math.floor(i / 9) * 10 + 8.3}">${d}</text>`;
+      }
+      inner += '<rect x="0.5" y="0.5" width="89" height="89" class="frame"/>';
+      svg.innerHTML = inner;
+      return svg;
     }
     function fileRow(f, title, meta, noOpen) {
       const li = document.createElement("li");
