@@ -428,7 +428,18 @@ p.msg:empty { display: none; }
 .msg.err { color: var(--error); }
 /* PCでは右側が縦に長くなりやすいので、ボタンとヒントメニューを一回り小さく */
 @media (min-width: 761px) {
-  .side .btn, .side button#done, .side button#edit, .side button#reset { font-size: 0.82rem; padding: 3px 10px; }
+  :root .btn, :root .btn.small, :root button#done, :root button#edit, :root button#reset { font-size: 0.82rem; padding: 3px 10px; }
+  .hint-menu button { padding: 4px 8px; font-size: 0.85rem; }
+  .hint-menu .hm-no { font-size: 0.95rem; }
+  .hint-menu .hm-label { font-size: 0.8rem; }
+  .hint-menu .hm-desc { font-size: 0.72rem; }
+  .list button { font-size: 0.85rem; }
+  .list .open { padding: 5px 10px; }
+  .list .del, .list .share { padding: 3px 8px; font-size: 0.75rem; }
+  .ctx button { font-size: 0.85rem; padding: 6px 10px; }
+  .gen-levels button { font-size: 0.9rem; padding: 6px 10px; }
+  .nh-keys { grid-template-columns: repeat(9, minmax(0, 34px)); }
+  .nh-keys button { font-size: 0.95rem; }
   #hint-menu { gap: 3px; padding: 6px; }
   #hint-menu .hm-item { gap: 3px 4px; }
   #hint-menu .hm-go { padding: 4px 8px; column-gap: 8px; }
@@ -500,7 +511,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.118</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.119</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
