@@ -103,19 +103,26 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 }
 /* 盤の下の 1〜9：押した数字が候補として残っているマスで点滅させる */
 .board-wrap { display: grid; gap: 8px; justify-items: center; min-width: 0; }
-.num-hl { display: grid; gap: 4px; justify-items: center; width: 100%; }
+.num-hl { display: grid; gap: 4px; justify-items: center; width: 100%; position: relative; }
 .board-wrap:has(.board:not([data-mode="solve"])) .num-hl { display: none; }
 .nh-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
 .nh-keys { display: grid; grid-template-columns: repeat(9, minmax(0, 40px)); gap: 4px; justify-content: center; width: 100%; }
 .nh-keys button { aspect-ratio: 1; min-width: 0; padding: 0; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1.05rem var(--font-num); cursor: pointer; touch-action: manipulation; }
 .nh-keys button:hover { background: var(--hover); }
-.nh-keys button[aria-pressed="true"] { background: var(--sel-bg); border-color: var(--sel); box-shadow: 0 0 0 2px var(--sel); }
+/* ハイライトは4色まで。押した順に 黄・青・緑・ピンク */
+.hlc0 { --hlc: var(--sel); --hlc-bg: var(--sel-bg); }
+.hlc1 { --hlc: #2f7de1; --hlc-bg: color-mix(in srgb, #2f7de1 38%, var(--paper)); }
+.hlc2 { --hlc: #2e9d4f; --hlc-bg: color-mix(in srgb, #2e9d4f 38%, var(--paper)); }
+.hlc3 { --hlc: #d6408f; --hlc-bg: color-mix(in srgb, #d6408f 38%, var(--paper)); }
+.nh-keys button[aria-pressed="true"] { background: var(--hlc-bg); border-color: var(--hlc); box-shadow: 0 0 0 2px var(--hlc); }
+.nh-alert { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); z-index: 30; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); margin: 0; padding: 4px 10px; border-radius: 6px; background: var(--error); color: #fff; font-size: 0.85rem; font-weight: 700; text-align: center; }
 .nh-keys button:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
 .cand.hl-on { animation: hl-blink 1s ease-in-out infinite; }
-@keyframes hl-blink { 50% { background: var(--sel-bg); color: var(--ink); font-weight: 700; } }
+@keyframes hl-blink { 50% { background: var(--hlc-bg); color: var(--ink); font-weight: 700; } }
 /* 問題の数字・確定候補（大きな数字）は、同じ数字なら点滅させずに色を付ける */
-.cell.hl-big { background: var(--sel-bg); box-shadow: inset 0 0 0 3px var(--sel); }
-@media (prefers-reduced-motion: reduce) { .cand.hl-on { animation: none; background: var(--sel-bg); color: var(--ink); font-weight: 700; } }
+.cell.hl-big, .cell.hl-big .big { background: var(--hlc-bg); }
+.cell.hl-big { box-shadow: inset 0 0 0 3px var(--hlc); }
+@media (prefers-reduced-motion: reduce) { .cand.hl-on { animation: none; background: var(--hlc-bg); color: var(--ink); font-weight: 700; } }
 .box {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -511,6 +518,7 @@ p.msg:empty { display: none; }
   <div class="num-hl" id="num-hl" role="group" aria-label="数字をハイライト">
     <span class="nh-label">以下の数字をハイライトする</span>
     <div class="nh-keys"></div>
+    <p class="nh-alert" role="alert" hidden>同時にハイライトできるのは4つまでです</p>
   </div>
   </div>
   <div class="pad" id="pad" hidden>
@@ -521,7 +529,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.122</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.123</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -723,21 +731,26 @@ p.msg:empty { display: none; }
   // 盤の下で選んだ数字を、候補として残っているマスで点滅させる
   // （消しておらず、同じ行・列・ブロックに問題の数字や確定候補として同じ数字が無いマス）
   function applyHighlight() {
-    board.querySelectorAll(".cand.hl-on").forEach((x) => x.classList.remove("hl-on"));
-    board.querySelectorAll(".cell.hl-big").forEach((x) => x.classList.remove("hl-big"));
-    const n = board.dataset.hl;
-    if (!n || board.dataset.mode !== "solve") return;
+    const HLC = ["hlc0", "hlc1", "hlc2", "hlc3"];
+    board.querySelectorAll(".cand.hl-on").forEach((x) => x.classList.remove("hl-on", ...HLC));
+    board.querySelectorAll(".cell.hl-big").forEach((x) => x.classList.remove("hl-big", ...HLC));
+    const list = (board.dataset.hl || "").split(",");
+    if (!list.some(Boolean) || board.dataset.mode !== "solve") return;
     const cells = [...board.querySelectorAll(".cell")];
     const val = (o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "");
-    const has = cells.filter((o) => val(o) === n);
-    has.forEach((o) => o.classList.add("hl-big"));
-    for (const o of cells) {
-      if (val(o)) continue;
-      if (has.some((x) => x.dataset.row === o.dataset.row || x.dataset.col === o.dataset.col
-        || (Math.floor(x.dataset.row / 3) === Math.floor(o.dataset.row / 3) && Math.floor(x.dataset.col / 3) === Math.floor(o.dataset.col / 3)))) continue;
-      const c = o.querySelector(`.cand[data-n="${n}"]`);
-      if (!c.classList.contains("off")) c.classList.add("hl-on");
-    }
+    // 選んだ順に色を変える（1つ目は黄、2つ目は青、3つ目は緑、4つ目はピンク）
+    list.forEach((n, k) => {
+      if (!n) return;
+      const has = cells.filter((o) => val(o) === n);
+      has.forEach((o) => o.classList.add("hl-big", HLC[k]));
+      for (const o of cells) {
+        if (val(o)) continue;
+        if (has.some((x) => x.dataset.row === o.dataset.row || x.dataset.col === o.dataset.col
+          || (Math.floor(x.dataset.row / 3) === Math.floor(o.dataset.row / 3) && Math.floor(x.dataset.col / 3) === Math.floor(o.dataset.col / 3)))) continue;
+        const c = o.querySelector(`.cand[data-n="${n}"]`);
+        if (!c.classList.contains("off")) c.classList.add("hl-on", HLC[k]);
+      }
+    });
   }
   // 確定候補にした順番（戻したり消したりしたマスは記録から外し、もう一度確定したときの順番にする）
   let sureOrder = new Array(81).fill(null), sureSeq = 0;
@@ -2138,13 +2151,38 @@ p.msg:empty { display: none; }
     b.textContent = n;
     b.setAttribute("aria-pressed", "false");
     b.setAttribute("aria-label", `${n}をハイライト`);
-    b.addEventListener("click", () => setHighlight(board.dataset.hl === String(n) ? "" : String(n)));
+    b.addEventListener("click", () => toggleHighlight(String(n)));
     hlKeys.appendChild(b);
   }
-  function setHighlight(n) {
-    if (n) board.dataset.hl = n;
+  // 押すたびに足していく（もう一度押すとその数字だけ止める）。同時に4つまで
+  const hlAlert = document.querySelector("#num-hl .nh-alert");
+  let hlAlertTimer = 0;
+  // 色は「枠」ごとに決まっていて、1つ止めても他の数字の色は変わらない。空いた枠に次の数字が入る
+  const hlSlots = () => { const a = (board.dataset.hl || "").split(","); while (a.length < 4) a.push(""); return a.slice(0, 4); };
+  function toggleHighlight(n) {
+    const list = hlSlots();
+    if (list.includes(n)) { list[list.indexOf(n)] = ""; return setHighlight(list.some(Boolean) ? list.join(",") : ""); }
+    const free = list.indexOf("");
+    if (free < 0) {
+      hlAlert.hidden = false;
+      clearTimeout(hlAlertTimer);
+      hlAlertTimer = setTimeout(() => { hlAlert.hidden = true; }, 2500);
+      return;
+    }
+    list[free] = n;
+    setHighlight(list.join(","));
+  }
+  function setHighlight(v) {
+    if (v) board.dataset.hl = v;
     else delete board.dataset.hl;
-    hlKeys.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.textContent === n)));
+    const list = (v || "").split(",");
+    hlKeys.querySelectorAll("button").forEach((b) => {
+      const k = list.indexOf(b.textContent);
+      b.setAttribute("aria-pressed", String(k >= 0));
+      b.classList.remove("hlc0", "hlc1", "hlc2", "hlc3");
+      if (k >= 0) b.classList.add("hlc" + k);
+    });
+    if (list.filter(Boolean).length < 4) hlAlert.hidden = true;
     applyHighlight();
   }
   // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
@@ -3494,7 +3532,7 @@ p.msg:empty { display: none; }
       goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」が消えました。" },
     { part: 2, title: "問題を作る：写真から読み取る", text: `「写真から問題を読み取る」で、撮影・画像ファイル・貼り付けのどれかを選びます。\n四隅のオレンジの丸を盤の角に合わせて「読み取る」を押します。\n読み取った数字は写真と見比べて、まちがいを直してください。自信のない数字には「?」が付きます。\n\nコツ：真上から明るい場所で撮る`,
       tryPhoto: true },
-    { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字は黄色になります。\nもう一度${TAP}で止まります。` },
+    { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字に色が付きます。\n続けて別の数字を${TAP}すると、別の色で4つまで同時に表示できます。もう一度${TAP}でその数字だけ止まります。` },
     { part: 2, title: "ヒント", text: "「ヒント」で、解き方を「基本」「上級」「最上級」から選べます。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
     { part: 2, title: "保存とGoogleドライブ", text: "「この状態を保存」で、名前（最初は日時）を付けて保存します。\n・保存：この端末に保存。「保存した状態に戻す」でその時点に戻れます\n・ファイルに保存：別の日や別の端末で続きを解くときに使います\n\nGoogleドライブ欄にチェックを入れると、保存先がGoogleドライブになり、PCとスマホでやり取りできます（アプリ版・Web版のみ）。" },
     { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・解いた順に再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
