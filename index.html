@@ -382,6 +382,9 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .list li { display: flex; flex-wrap: wrap; gap: 4px 6px; justify-content: flex-end; }
 .list button { font: 500 0.95rem var(--font-ui); border-radius: 4px; cursor: pointer; background: var(--paper); color: var(--ink); border: 1.5px solid var(--line-cell); }
 .list .open { flex: 1 1 100%; min-width: 0; text-align: left; padding: 8px 12px; overflow-wrap: anywhere; }
+.list .open.has-mini { display: flex; align-items: center; gap: 12px; padding: 8px 10px; }
+.list .open.has-mini .gd-mini { width: 64px; height: 64px; }
+.list .open-text { flex: 1; min-width: 0; }
 .list .open small { display: block; margin-top: 2px; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .list .del, .list .share { flex: 0 0 auto; padding: 6px 10px; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
 .share-box, .import { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
@@ -537,7 +540,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.125</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.126</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -1860,6 +1863,26 @@ p.msg:empty { display: none; }
     }
     if (added) saveAll(list);
   }
+  // 問題の数字だけを小さな盤で見せる（プレビュー）
+  function miniBoard(givens) {
+    const NS = "http://www.w3.org/2000/svg";
+    const svg = document.createElementNS(NS, "svg");
+    svg.setAttribute("viewBox", "0 0 90 90");
+    svg.setAttribute("class", "gd-mini");
+    svg.setAttribute("aria-hidden", "true");
+    let inner = '<rect x="0.5" y="0.5" width="89" height="89" class="bg"/>';
+    for (let k = 1; k < 9; k++) {
+      const cls = k % 3 ? "thin" : "thick";
+      inner += `<line x1="${k * 10}" y1="0" x2="${k * 10}" y2="90" class="${cls}"/><line x1="0" y1="${k * 10}" x2="90" y2="${k * 10}" class="${cls}"/>`;
+    }
+    for (let i = 0; i < 81; i++) {
+      const d = givens[i];
+      if (d !== "0") inner += `<text x="${(i % 9) * 10 + 5}" y="${Math.floor(i / 9) * 10 + 8.3}">${d}</text>`;
+    }
+    inner += '<rect x="0.5" y="0.5" width="89" height="89" class="frame"/>';
+    svg.innerHTML = inner;
+    return svg;
+  }
   function renderList() {
     addSolvedToList();
     const list = loadAll().sort((a, b) => (b.saved || "").localeCompare(a.saved || ""));
@@ -1869,12 +1892,16 @@ p.msg:empty { display: none; }
       const li = document.createElement("li");
       const open = document.createElement("button");
       open.type = "button";
-      open.className = "open";
-      open.textContent = p.name;
+      open.className = "open has-mini";
+      const txt = document.createElement("span");
+      txt.className = "open-text";
+      txt.textContent = p.name;
       const meta = document.createElement("small");
       const d = new Date(p.saved);
       meta.textContent = `問題 ${p.givens.replace(/0/g, "").length} マス・${isNaN(d) ? "" : d.toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}`;
-      open.appendChild(meta);
+      txt.appendChild(meta);
+      if (/^[0-9]{81}$/.test(p.givens || "")) open.appendChild(miniBoard(p.givens));
+      open.appendChild(txt);
       open.addEventListener("click", () => openProblem(p));
       const del = document.createElement("button");
       del.type = "button";
@@ -3364,26 +3391,6 @@ p.msg:empty { display: none; }
         }
         for (const f of grp.other) filesEl.appendChild(fileRow(f, f.name, `開けないファイル・${when(f.modifiedTime)}`, true));
       }
-    }
-    // 問題の数字だけを小さな盤で見せる（プレビュー）
-    function miniBoard(givens) {
-      const NS = "http://www.w3.org/2000/svg";
-      const svg = document.createElementNS(NS, "svg");
-      svg.setAttribute("viewBox", "0 0 90 90");
-      svg.setAttribute("class", "gd-mini");
-      svg.setAttribute("aria-hidden", "true");
-      let inner = '<rect x="0.5" y="0.5" width="89" height="89" class="bg"/>';
-      for (let k = 1; k < 9; k++) {
-        const cls = k % 3 ? "thin" : "thick";
-        inner += `<line x1="${k * 10}" y1="0" x2="${k * 10}" y2="90" class="${cls}"/><line x1="0" y1="${k * 10}" x2="90" y2="${k * 10}" class="${cls}"/>`;
-      }
-      for (let i = 0; i < 81; i++) {
-        const d = givens[i];
-        if (d !== "0") inner += `<text x="${(i % 9) * 10 + 5}" y="${Math.floor(i / 9) * 10 + 8.3}">${d}</text>`;
-      }
-      inner += '<rect x="0.5" y="0.5" width="89" height="89" class="frame"/>';
-      svg.innerHTML = inner;
-      return svg;
     }
     function fileRow(f, title, meta, noOpen) {
       const li = document.createElement("li");
