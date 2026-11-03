@@ -268,7 +268,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .ctx button { font: 500 0.95rem var(--font-ui); text-align: left; padding: 10px 12px; border: none; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; }
 .ctx button:hover, .ctx button:focus-visible { background: var(--hover); outline: none; }
 .ctx button.cancel { color: var(--muted); }
-#board, #pad { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+#board, #pad, .tut-menu-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .crop-inner { background: var(--paper); color: var(--ink); border-radius: 8px; padding: 14px; display: grid; gap: 10px; max-width: 100%; justify-items: center; }
 .crop-inner p { margin: 0; font-size: 0.9rem; line-height: 1.6; }
 .clear-inner { padding: 28px 36px; gap: 14px; text-align: center; }
@@ -344,6 +344,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .tut-color.c-brown .tc-num { color: var(--brown); }
 .tut-color.c-grey .tc-num { color: var(--cand); opacity: 0.55; text-decoration: line-through; font-weight: 500; }
 .tut-nav { justify-content: center; }
+.tut-fork { justify-content: center; }
 .tut-hide { font-size: 0.9rem; display: flex; gap: 6px; align-items: center; justify-content: center; }
 .tut-hide[hidden] { display: none; }
 .tut-demo { display: flex; justify-content: center; }
@@ -480,7 +481,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.114</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.115</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
@@ -2957,38 +2958,50 @@ p.msg:empty { display: none; }
   const TAP1 = isMouse ? "1回クリック" : "1回タップ";
   const TAP2 = isMouse ? "ダブルクリック" : "ダブルタップ";
   const TAP3 = isMouse ? "トリプルクリック" : "トリプルタップ";
+  const MENU = isMouse ? "右クリック" : "長押し";
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
-    { title: "ようこそ", text: `使い方を、実際に試しながら説明します。\n\n1. 「新しい問題を作る」で問題を入れる（自分で入力するか、自動で作成）\n2. 「問題登録完了」→「回答スタート」\n3. 小さな数字（候補）を${TAP}して解く` },
-    { title: "問題を作る：手で入力する", text: `小さな数字を${TAP}すると、問題の数字として入ります。まちがえたら、大きな数字を${TAP}して消します。\n全部入れたら「問題登録完了」を押します。`,
+    { title: "ようこそ（初級編）", text: `使い方を、実際に試しながら説明します。まずは初級編です。\n\n1. 「新しい問題を作る」で問題を入れる（自分で入力するか、自動で作成）\n2. 「問題登録完了」→「回答スタート」\n3. 数字を${MENU}して、メニューから操作を選んで解く`, part: 1, jump: true },
+    { part: 1, title: "問題を作る：手で入力する", text: `小さな数字を${TAP}すると、問題の数字として入ります。まちがえたら、大きな数字を${TAP}して消します。\n全部入れたら「問題登録完了」を押します。`,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
-    { title: "問題を自動で作る", text: "「新しい問題を作る」→「自動で作成する」でレベル（初級・中級・難問・最難関）を選ぶと、新しい問題を作って一覧に保存します。\n最難関は作るのに時間がかかるため、アプリを開いている間に裏で作り置きしています。" },
-    { title: "問題を作る：写真から読み取る", text: `「写真から問題を読み取る」で、撮影・画像ファイル・貼り付けのどれかを選びます。\n四隅のオレンジの丸を盤の角に合わせて「読み取る」を押します。\n読み取った数字は写真と見比べて、まちがいを直してください。自信のない数字には「?」が付きます。\n\nコツ：真上から明るい場所で撮る`,
-      tryPhoto: true },
-    { title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
-      cells: [0], target: [0, "5"], ask: `下のマスの「5」を${TAP1}してみてください。`,
+    { part: 1, title: "問題を自動で作る", text: "「新しい問題を作る」→「自動で作成する」でレベル（初級・中級・難問・最難関）を選ぶと、新しい問題を作って一覧に保存します。\n最難関は作るのに時間がかかるため、アプリを開いている間に裏で作り置きしています。" },
+    { part: 1, title: `${MENU}：候補を選ぶ`, text: `解くときは、小さな数字を${MENU}するとメニューが出ます。\n「候補（青）にする」を選ぶと青くなります（候補の印）。もう一度選ぶと外れます。`,
+      cells: [0], target: [0, "5"], menu: true, ask: `下のマスの「5」を${MENU}して、「5 を候補（青）にする」を選んでください。`,
       goal: (d) => d.cand(0, "5").classList.contains("pick") && !d.cell(0).classList.contains("tent"), ok: "できました！ 青い数字が候補です。" },
-    { title: `${TAP2}：確定候補にする`, text: `小さな数字を${TAP2}すると、大きな青い数字になります（確定候補）。もう一度${TAP2}で戻ります。`,
-      cells: [0], target: [0, "7"], ask: `「7」を${TAP2}してみてください。`,
+    { part: 1, title: `${MENU}：確定候補にする`, text: `メニューの「確定候補にする」を選ぶと、大きな青い数字になります（確定候補）。\n大きな数字を${MENU}して「元に戻す」を選ぶと戻ります。`,
+      cells: [0], target: [0, "7"], menu: true, ask: `「7」を${MENU}して、「7 を確定候補にする」を選んでください。`,
       goal: (d) => d.cell(0).classList.contains("tent"), ok: "できました！ 大きな青い数字が確定候補です。" },
-    { title: `${TAP3}：候補を消す`, text: `小さな数字を${TAP3}すると、その数字が消えます。\n同じ行・列・ブロックに同じ数字が確定していれば、まとめて消えます。もう一度${TAP3}で戻ります。`,
-      cells: ["5", 0, 0], target: [1, "5"], ask: `左に「5」が確定しています。真ん中のマスの「5」を${TAP3}してみてください。`,
+    { part: 1, title: `${MENU}：候補を消す`, text: `メニューの「消す」を選ぶと、その数字が消えます。\n同じ行・列・ブロックに同じ数字が確定していれば、まとめて消えます。もう一度選ぶと戻ります。`,
+      cells: ["5", 0, 0], target: [1, "5"], menu: true, ask: `左に「5」が確定しています。真ん中のマスの「5」を${MENU}して、「5 を消す」を選んでください。`,
       goal: (d) => d.cand(1, "5").classList.contains("off") && d.cand(2, "5").classList.contains("off"), ok: "できました！ この行の「5」がまとめて消えました。" },
-    { title: `大きな数字を${TAP3}`, text: `大きな数字を${TAP3}すると、同じ行・列・ブロックにある同じ数字の候補がまとめて消えます。`,
-      cells: ["8", 0, 0], target: [0, "8"], ask: `左の大きな「8」を${TAP3}してみてください。`,
-      goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」が消えました。" },
-    { title: "メニューから選ぶ", text: `ダブル・トリプル${TAP}が難しいときは、数字を${isMouse ? "右クリック" : "長押し"}してください。\nメニューから「候補にする」「確定候補にする」「消す」などを選べます。` },
-    { title: "色の意味", text: "数字の色の意味です。", colors: [
+    { part: 1, title: "色の意味", text: "数字の色の意味です。", colors: [
       ["blue", "5", "青", "選んだ候補"],
       ["red", "3", "赤", "数字の重複"],
       ["brown", "6", "茶", "入らない候補"],
     ] },
-    { title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字は黄色になります。\nもう一度${TAP}で止まります。` },
-    { title: "ヒント", text: "「ヒント」で5種類から選べます。\n①注目するマス\n②同じ2マスにしか入らない2つの数字の組\n③同じ3マスにしか入らない3つの数字の組\n④Xウイング（長方形の角にしか入らない数字）\n⑤入る数字とその理由\n⑥でヒントの表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
-    { title: "ボタン", text: "一つ戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する\nリセット：問題だけの最初の状態に戻す\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
-    { title: "保存とGoogleドライブ", text: "「この状態を保存」で、名前（最初は日時）を付けて保存します。\n・保存：この端末に保存。「保存した状態に戻す」でその時点に戻れます\n・ファイルに保存：別の日や別の端末で続きを解くときに使います\n\nGoogleドライブ欄にチェックを入れると、保存先がGoogleドライブになり、PCとスマホでやり取りできます（アプリ版・Web版のみ）。" },
-    { title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
+    { part: 1, title: "ボタン", text: "一つ戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する\nリセット：問題だけの最初の状態に戻す\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
+    { part: 1, title: "初級編はここまで", text: "これで解き始められます。\n\nもっと速く解くための操作や、写真の読み取り・ヒント・保存などは中級編で説明します。中級編は「使い方」からいつでも見られます。", fork: true },
+    { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
+    { part: 2, title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
+      cells: [0], target: [0, "5"], ask: `下のマスの「5」を${TAP1}してみてください。`,
+      goal: (d) => d.cand(0, "5").classList.contains("pick") && !d.cell(0).classList.contains("tent"), ok: "できました！ 青い数字が候補です。" },
+    { part: 2, title: `${TAP2}：確定候補にする`, text: `小さな数字を${TAP2}すると、大きな青い数字になります（確定候補）。もう一度${TAP2}で戻ります。`,
+      cells: [0], target: [0, "7"], ask: `「7」を${TAP2}してみてください。`,
+      goal: (d) => d.cell(0).classList.contains("tent"), ok: "できました！ 大きな青い数字が確定候補です。" },
+    { part: 2, title: `${TAP3}：候補を消す`, text: `小さな数字を${TAP3}すると、その数字が消えます。\n同じ行・列・ブロックに同じ数字が確定していれば、まとめて消えます。もう一度${TAP3}で戻ります。`,
+      cells: ["5", 0, 0], target: [1, "5"], ask: `左に「5」が確定しています。真ん中のマスの「5」を${TAP3}してみてください。`,
+      goal: (d) => d.cand(1, "5").classList.contains("off") && d.cand(2, "5").classList.contains("off"), ok: "できました！ この行の「5」がまとめて消えました。" },
+    { part: 2, title: `大きな数字を${TAP3}`, text: `大きな数字を${TAP3}すると、同じ行・列・ブロックにある同じ数字の候補がまとめて消えます。`,
+      cells: ["8", 0, 0], target: [0, "8"], ask: `左の大きな「8」を${TAP3}してみてください。`,
+      goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」が消えました。" },
+    { part: 2, title: "問題を作る：写真から読み取る", text: `「写真から問題を読み取る」で、撮影・画像ファイル・貼り付けのどれかを選びます。\n四隅のオレンジの丸を盤の角に合わせて「読み取る」を押します。\n読み取った数字は写真と見比べて、まちがいを直してください。自信のない数字には「?」が付きます。\n\nコツ：真上から明るい場所で撮る`,
+      tryPhoto: true },
+    { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字は黄色になります。\nもう一度${TAP}で止まります。` },
+    { part: 2, title: "ヒント", text: "「ヒント」で5種類から選べます。\n①注目するマス\n②同じ2マスにしか入らない2つの数字の組\n③同じ3マスにしか入らない3つの数字の組\n④Xウイング（長方形の角にしか入らない数字）\n⑤入る数字とその理由\n⑥でヒントの表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
+    { part: 2, title: "保存とGoogleドライブ", text: "「この状態を保存」で、名前（最初は日時）を付けて保存します。\n・保存：この端末に保存。「保存した状態に戻す」でその時点に戻れます\n・ファイルに保存：別の日や別の端末で続きを解くときに使います\n\nGoogleドライブ欄にチェックを入れると、保存先がGoogleドライブになり、PCとスマホでやり取りできます（アプリ版・Web版のみ）。" },
+    { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・解いた順に再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
+    { part: 2, title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
   function demoApi(cells) {
@@ -3008,16 +3021,46 @@ p.msg:empty { display: none; }
   }
   function renderTut() {
     const st = tutSteps[tutIdx];
-    document.getElementById("tut-step").textContent = `${tutIdx + 1} / ${tutSteps.length}`;
+    // 初級編・中級編ごとに「何ページ目か」を出す
+    const same = tutSteps.filter((x) => x.part === st.part);
+    document.getElementById("tut-step").textContent = `${st.part === 1 ? "初級編" : "中級編"}　${same.indexOf(st) + 1} / ${same.length}`;
+    closeTutMenu();
     document.getElementById("tut-title").textContent = st.title;
     document.getElementById("tut-text").textContent = st.text;
     document.getElementById("tut-prev").disabled = tutIdx === 0;
     document.getElementById("tut-next").textContent = st.last ? "はじめる" : "次へ";
-    document.getElementById("tut-skip").hidden = !!st.last;
-    document.getElementById("tut-hide-wrap").hidden = !st.last;
+    document.getElementById("tut-next").hidden = !!st.fork;
+    document.getElementById("tut-skip").hidden = !!(st.last || st.fork);
+    document.getElementById("tut-hide-wrap").hidden = !(st.last || st.fork);
     tutStatus.classList.remove("ok");
     tutStatus.textContent = st.ask || "";
     tutDemo.innerHTML = "";
+    // 初級編の終わり: 中級編に進むか、使ってみるかを選ぶ
+    if (st.fork) {
+      const box = document.createElement("div");
+      box.className = "row tut-fork";
+      const go2 = document.createElement("button");
+      go2.type = "button";
+      go2.className = "btn";
+      go2.textContent = "中級編に進む";
+      go2.addEventListener("click", () => { tutIdx = tutSteps.findIndex((x) => x.part === 2); renderTut(); });
+      const use = document.createElement("button");
+      use.type = "button";
+      use.className = "btn sub";
+      use.textContent = "使ってみる";
+      use.addEventListener("click", closeTutorial);
+      box.append(go2, use);
+      tutDemo.appendChild(box);
+    }
+    // 最初のページから中級編へ飛べるようにする（2回目以降に見る人向け）
+    if (st.jump) {
+      const j = document.createElement("button");
+      j.type = "button";
+      j.className = "btn sub small";
+      j.textContent = "中級編から見る";
+      j.addEventListener("click", () => { tutIdx = tutSteps.findIndex((x) => x.part === 2); renderTut(); });
+      tutDemo.appendChild(j);
+    }
     if (st.tryPhoto) {
       const b = document.createElement("button");
       b.type = "button";
@@ -3060,6 +3103,7 @@ p.msg:empty { display: none; }
       return c;
     });
     tutDemo.appendChild(row);
+    if (st.menu) row.classList.add("tut-menu-row");
     const [ti, tn] = st.target;
     (cells[ti].classList.contains("fixed") ? cells[ti].querySelector(".big") : cells[ti].querySelector(`.cand[data-n="${tn}"]`)).classList.add("target");
     const d = demoApi(cells);
@@ -3085,6 +3129,74 @@ p.msg:empty { display: none; }
         else { tutStatus.classList.remove("ok"); tutStatus.textContent = st.ask; }
       }, 350);
     });
+    if (st.menu) bindTutMenu(row, cells, () => { if (st.goal(d)) showTutOk(st); else { tutStatus.classList.remove("ok"); tutStatus.textContent = st.ask; } });
+  }
+  // ガイドの小さな盤での右クリック・長押しメニュー（本番のメニューと同じ項目）
+  const tutMenu = document.createElement("div");
+  tutMenu.className = "ctx";
+  tutMenu.setAttribute("role", "menu");
+  tutMenu.hidden = true;
+  document.body.appendChild(tutMenu);
+  let tutMenuAt = 0;
+  function closeTutMenu() { tutMenu.hidden = true; }
+  function openTutMenu(cells, el, x, y, after) {
+    const cell = el.closest(".cell");
+    const big = cell.classList.contains("fixed") || cell.classList.contains("tent");
+    if (!big && !el.classList.contains("cand")) return;
+    const n = big ? cell.dataset.value || cell.querySelector(".big").textContent : el.dataset.n;
+    const t = big ? cell.querySelector(".big") : el;
+    const items = cell.classList.contains("fixed") ? [[`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
+      : cell.classList.contains("tent") ? [[`確定候補 ${n} を元に戻す`, 2], [`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
+      : el.classList.contains("off") ? [[`消した ${n} を戻す`, 3]]
+      : [[el.classList.contains("pick") ? `候補 ${n} を外す` : `${n} を候補（青）にする`, 1], [`${n} を確定候補にする`, 2], [`${n} を消す`, 3]];
+    tutMenu.textContent = "";
+    for (const [label, k] of items) {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.setAttribute("role", "menuitem");
+      b.textContent = label;
+      b.addEventListener("click", () => { closeTutMenu(); demoTap(cells, t, k); after(); });
+      tutMenu.appendChild(b);
+    }
+    const cancel = document.createElement("button");
+    cancel.type = "button";
+    cancel.className = "cancel";
+    cancel.textContent = "キャンセル";
+    cancel.addEventListener("click", closeTutMenu);
+    tutMenu.appendChild(cancel);
+    tutMenu.hidden = false;
+    tutMenuAt = Date.now();
+    const w = tutMenu.offsetWidth, h = tutMenu.offsetHeight;
+    tutMenu.style.left = `${Math.max(8, Math.min(x, innerWidth - w - 8))}px`;
+    tutMenu.style.top = `${Math.max(8, Math.min(y, innerHeight - h - 8))}px`;
+  }
+  document.addEventListener("pointerdown", (e) => {
+    if (!tutMenu.hidden && !tutMenu.contains(e.target) && Date.now() - tutMenuAt > 600) closeTutMenu();
+  });
+  // 右クリック・長押しの受け付け（メニューの練習のページだけ）
+  function bindTutMenu(row, cells, after) {
+    let press = null, longAt = 0;
+    row.addEventListener("contextmenu", (e) => {
+      e.preventDefault();
+      if (Date.now() - longAt < 1000) return;
+      const el = e.target.closest(".cand, .big");
+      if (el) openTutMenu(cells, el, e.clientX, e.clientY, after);
+    });
+    row.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse") return;
+      const el = e.target.closest(".cand, .big"), x = e.clientX, y = e.clientY;
+      if (!el) return;
+      clearTimeout(press?.timer);
+      press = { x, y, timer: setTimeout(() => { press = null; longAt = Date.now(); openTutMenu(cells, el, x, y, after); navigator.vibrate?.(15); }, 500) };
+    });
+    const cancelPress = (e) => {
+      if (!press) return;
+      if (e.type === "pointermove" && Math.hypot(e.clientX - press.x, e.clientY - press.y) < 10) return;
+      clearTimeout(press.timer);
+      press = null;
+    };
+    for (const ev of ["pointerup", "pointercancel", "pointermove"]) row.addEventListener(ev, cancelPress);
+    row.addEventListener("click", (e) => { if (Date.now() - longAt < 1000) { e.stopImmediatePropagation(); e.preventDefault(); } }, true);
   }
   // 小さな盤での動き（本番の回答モードと同じ決まり）
   function demoTap(cells, el, n) {
