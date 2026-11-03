@@ -110,10 +110,16 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 .nh-keys button { aspect-ratio: 1; min-width: 0; padding: 0; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1.05rem var(--font-num); cursor: pointer; touch-action: manipulation; }
 .nh-keys button:hover { background: var(--hover); }
 /* ハイライトは4色まで。押した順に 黄・青・緑・ピンク */
-.hlc0 { --hlc: var(--sel); --hlc-bg: var(--sel-bg); }
-.hlc1 { --hlc: #2f7de1; --hlc-bg: color-mix(in srgb, #2f7de1 38%, var(--paper)); }
-.hlc2 { --hlc: #2e9d4f; --hlc-bg: color-mix(in srgb, #2e9d4f 38%, var(--paper)); }
-.hlc3 { --hlc: #d6408f; --hlc-bg: color-mix(in srgb, #d6408f 38%, var(--paper)); }
+:root { --hl0: #d98c00; --hl0-bg: #ffd75e; --hl1: #2f7de1; --hl1-bg: #b9d3f8; --hl2: #2e9d4f; --hl2-bg: #b6e3c3; --hl3: #d6408f; --hl3-bg: #f5bcdb; }
+/* ダークモード：暗い背景でも色の違いがはっきり分かるよう、塗りは濃くて鮮やかな色、枠は明るい色にする */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --hl0: #ffd84d; --hl0-bg: #9a7400; --hl1: #7db4ff; --hl1-bg: #2860b8; --hl2: #6fe39a; --hl2-bg: #1f8a47; --hl3: #ff8fcf; --hl3-bg: #b02f78; }
+}
+:root[data-theme="dark"] { --hl0: #ffd84d; --hl0-bg: #9a7400; --hl1: #7db4ff; --hl1-bg: #2860b8; --hl2: #6fe39a; --hl2-bg: #1f8a47; --hl3: #ff8fcf; --hl3-bg: #b02f78; }
+.hlc0 { --hlc: var(--hl0); --hlc-bg: var(--hl0-bg); }
+.hlc1 { --hlc: var(--hl1); --hlc-bg: var(--hl1-bg); }
+.hlc2 { --hlc: var(--hl2); --hlc-bg: var(--hl2-bg); }
+.hlc3 { --hlc: var(--hl3); --hlc-bg: var(--hl3-bg); }
 .nh-keys button[aria-pressed="true"] { background: var(--hlc-bg); border-color: var(--hlc); box-shadow: 0 0 0 2px var(--hlc); }
 .nh-alert { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); z-index: 30; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); margin: 0; padding: 4px 10px; border-radius: 6px; background: var(--error); color: #fff; font-size: 0.85rem; font-weight: 700; text-align: center; }
 .nh-keys button:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
@@ -531,7 +537,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.124</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.125</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
   <section class="start" id="start">
     <h2>保存した問題</h2>
     <ul class="list" id="list"></ul>
