@@ -563,7 +563,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.134</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.135</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・ファイルを読み込む</small></span></button>
@@ -671,11 +671,11 @@ p.msg:empty { display: none; }
     <p class="save-title" id="save-box-title">この状態を保存</p>
     <label class="save-name">名前 <input type="text" id="snap-name" maxlength="40"></label>
     <div class="row">
-      <button type="button" class="btn" id="snap-save">保存</button>
+      <button type="button" class="btn" id="snap-save">アプリ内に保存</button>
       <button type="button" class="btn sub" id="snap-file">ファイルに保存</button>
       <button type="button" class="btn sub" id="snap-cancel">キャンセル</button>
     </div>
-    <p class="save-help">「保存」はこの端末に保存し、あとで「保存した状態に戻す」でその時点に戻れます。「ファイルに保存」は、別の日や別の端末で続きを解くときに使います。</p>
+    <p class="save-help" id="snap-help"></p>
   </div>
   <p class="msg" id="work-msg" aria-live="polite"></p>
   <div class="confirm" id="confirm" role="alertdialog" aria-labelledby="confirm-msg" hidden>
@@ -3154,6 +3154,11 @@ p.msg:empty { display: none; }
     if (!saveBox.hidden) return closeSnapUI();
     closeSnapUI();
     snapName.value = snapName.dataset.stamp = stamp(new Date());
+    // 「ファイルに保存」の名前と説明は、設定の保存先に合わせる
+    const m = gd.mode(), fileBtn = document.getElementById("snap-file");
+    fileBtn.textContent = m === "drive" ? "Googleドライブに保存" : "ファイルに保存";
+    document.getElementById("snap-help").textContent = "「アプリ内に保存」は、このアプリの中に残し、あとで「保存した状態に戻す」でその時点に戻れます。「"
+      + fileBtn.textContent + "」は、" + (m === "drive" ? "Googleドライブの「Sudoku」フォルダに残し、" : m === "ask" ? "保存先を選んで残し、" : "ファイルとして残し、") + "別の日や別の端末で続きを解くときに使います。";
     saveBox.hidden = false;
     saveBox.scrollIntoView({ block: "nearest", behavior: "smooth" });
     // 書き足しやすいよう、カーソルは末尾に置く
@@ -3701,7 +3706,7 @@ p.msg:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
     ] },
     { part: 1, title: "ボタン", text: "一つ戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する\nリセット：問題だけの最初の状態に戻す\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
-    { part: 1, title: "一時停止と保存（この端末）", text: "「一時停止」でタイマーが止まり、盤が隠れます。「再開」で続きから解けます。\n\n解いている途中の状態は、この端末に自動で保存されます。画面をロックしたり、アプリを閉じたり、🏠で戻ったりしても大丈夫です。\n続きは、最初の画面の「問題を解く」→「一時停止中」から開けます。\n\n「この状態を保存」→「保存」で、名前を付けてその時点を残せます。あとで「保存した状態に戻す」から、その時点に戻れます。" },
+    { part: 1, title: "一時停止と保存（この端末）", text: "「一時停止」でタイマーが止まり、盤が隠れます。「再開」で続きから解けます。\n\n解いている途中の状態は、この端末に自動で保存されます。画面をロックしたり、アプリを閉じたり、🏠で戻ったりしても大丈夫です。\n続きは、最初の画面の「問題を解く」→「一時停止中」から開けます。\n\n「この状態を保存」→「アプリ内に保存」で、名前を付けてその時点を残せます。あとで「保存した状態に戻す」から、その時点に戻れます。" },
     { part: 1, title: "初級編はここまで", text: "これで解き始められます。\n\nもっと速く解くための操作や、写真の読み取り・ヒント・保存などは中級編で説明します。中級編は「使い方」からいつでも見られます。", fork: true },
     { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
     { part: 2, title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
@@ -3720,7 +3725,7 @@ p.msg:empty { display: none; }
       tryPhoto: true },
     { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字に色が付きます。\n続けて別の数字を${TAP}すると、別の色で4つまで同時に表示できます。もう一度${TAP}でその数字だけ止まります。` },
     { part: 2, title: "ヒント", text: "「ヒント」で、解き方を「基本」「上級」「最上級」から選べます。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
-    { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：🏠→「設定」で「Googleドライブに接続」し、保存先を選びます（Googleドライブを優先／保存のたびに選ぶ／この端末）。Googleドライブには「Sudoku」フォルダに保存されます。PCとスマホで同じ問題の続きを解けます\n・開くときは「問題を解く」→「Googleドライブから開く」（接続しているときだけ出ます）。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
+    { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」（保存先がGoogleドライブを優先のときは「Googleドライブに保存」）。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：🏠→「設定」で「Googleドライブに接続」し、保存先を選びます（Googleドライブを優先／保存のたびに選ぶ／この端末）。Googleドライブには「Sudoku」フォルダに保存されます。PCとスマホで同じ問題の続きを解けます\n・開くときは「問題を解く」→「Googleドライブから開く」（接続しているときだけ出ます）。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
     { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・解いた順に再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
     { part: 2, title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
   ];
