@@ -556,7 +556,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.131</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.132</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・ファイルを読み込む</small></span></button>
@@ -567,7 +567,7 @@ p.msg:empty { display: none; }
       <button type="button" class="btn" id="new">✏️ 新しい問題を自分で作る</button>
       <button type="button" class="btn" id="new-auto">🎲 自動で作る</button>
       <label class="btn filepick">📂 問題ファイルを読み込む
-        <input type="file" id="import-file">
+        <input type="file" id="import-file" accept=".json,application/json">
       </label>
     </div>
     <div class="p-solve paused-box" id="paused-box" hidden>
@@ -580,7 +580,7 @@ p.msg:empty { display: none; }
     <p class="msg" id="file-msg" aria-live="polite"></p>
     <div class="row p-solve">
       <label class="btn sub filepick">回答中のファイルを開く
-        <input type="file" id="progress-file">
+        <input type="file" id="progress-file" accept=".json,application/json">
       </label>
     </div>
     <div class="gdrive p-solve" id="gdrive" hidden>
