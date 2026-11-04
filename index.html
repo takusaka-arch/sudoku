@@ -380,7 +380,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 /* 最初の画面（ホーム）と、「作る」「解く」それぞれのページ。そのページに要る物だけを出す */
 .row.make-menu { display: grid; grid-template-columns: 1fr; max-width: 420px; gap: 10px; }
 .make-menu > .btn { justify-self: stretch; width: 100%; box-sizing: border-box; justify-content: flex-start; text-align: left; }
-.start:not([data-page="home"]) .p-home, .start:not([data-page="make"]) .p-make, .start:not([data-page="solve"]) .p-solve { display: none !important; }
+.start:not([data-page="home"]) .p-home, .start:not([data-page="make"]) .p-make, .start:not([data-page="solve"]) .p-solve, .start:not([data-page="settings"]) .p-settings { display: none !important; }
 .head-btns { display: flex; gap: 6px; align-items: center; }
 .home-btn { font-size: 1rem; line-height: 1; padding: 4px 8px; }
 .home-menu { display: grid; gap: 12px; }
@@ -409,7 +409,8 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .share-box textarea, .import textarea { font: 500 0.85rem var(--font-num); padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 4px; background: var(--bg); color: var(--ink); resize: vertical; min-width: 0; overflow-wrap: anywhere; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .gdrive { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
-.gdrive[hidden] { display: none; }
+.gdrive[hidden], .gd-on[hidden], #gd-open-row[hidden] { display: none; }
+.gd-on { display: grid; gap: 8px; }
 .gd-title { margin: 0; font-weight: 700; }
 .gd-account { margin-left: 8px; font-weight: 500; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
 .gd-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem; line-height: 1.5; cursor: pointer; }
@@ -556,11 +557,12 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.132</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.133</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・ファイルを読み込む</small></span></button>
-      <button type="button" class="home-big" id="go-solve"><span class="hb-icon" aria-hidden="true">🧩</span><span class="hb-text">問題を解く<small>保存した問題・回答中のファイル・Googleドライブ</small></span></button>
+      <button type="button" class="home-big" id="go-solve"><span class="hb-icon" aria-hidden="true">🧩</span><span class="hb-text">問題を解く<small>保存した問題・一時停止中・回答中のファイル</small></span></button>
+      <button type="button" class="home-big" id="go-settings"><span class="hb-icon" aria-hidden="true">⚙️</span><span class="hb-text">設定<small>Googleドライブとの接続</small></span></button>
     </div>
     <h2 class="p-make">問題を作る・登録する</h2>
     <div class="row p-make make-menu">
@@ -579,18 +581,26 @@ p.msg:empty { display: none; }
     <p class="note p-solve" id="empty">保存した問題はまだありません。「🏠」→「問題を作る・登録する」で作れます。</p>
     <p class="msg" id="file-msg" aria-live="polite"></p>
     <div class="row p-solve">
-      <label class="btn sub filepick">回答中のファイルを開く
+      <label class="btn filepick">📂 回答中のファイルを開く
         <input type="file" id="progress-file" accept=".json,application/json">
       </label>
     </div>
-    <div class="gdrive p-solve" id="gdrive" hidden>
+    <div class="row p-solve" id="gd-open-row" hidden>
+      <button type="button" class="btn" id="gd-open">☁️ Googleドライブから開く</button>
+    </div>
+    <h2 class="p-settings">設定</h2>
+    <div class="gdrive p-settings" id="gdrive">
       <p class="gd-title">Googleドライブ<span class="gd-account" id="gd-account"></span></p>
-      <label class="gd-opt"><input type="checkbox" id="gd-save"> 保存するときは、Googleドライブの「Sudoku」フォルダに保存する</label>
-      <div class="row">
-        <button type="button" class="btn sub" id="gd-open">Googleドライブから開く</button>
-        <button type="button" class="btn sub" id="gd-signout" hidden>接続を解除</button>
+      <p class="note gd-na" id="gd-na" hidden>Googleドライブは、GitHub版（アプリ版・Web版）でのみ使えます。</p>
+      <div class="gd-on" id="gd-on">
+        <label class="gd-opt"><input type="checkbox" id="gd-save"> 保存するときは、Googleドライブの「Sudoku」フォルダに保存する</label>
+        <div class="row">
+          <button type="button" class="btn" id="gd-connect">Googleドライブに接続</button>
+          <button type="button" class="btn sub" id="gd-signout" hidden>接続を解除</button>
+        </div>
+        <p class="note">接続すると、「問題を解く」に「Googleドライブから開く」が出ます。</p>
+        <a class="gd-policy" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
       </div>
-      <a class="gd-policy" href="privacy.html" target="_blank" rel="noopener">プライバシーポリシー</a>
     </div>
   </section>
   <div class="crop" id="gd-box" role="dialog" aria-modal="true" aria-labelledby="gd-box-title" hidden>
@@ -1874,6 +1884,7 @@ p.msg:empty { display: none; }
   new MutationObserver(updateHomeBtn).observe(startPanel, { attributes: true, attributeFilter: ["hidden", "data-page"] });
   document.getElementById("go-make").addEventListener("click", () => setPage("make"));
   document.getElementById("go-solve").addEventListener("click", () => setPage("solve"));
+  document.getElementById("go-settings").addEventListener("click", () => setPage("settings"));
   homeBtn.addEventListener("click", () => {
     if (startPanel.hidden) showStart("home");
     else setPage("home");
@@ -3322,15 +3333,20 @@ p.msg:empty { display: none; }
     const SCOPE = "https://www.googleapis.com/auth/drive.file";
     const EMAIL_KEY = "sudoku-gdrive-email", SAVE_KEY = "sudoku-gdrive-save";
     const API = "https://www.googleapis.com/drive/v3", UP = "https://www.googleapis.com/upload/drive/v3";
-    const box = document.getElementById("gdrive"), saveChk = document.getElementById("gd-save");
+    const saveChk = document.getElementById("gd-save"), openRow = document.getElementById("gd-open-row");
+    const connectBtn = document.getElementById("gd-connect");
     const account = document.getElementById("gd-account"), signout = document.getElementById("gd-signout");
     const ok = !!CLIENT && location.protocol === "https:";
     let tokenClient = null, token = null, tokenExp = 0, waiting = null, folder = null;
     const ls = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } };
     function drawAccount() {
       const email = ls(EMAIL_KEY);
-      account.textContent = email ? `（${email}）` : "（まだ接続していません）";
+      account.textContent = !ok ? "" : email ? `（${email}）` : "（まだ接続していません）";
       signout.hidden = !email;
+      connectBtn.hidden = !!email;
+      saveChk.disabled = !email;
+      // 接続しているときだけ「問題を解く」に「Googleドライブから開く」を出す
+      openRow.hidden = !(ok && email);
     }
     function loadGis() {
       if (window.google?.accounts?.oauth2) return Promise.resolve();
@@ -3537,8 +3553,20 @@ p.msg:empty { display: none; }
       if (obj && obj.kind === "progress") openProgressData(obj, f.name);
       else importProblemData(obj, f.name);
     }
+    document.getElementById("gd-na").hidden = ok;
+    document.getElementById("gd-on").hidden = !ok;
     if (ok) {
-      box.hidden = false;
+      connectBtn.addEventListener("click", async () => {
+        const first = getToken();  // ボタンを押した流れのうちにログイン画面を出す
+        say("Googleドライブに接続しています…");
+        try {
+          await first;
+          await rememberAccount();
+          say("Googleドライブに接続しました");
+        } catch (e) {
+          say(e.message || "Googleドライブに接続できませんでした", true);
+        }
+      });
       saveChk.checked = ls(SAVE_KEY) === "1";
       saveChk.addEventListener("change", () => ls(SAVE_KEY, saveChk.checked ? "1" : "0"));
       drawAccount();
@@ -3553,7 +3581,7 @@ p.msg:empty { display: none; }
         say("Googleドライブとの接続を解除しました");
       });
     }
-    return { saveOn: () => ok && saveChk.checked, saveFile };
+    return { saveOn: () => ok && !!ls(EMAIL_KEY) && saveChk.checked, saveFile };
   })();
 
   function openProblem(p) {
@@ -3641,7 +3669,7 @@ p.msg:empty { display: none; }
       tryPhoto: true },
     { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字に色が付きます。\n続けて別の数字を${TAP}すると、別の色で4つまで同時に表示できます。もう一度${TAP}でその数字だけ止まります。` },
     { part: 2, title: "ヒント", text: "「ヒント」で、解き方を「基本」「上級」「最上級」から選べます。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
-    { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：「問題を解く」のGoogleドライブ欄にチェックを入れると、保存先がGoogleドライブの「Sudoku」フォルダになります。PCとスマホで同じ問題の続きを解けます\n・開くときは「Googleドライブから開く」。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
+    { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：🏠→「設定」で「Googleドライブに接続」し、保存のチェックを入れると、保存先がGoogleドライブの「Sudoku」フォルダになります。PCとスマホで同じ問題の続きを解けます\n・開くときは「問題を解く」→「Googleドライブから開く」（接続しているときだけ出ます）。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
     { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・解いた順に再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
     { part: 2, title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
   ];
