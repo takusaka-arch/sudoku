@@ -378,6 +378,8 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .trial p { margin: 0; font-size: 0.85rem; font-weight: 700; }
 .start[hidden], .work[hidden] { display: none; }
 /* 最初の画面（ホーム）と、「作る」「解く」それぞれのページ。そのページに要る物だけを出す */
+.edit-box[hidden] { display: none; }
+.edit-box h2 { font-size: 1rem; margin: 14px 0 6px; }
 .row.make-menu { display: grid; grid-template-columns: 1fr; max-width: 420px; gap: 10px; }
 .make-menu > .btn { justify-self: stretch; width: 100%; box-sizing: border-box; justify-content: flex-start; text-align: left; }
 .start:not([data-page="home"]) .p-home, .start:not([data-page="make"]) .p-make, .start:not([data-page="solve"]) .p-solve, .start:not([data-page="settings"]) .p-settings { display: none !important; }
@@ -563,10 +565,10 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.135</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.136</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
-      <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・ファイルを読み込む</small></span></button>
+      <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
       <button type="button" class="home-big" id="go-solve"><span class="hb-icon" aria-hidden="true">🧩</span><span class="hb-text">問題を解く<small>保存した問題・一時停止中・回答中のファイル</small></span></button>
       <button type="button" class="home-big" id="go-settings"><span class="hb-icon" aria-hidden="true">⚙️</span><span class="hb-text">設定<small>Googleドライブとの接続</small></span></button>
     </div>
@@ -574,9 +576,15 @@ p.msg:empty { display: none; }
     <div class="row p-make make-menu">
       <button type="button" class="btn" id="new">✏️ 新しい問題を自分で作る</button>
       <button type="button" class="btn" id="new-auto">🎲 自動で作る</button>
+      <button type="button" class="btn" id="edit-saved" aria-expanded="false">📝 保存した問題を修正する</button>
       <label class="btn filepick">📂 問題ファイルを読み込む
         <input type="file" id="import-file" accept=".json,application/json">
       </label>
+    </div>
+    <div class="p-make edit-box" id="edit-box" hidden>
+      <h2>修正する問題を選んでください</h2>
+      <ul class="list" id="edit-list"></ul>
+      <p class="note" id="edit-empty" hidden>保存した問題はまだありません。</p>
     </div>
     <div class="p-solve paused-box" id="paused-box" hidden>
       <h2>一時停止中</h2>
@@ -1322,7 +1330,7 @@ p.msg:empty { display: none; }
     done.hidden = true;
     go.hidden = false;
     pause.hidden = true;
-    edit.hidden = false;
+    edit.hidden = true;
     reset.hidden = true;
     replayBtn.hidden = true;
     saveSolvedBtn.hidden = true;
@@ -1416,6 +1424,37 @@ p.msg:empty { display: none; }
     board.dataset.mode = "register";
     markConflicts();
     showRegister();
+  });
+  // 作るページの「保存した問題を修正する」: 一覧から選ぶと、その問題を作成モードで開く（同じ名前で登録すると上書き）
+  const editBox = document.getElementById("edit-box"), editSaved = document.getElementById("edit-saved");
+  function renderEditList() {
+    const list = loadAll().sort((a, b) => (b.saved || "").localeCompare(a.saved || ""));
+    const ul = document.getElementById("edit-list");
+    ul.innerHTML = "";
+    document.getElementById("edit-empty").hidden = list.length > 0;
+    for (const p of list) {
+      const li = document.createElement("li");
+      const b = document.createElement("button");
+      b.type = "button";
+      b.className = "open has-mini";
+      if (/^[0-9]{81}$/.test(p.givens || "")) b.appendChild(miniBoard(p.givens));
+      const txt = document.createElement("span");
+      txt.className = "open-text";
+      txt.textContent = p.name;
+      const meta = document.createElement("small");
+      meta.textContent = `問題 ${p.givens.replace(/0/g, "").length} マス`;
+      txt.appendChild(meta);
+      b.appendChild(txt);
+      b.addEventListener("click", () => { openProblem(p); edit.click(); });
+      li.appendChild(b);
+      ul.appendChild(li);
+    }
+  }
+  editSaved.addEventListener("click", () => {
+    const open = editBox.hidden;
+    if (open) renderEditList();
+    editBox.hidden = !open;
+    editSaved.setAttribute("aria-expanded", String(open));
   });
 
   // 写真から問題を読み取る（Claude が写真を読む。使えない環境ではボタンを出さない）
@@ -1896,6 +1935,8 @@ p.msg:empty { display: none; }
   const homeBtn = document.getElementById("home-btn");
   function setPage(page) {
     startPanel.dataset.page = page;
+    document.getElementById("edit-box").hidden = true;
+    document.getElementById("edit-saved").setAttribute("aria-expanded", "false");
     say("");
     updateHomeBtn();
   }
