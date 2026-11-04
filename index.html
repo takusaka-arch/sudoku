@@ -460,15 +460,15 @@ p.msg:empty { display: none; }
 .hint-menu button { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; text-align: left; padding: 8px 10px; border: 1px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
 .hint-menu button:hover { background: var(--hover); }
 .hint-menu button:focus-visible { outline: 3px solid var(--answer); outline-offset: 1px; }
-#hint-menu { gap: 4px; }
+#hint-menu { gap: 3px; padding: 6px; }
 #hint-menu .hm-item { display: grid; grid-template-columns: 1fr auto; gap: 4px 6px; align-items: center; }
-#hint-menu .hm-go { grid-template-columns: auto 1fr; padding: 8px 10px; }
+#hint-menu .hm-go { grid-template-columns: auto 1fr; padding: 3px 10px; min-height: 30px; line-height: 1.2; }
 #hint-menu .hm-go .hm-no { grid-row: auto; }
-#hint-menu .hm-q { display: block; width: 40px; height: 100%; min-height: 40px; padding: 0; justify-content: center; font-weight: 700; color: var(--muted); text-align: center; }
+#hint-menu .hm-q { display: block; width: 36px; height: 100%; min-height: 30px; padding: 0; justify-content: center; font-weight: 700; color: var(--muted); text-align: center; }
 #hint-menu .hm-q[aria-expanded="true"] { color: var(--paper); background: var(--answer); border-color: var(--answer); }
 #hint-menu .hm-desc { grid-column: 1 / -1; margin: 0 2px 4px; padding: 6px 10px; font-size: 0.85rem; line-height: 1.5; color: var(--ink); background: var(--hover); border-radius: 6px; }
 #hint-menu .hm-desc[hidden] { display: none; }
-#hint-menu .hm-head { margin: 4px 2px 0; font-size: 0.75rem; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--line-sub); }
+#hint-menu .hm-head { margin: 2px 2px 0; font-size: 0.7rem; line-height: 1.3; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--line-sub); }
 #hint-menu .hm-head:first-child { margin-top: 0; }
 .hint-menu .hm-no { grid-row: span 2; font: 700 1.1rem var(--font-num); color: var(--answer); }
 .hint-menu .hm-label { font-weight: 700; font-size: 0.92rem; }
@@ -495,10 +495,10 @@ p.msg:empty { display: none; }
   .nh-keys button { font-size: 0.95rem; }
   #hint-menu { gap: 3px; padding: 6px; }
   #hint-menu .hm-item { gap: 3px 4px; }
-  #hint-menu .hm-go { padding: 4px 8px; column-gap: 8px; }
+  #hint-menu .hm-go { padding: 2px 8px; min-height: 24px; column-gap: 8px; }
   #hint-menu .hm-no { font-size: 0.95rem; }
   #hint-menu .hm-label { font-size: 0.8rem; }
-  #hint-menu .hm-q { width: 30px; min-height: 28px; font-size: 0.8rem; }
+  #hint-menu .hm-q { width: 28px; min-height: 24px; font-size: 0.8rem; }
   #hint-menu .hm-desc { font-size: 0.78rem; padding: 4px 8px; }
 }
 .list .del.armed { border-color: var(--error); background: var(--error); color: var(--paper); }
@@ -565,7 +565,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.136</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.137</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
