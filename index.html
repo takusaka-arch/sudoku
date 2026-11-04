@@ -378,6 +378,8 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .trial p { margin: 0; font-size: 0.85rem; font-weight: 700; }
 .start[hidden], .work[hidden] { display: none; }
 /* 最初の画面（ホーム）と、「作る」「解く」それぞれのページ。そのページに要る物だけを出す */
+.row.make-menu { display: grid; grid-template-columns: 1fr; max-width: 420px; gap: 10px; }
+.make-menu > .btn { justify-self: stretch; width: 100%; box-sizing: border-box; justify-content: flex-start; text-align: left; }
 .start:not([data-page="home"]) .p-home, .start:not([data-page="make"]) .p-make, .start:not([data-page="solve"]) .p-solve { display: none !important; }
 .head-btns { display: flex; gap: 6px; align-items: center; }
 .home-btn { font-size: 1rem; line-height: 1; padding: 4px 8px; }
@@ -554,16 +556,17 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.129</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.130</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
-      <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で入力する・自動で作成する・ファイルから開く</small></span></button>
+      <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・ファイルを読み込む</small></span></button>
       <button type="button" class="home-big" id="go-solve"><span class="hb-icon" aria-hidden="true">🧩</span><span class="hb-text">問題を解く<small>保存した問題・回答中のファイル・Googleドライブ</small></span></button>
     </div>
     <h2 class="p-make">問題を作る・登録する</h2>
-    <div class="row p-make">
-      <button type="button" class="btn" id="new">新しい問題を作る</button>
-      <label class="btn sub filepick">問題を選択して開く
+    <div class="row p-make make-menu">
+      <button type="button" class="btn" id="new">✏️ 新しい問題を自分で作る</button>
+      <button type="button" class="btn" id="new-auto">🎲 自動で作る</button>
+      <label class="btn sub filepick">📂 問題ファイルを読み込む
         <input type="file" id="import-file">
       </label>
     </div>
@@ -697,15 +700,14 @@ p.msg:empty { display: none; }
 </div>
 <div class="crop" id="gen-box" role="dialog" aria-modal="true" aria-labelledby="gen-title" hidden>
   <div class="crop-inner gen-inner">
-    <p class="gen-title" id="gen-title">新しい問題を作る</p>
-    <div class="gen-levels" id="gen-step1">
+    <p class="gen-title" id="gen-title">自動で作る</p>
+    <div class="gen-levels" id="gen-step1" hidden>
       <button type="button" id="gen-self">自分で入力する<small>手で数字を入れるか、写真から読み取ります</small></button>
       <button type="button" id="gen-auto">自動で作成する<small>レベルを選ぶと、新しい問題を作ります</small></button>
     </div>
-    <div id="gen-step2" hidden>
-      <p class="gen-sub">自動で作成する：レベルを選んでください</p>
+    <div id="gen-step2">
+      <p class="gen-sub">レベルを選んでください</p>
       <div class="gen-levels" id="gen-levels"></div>
-      <button type="button" class="btn sub small" id="gen-backstep">← 戻る</button>
     </div>
     <p class="msg" id="gen-msg" aria-live="polite"></p>
     <button type="button" class="btn sub" id="gen-close">閉じる</button>
@@ -3246,7 +3248,7 @@ p.msg:empty { display: none; }
     const ok = obj && obj.kind === "progress" && /^[0-9]{81}$/.test(obj.givens || "") && Array.isArray(obj.picks) && obj.picks.length === 81 && /^[0-9]{81}$/.test(obj.sure || "");
     if (!ok) {
       say(obj && /^[0-9]{81}$/.test(obj.givens || "")
-        ? "これは問題だけのファイルです。「問題を選択して開く」から開いてください"
+        ? "これは問題だけのファイルです。「問題を作る・登録する」→「問題ファイルを読み込む」から開いてください"
         : "このファイルは回答中のファイルではありません。「この状態を保存」→「ファイルに保存」で作ったファイルを選んでください", true);
       return;
     }
@@ -3570,7 +3572,7 @@ p.msg:empty { display: none; }
     showReady(p.givens.replace(/0/g, "").length);
     markConflicts();
   }
-  // 「新しい問題を作る」→「自分で入力する」: 手で入力するか、写真から読み取る
+  // 「新しい問題を自分で作る」: 手で入力するか、写真から読み取る
   function startRegister() {
     clearBoard();
     currentName = "";
@@ -3600,11 +3602,11 @@ p.msg:empty { display: none; }
   const MENU = isMouse ? "右クリック" : "長押し";
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
-    { title: "ようこそ（初級編）", text: `使い方を、実際に試しながら説明します。まずは初級編です。\n\n1. 最初の画面で「問題を作る・登録する」→「新しい問題を作る」で問題を入れる（自分で入力するか、自動で作成）\n   作った問題は「問題を解く」の一覧から開けます。どの画面でも🏠で最初の画面に戻れます\n2. 「問題登録完了」→「回答スタート」\n3. 数字を${MENU}して、メニューから操作を選んで解く`, part: 1, jump: true },
+    { title: "ようこそ（初級編）", text: `使い方を、実際に試しながら説明します。まずは初級編です。\n\n1. 最初の画面で「問題を作る・登録する」→「新しい問題を自分で作る」か「自動で作る」で問題を入れる\n   作った問題は「問題を解く」の一覧から開けます。どの画面でも🏠で最初の画面に戻れます\n2. 「問題登録完了」→「回答スタート」\n3. 数字を${MENU}して、メニューから操作を選んで解く`, part: 1, jump: true },
     { part: 1, title: "問題を作る：手で入力する", text: `小さな数字を${TAP}すると、問題の数字として入ります。まちがえたら、大きな数字を${TAP}して消します。\n全部入れたら「問題登録完了」を押します。`,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
-    { part: 1, title: "問題を自動で作る", text: "「新しい問題を作る」→「自動で作成する」でレベル（初級・中級・難問・最難関）を選ぶと、新しい問題を作って一覧に保存します。\n最難関は作るのに時間がかかるため、アプリを開いている間に裏で作り置きしています。" },
+    { part: 1, title: "問題を自動で作る", text: "「問題を作る・登録する」→「自動で作る」でレベル（初級・中級・難問・最難関）を選ぶと、新しい問題を作って一覧に保存します。\n最難関は作るのに時間がかかるため、アプリを開いている間に裏で作り置きしています。" },
     { part: 1, title: `${MENU}：候補を選ぶ`, text: `解くときは、小さな数字を${MENU}するとメニューが出ます。\n「候補（青）にする」を選ぶと青くなります（候補の印）。もう一度選ぶと外れます。`,
       cells: [0], target: [0, "5"], menu: true, ask: `下のマスの「5」を${MENU}して、「5 を候補（青）にする」を選んでください。`,
       goal: (d) => d.cand(0, "5").classList.contains("pick") && !d.cell(0).classList.contains("tent"), ok: "できました！ 青い数字が候補です。" },
@@ -4273,17 +4275,12 @@ p.msg:empty { display: none; }
   };
   document.getElementById("gen-self").addEventListener("click", () => { closeGen(); startRegister(); });
   document.getElementById("gen-auto").addEventListener("click", () => { drawGenLevels(); genStep(2); });
-  document.getElementById("gen-backstep").addEventListener("click", () => {
-    if (genWaiting && genWaiting.level !== 4) genWorker.postMessage({ type: "cancel", id: genWaiting.id });
-    genWaiting = null;
-    genMsg.textContent = "";
-    genStep(1);
-  });
-  document.getElementById("new").addEventListener("click", () => {
+  document.getElementById("new").addEventListener("click", () => startRegister());
+  document.getElementById("new-auto").addEventListener("click", () => {
     genMsg.textContent = "";
     drawGenLevels();
     genBox.hidden = false;
-    genStep(1);
+    genStep(2);
   });
   document.getElementById("gen-close").addEventListener("click", closeGen);
   // アプリを開いている間は、最難関の作り置きを続ける（10問たまったら止める）
