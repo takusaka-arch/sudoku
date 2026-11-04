@@ -415,6 +415,12 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .gd-account { margin-left: 8px; font-weight: 500; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
 .gd-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem; line-height: 1.5; cursor: pointer; }
 .gd-opt input { margin-top: 3px; }
+.gd-dest { display: grid; gap: 6px; margin: 0; padding: 8px 10px 10px; border: 1px solid var(--line-cell); border-radius: 4px; }
+.gd-dest legend { padding: 0 4px; font-size: 0.85rem; font-weight: 700; }
+.gd-dest:disabled .gd-opt { opacity: 0.5; cursor: default; }
+.dest-inner { width: min(100%, 360px); box-sizing: border-box; }
+.dest-inner .gen-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+.dest-inner #dest-cancel { justify-self: center; }
 .gd-policy { font-size: 0.75rem; color: var(--muted); }
 .gd-inner { width: min(100%, 440px); box-sizing: border-box; justify-items: stretch; max-height: calc(100dvh - 32px); }
 .gd-box-title { margin: 0; font-weight: 700; }
@@ -557,7 +563,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.133</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.134</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・ファイルを読み込む</small></span></button>
@@ -593,7 +599,12 @@ p.msg:empty { display: none; }
       <p class="gd-title">Googleドライブ<span class="gd-account" id="gd-account"></span></p>
       <p class="note gd-na" id="gd-na" hidden>Googleドライブは、GitHub版（アプリ版・Web版）でのみ使えます。</p>
       <div class="gd-on" id="gd-on">
-        <label class="gd-opt"><input type="checkbox" id="gd-save"> 保存するときは、Googleドライブの「Sudoku」フォルダに保存する</label>
+        <fieldset class="gd-dest" id="gd-dest">
+          <legend>ファイルの保存先</legend>
+          <label class="gd-opt"><input type="radio" name="gd-dest" value="drive"> Googleドライブを優先（「Sudoku」フォルダに保存）</label>
+          <label class="gd-opt"><input type="radio" name="gd-dest" value="ask"> 保存のたびに選ぶ</label>
+          <label class="gd-opt"><input type="radio" name="gd-dest" value="local"> この端末に保存</label>
+        </fieldset>
         <div class="row">
           <button type="button" class="btn" id="gd-connect">Googleドライブに接続</button>
           <button type="button" class="btn sub" id="gd-signout" hidden>接続を解除</button>
@@ -706,6 +717,16 @@ p.msg:empty { display: none; }
       <button type="button" class="btn" id="tut-next">次へ</button>
       <button type="button" class="btn sub" id="tut-skip">閉じる</button>
     </div>
+  </div>
+</div>
+<div class="crop" id="dest-box" role="dialog" aria-modal="true" aria-labelledby="dest-title" hidden>
+  <div class="crop-inner gen-inner dest-inner">
+    <p class="gen-title" id="dest-title">どこに保存しますか？</p>
+    <div class="gen-levels">
+      <button type="button" id="dest-drive">☁️ Googleドライブ<small>「Sudoku」フォルダに保存します</small></button>
+      <button type="button" id="dest-local">📱 この端末<small>ファイルとして保存します</small></button>
+    </div>
+    <button type="button" class="btn sub" id="dest-cancel">やめる</button>
   </div>
 </div>
 <div class="crop" id="gen-box" role="dialog" aria-modal="true" aria-labelledby="gen-title" hidden>
@@ -3056,8 +3077,33 @@ p.msg:empty { display: none; }
     const data = JSON.stringify({ app: "sudoku-board", version: 1, name: p.name, givens: p.givens }, null, 2);
     return saveFile(`数独_${safeName(p.name)}.json`, data, `「${p.name}」をファイルに書き出しました`);
   }
-  async function saveFile(filename, data, okText) {
-    if (gd.saveOn()) return gd.saveFile(filename, data, okText);
+  // 保存先を選ぶ画面（設定が「保存のたびに選ぶ」のとき）。ボタンを押した流れの中で保存する
+  const destBox = document.getElementById("dest-box");
+  let destPick = null;
+  for (const [id, v] of [["dest-drive", "drive"], ["dest-local", "local"], ["dest-cancel", null]]) {
+    document.getElementById(id).addEventListener("click", () => {
+      destBox.hidden = true;
+      const f = destPick; destPick = null;
+      if (f) f(v);
+    });
+  }
+  function saveFile(filename, data, okText) {
+    const m = gd.mode();
+    if (m === "drive") return gd.saveFile(filename, data, okText);
+    if (m === "ask") {
+      return new Promise((done) => {
+        destPick = (v) => {
+          if (v === "drive") done(gd.saveFile(filename, data, okText));
+          else if (v === "local") done(saveLocal(filename, data, okText));
+          else { say(""); done(); }
+        };
+        destBox.hidden = false;
+        document.getElementById("dest-drive").focus();
+      });
+    }
+    return saveLocal(filename, data, okText);
+  }
+  async function saveLocal(filename, data, okText) {
     // claude.ai 上では保存の確認を出して保存、単体のファイルでは普通にダウンロード
     const dl = await window.claude?.use?.("downloads").catch(() => null);
     if (dl) {
@@ -3333,7 +3379,7 @@ p.msg:empty { display: none; }
     const SCOPE = "https://www.googleapis.com/auth/drive.file";
     const EMAIL_KEY = "sudoku-gdrive-email", SAVE_KEY = "sudoku-gdrive-save";
     const API = "https://www.googleapis.com/drive/v3", UP = "https://www.googleapis.com/upload/drive/v3";
-    const saveChk = document.getElementById("gd-save"), openRow = document.getElementById("gd-open-row");
+    const destSet = document.getElementById("gd-dest"), openRow = document.getElementById("gd-open-row");
     const connectBtn = document.getElementById("gd-connect");
     const account = document.getElementById("gd-account"), signout = document.getElementById("gd-signout");
     const ok = !!CLIENT && location.protocol === "https:";
@@ -3344,7 +3390,7 @@ p.msg:empty { display: none; }
       account.textContent = !ok ? "" : email ? `（${email}）` : "（まだ接続していません）";
       signout.hidden = !email;
       connectBtn.hidden = !!email;
-      saveChk.disabled = !email;
+      destSet.disabled = !email;
       // 接続しているときだけ「問題を解く」に「Googleドライブから開く」を出す
       openRow.hidden = !(ok && email);
     }
@@ -3567,8 +3613,8 @@ p.msg:empty { display: none; }
           say(e.message || "Googleドライブに接続できませんでした", true);
         }
       });
-      saveChk.checked = ls(SAVE_KEY) === "1";
-      saveChk.addEventListener("change", () => ls(SAVE_KEY, saveChk.checked ? "1" : "0"));
+      destSet.querySelector(`input[value="${dest()}"]`).checked = true;
+      destSet.addEventListener("change", (e) => ls(SAVE_KEY, e.target.value));
       drawAccount();
       loadGis().catch(() => {});
       document.getElementById("gd-open").addEventListener("click", openList);
@@ -3581,7 +3627,12 @@ p.msg:empty { display: none; }
         say("Googleドライブとの接続を解除しました");
       });
     }
-    return { saveOn: () => ok && !!ls(EMAIL_KEY) && saveChk.checked, saveFile };
+    // 保存先: drive（Googleドライブを優先）/ ask（保存のたびに選ぶ）/ local（この端末）。前の版のチェック "1" はドライブ優先
+    function dest() {
+      const v = ls(SAVE_KEY);
+      return v === "1" || v === "drive" ? "drive" : v === "ask" ? "ask" : "local";
+    }
+    return { mode: () => (ok && ls(EMAIL_KEY) ? dest() : "local"), saveFile };
   })();
 
   function openProblem(p) {
@@ -3669,7 +3720,7 @@ p.msg:empty { display: none; }
       tryPhoto: true },
     { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字に色が付きます。\n続けて別の数字を${TAP}すると、別の色で4つまで同時に表示できます。もう一度${TAP}でその数字だけ止まります。` },
     { part: 2, title: "ヒント", text: "「ヒント」で、解き方を「基本」「上級」「最上級」から選べます。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
-    { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：🏠→「設定」で「Googleドライブに接続」し、保存のチェックを入れると、保存先がGoogleドライブの「Sudoku」フォルダになります。PCとスマホで同じ問題の続きを解けます\n・開くときは「問題を解く」→「Googleドライブから開く」（接続しているときだけ出ます）。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
+    { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：🏠→「設定」で「Googleドライブに接続」し、保存先を選びます（Googleドライブを優先／保存のたびに選ぶ／この端末）。Googleドライブには「Sudoku」フォルダに保存されます。PCとスマホで同じ問題の続きを解けます\n・開くときは「問題を解く」→「Googleドライブから開く」（接続しているときだけ出ます）。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
     { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・解いた順に再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
     { part: 2, title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
   ];
