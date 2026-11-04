@@ -395,6 +395,10 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .list .open.has-mini { display: flex; align-items: center; gap: 12px; padding: 8px 10px; }
 .list .open.has-mini .gd-mini { width: 64px; height: 64px; }
 .list .open-text { flex: 1; min-width: 0; }
+.paused-box { display: grid; gap: 8px; }
+.paused-box[hidden] { display: none; }
+.paused-box h2 { margin: 0; }
+.paused-box .open { border-color: var(--answer); border-width: 2px; }
 .list .open small { display: block; margin-top: 2px; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .list .del, .list .share { flex: 0 0 auto; padding: 6px 10px; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
 .share-box, .import { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
@@ -550,7 +554,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.127</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.128</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で入力する・自動で作成する・ファイルから開く</small></span></button>
@@ -562,6 +566,10 @@ p.msg:empty { display: none; }
       <label class="btn sub filepick">問題を選択して開く
         <input type="file" id="import-file">
       </label>
+    </div>
+    <div class="p-solve paused-box" id="paused-box" hidden>
+      <h2>一時停止中</h2>
+      <ul class="list" id="paused-list"></ul>
     </div>
     <h2 class="p-solve">保存した問題</h2>
     <ul class="list p-solve" id="list"></ul>
@@ -1868,7 +1876,9 @@ p.msg:empty { display: none; }
     if (startPanel.hidden) showStart("home");
     else setPage("home");
   });
+  // 解いている途中で一覧やホームに戻るときは、その時点を保存してから戻る（「問題を解く」の「一時停止中」から続きを開ける）
   function showStart(page) {
+    if (["solve", "paused"].includes(board.dataset.mode) && typeof autoSave === "function") autoSave();
     // 「問題一覧へ」から来たときは、保存した問題の一覧（解くページ）
     startPanel.dataset.page = typeof page === "string" ? page : "solve";
     if (typeof setHighlight === "function" && document.querySelector("#num-hl button")) setHighlight("");
@@ -1919,7 +1929,49 @@ p.msg:empty { display: none; }
     svg.innerHTML = inner;
     return svg;
   }
+  // 「問題を解く」の一番上に、一時停止中（解いている途中）の問題を出す
+  function renderPaused() {
+    const box = document.getElementById("paused-box"), ul = document.getElementById("paused-list");
+    ul.textContent = "";
+    let cur = null;
+    try { cur = JSON.parse(localStorage.getItem("sudoku-current") || "null"); } catch (e) {}
+    if (!cur || !/^[0-9]{81}$/.test(cur.givens || "")) { box.hidden = true; return; }
+    box.hidden = false;
+    const li = document.createElement("li");
+    const open = document.createElement("button");
+    open.type = "button";
+    open.className = "open has-mini";
+    const txt = document.createElement("span");
+    txt.className = "open-text";
+    txt.textContent = `${cur.name || "名前のない問題"}（続きから解く）`;
+    const meta = document.createElement("small");
+    const empty = (cur.givens.match(/0/g) || []).length;
+    const sure = (String(cur.sure || "").match(/[1-9]/g) || []).length;
+    const d = new Date(cur.saved);
+    meta.textContent = `確定 ${sure}/${empty} マス・経過 ${fmt(Number(cur.elapsed) || 0)}${isNaN(d) ? "" : "・" + d.toLocaleString("ja-JP", { dateStyle: "short", timeStyle: "short" })}`;
+    txt.appendChild(meta);
+    open.append(miniBoard(cur.givens), txt);
+    open.addEventListener("click", () => resumeSaved());
+    const del = document.createElement("button");
+    del.type = "button";
+    del.className = "del";
+    del.textContent = "やめる";
+    del.setAttribute("aria-label", "一時停止中の問題をやめる（途中の状態を消す）");
+    del.addEventListener("click", () => {
+      if (!del.classList.contains("armed")) {
+        del.classList.add("armed");
+        del.textContent = "途中の状態を消す";
+        setTimeout(() => { del.classList.remove("armed"); del.textContent = "やめる"; }, 3000);
+        return;
+      }
+      clearAutoSave();
+      renderPaused();
+    });
+    li.append(open, del);
+    ul.appendChild(li);
+  }
   function renderList() {
+    renderPaused();
     addSolvedToList();
     const list = loadAll().sort((a, b) => (b.saved || "").localeCompare(a.saved || ""));
     listEl.innerHTML = "";
