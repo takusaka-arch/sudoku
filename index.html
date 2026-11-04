@@ -377,6 +377,16 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .trial[hidden] { display: none; }
 .trial p { margin: 0; font-size: 0.85rem; font-weight: 700; }
 .start[hidden], .work[hidden] { display: none; }
+/* 最初の画面（ホーム）と、「作る」「解く」それぞれのページ。そのページに要る物だけを出す */
+.start:not([data-page="home"]) .p-home, .start:not([data-page="make"]) .p-make, .start:not([data-page="solve"]) .p-solve { display: none !important; }
+.head-btns { display: flex; gap: 6px; align-items: center; }
+.home-btn { font-size: 1rem; line-height: 1; padding: 4px 8px; }
+.home-menu { display: grid; gap: 12px; }
+.home-big { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); color: var(--ink); font: 700 1.15rem var(--font-ui); cursor: pointer; }
+.home-big:hover { background: var(--hover); }
+.home-big:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+.home-big .hb-icon { font-size: 1.8rem; line-height: 1; }
+.home-big small { display: block; margin-top: 4px; font-weight: 500; font-size: 0.8rem; color: var(--muted); }
 h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 55vh; overflow-y: auto; }
 .list li { display: flex; flex-wrap: wrap; gap: 4px 6px; justify-content: flex-end; }
@@ -540,22 +550,29 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.126</small></h1><button type="button" class="btn sub small" id="tut-open">使い方</button></div>
-  <section class="start" id="start">
-    <h2>保存した問題</h2>
-    <ul class="list" id="list"></ul>
-    <p class="note" id="empty">保存した問題はまだありません。</p>
-    <p class="msg" id="file-msg" aria-live="polite"></p>
-    <div class="row">
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.127</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <section class="start" id="start" data-page="home">
+    <div class="home-menu p-home">
+      <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で入力する・自動で作成する・ファイルから開く</small></span></button>
+      <button type="button" class="home-big" id="go-solve"><span class="hb-icon" aria-hidden="true">🧩</span><span class="hb-text">問題を解く<small>保存した問題・回答中のファイル・Googleドライブ</small></span></button>
+    </div>
+    <h2 class="p-make">問題を作る・登録する</h2>
+    <div class="row p-make">
       <button type="button" class="btn" id="new">新しい問題を作る</button>
       <label class="btn sub filepick">問題を選択して開く
         <input type="file" id="import-file">
       </label>
+    </div>
+    <h2 class="p-solve">保存した問題</h2>
+    <ul class="list p-solve" id="list"></ul>
+    <p class="note p-solve" id="empty">保存した問題はまだありません。「🏠」→「問題を作る・登録する」で作れます。</p>
+    <p class="msg" id="file-msg" aria-live="polite"></p>
+    <div class="row p-solve">
       <label class="btn sub filepick">回答中のファイルを開く
         <input type="file" id="progress-file">
       </label>
     </div>
-    <div class="gdrive" id="gdrive" hidden>
+    <div class="gdrive p-solve" id="gdrive" hidden>
       <p class="gd-title">Googleドライブ<span class="gd-account" id="gd-account"></span></p>
       <label class="gd-opt"><input type="checkbox" id="gd-save"> 保存するときは、Googleドライブの「Sudoku」フォルダに保存する</label>
       <div class="row">
@@ -1834,7 +1851,26 @@ p.msg:empty { display: none; }
   const startPanel = document.getElementById("start");
   const workPanel = document.getElementById("work");
   const listEl = document.getElementById("list");
-  function showStart() {
+  // ホーム（最初の画面）／作る／解く の切り替え。🏠はホーム以外で出す
+  const homeBtn = document.getElementById("home-btn");
+  function setPage(page) {
+    startPanel.dataset.page = page;
+    say("");
+    updateHomeBtn();
+  }
+  function updateHomeBtn() {
+    homeBtn.hidden = !startPanel.hidden && startPanel.dataset.page === "home";
+  }
+  new MutationObserver(updateHomeBtn).observe(startPanel, { attributes: true, attributeFilter: ["hidden", "data-page"] });
+  document.getElementById("go-make").addEventListener("click", () => setPage("make"));
+  document.getElementById("go-solve").addEventListener("click", () => setPage("solve"));
+  homeBtn.addEventListener("click", () => {
+    if (startPanel.hidden) showStart("home");
+    else setPage("home");
+  });
+  function showStart(page) {
+    // 「問題一覧へ」から来たときは、保存した問題の一覧（解くページ）
+    startPanel.dataset.page = typeof page === "string" ? page : "solve";
     if (typeof setHighlight === "function" && document.querySelector("#num-hl button")) setHighlight("");
     document.getElementById("trial").hidden = true;
     timerReset();
@@ -3512,7 +3548,7 @@ p.msg:empty { display: none; }
   const MENU = isMouse ? "右クリック" : "長押し";
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
-    { title: "ようこそ（初級編）", text: `使い方を、実際に試しながら説明します。まずは初級編です。\n\n1. 「新しい問題を作る」で問題を入れる（自分で入力するか、自動で作成）\n2. 「問題登録完了」→「回答スタート」\n3. 数字を${MENU}して、メニューから操作を選んで解く`, part: 1, jump: true },
+    { title: "ようこそ（初級編）", text: `使い方を、実際に試しながら説明します。まずは初級編です。\n\n1. 最初の画面で「問題を作る・登録する」→「新しい問題を作る」で問題を入れる（自分で入力するか、自動で作成）\n   作った問題は「問題を解く」の一覧から開けます。どの画面でも🏠で最初の画面に戻れます\n2. 「問題登録完了」→「回答スタート」\n3. 数字を${MENU}して、メニューから操作を選んで解く`, part: 1, jump: true },
     { part: 1, title: "問題を作る：手で入力する", text: `小さな数字を${TAP}すると、問題の数字として入ります。まちがえたら、大きな数字を${TAP}して消します。\n全部入れたら「問題登録完了」を押します。`,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
@@ -3801,7 +3837,7 @@ p.msg:empty { display: none; }
   document.getElementById("trial-back").addEventListener("click", () => {
     trialBox.hidden = true;
     cropEl.hidden = true;
-    showStart();
+    showStart("home");
     resumeSaved();
     openTutorial();
     tutIdx = tutSteps.findIndex((st) => st.tryPhoto);
@@ -4200,7 +4236,7 @@ p.msg:empty { display: none; }
   // アプリを開いている間は、最難関の作り置きを続ける（10問たまったら止める）
   genHunt();
 
-  showStart();
+  showStart("home");
   // 前回、解いている途中で閉じた場合は一時停止の状態で続きを開く（ガイドの写真のお試しから戻ったときも）
   function resumeSaved() {
     try {
@@ -4210,7 +4246,7 @@ p.msg:empty { display: none; }
       openProgressData(cur, "回答中");
       restoring = false;
       if (board.dataset.mode === "paused") prompt.textContent = `一時停止中：${currentName}（前回の続き）`;
-      else { clearAutoSave(); showStart(); }
+      else { clearAutoSave(); showStart("home"); }
     } catch (e) { restoring = false; }
   }
   resumeSaved();
