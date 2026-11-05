@@ -569,7 +569,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.141</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.142</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -4413,15 +4413,16 @@ p.msg:empty { display: none; }
         if (v.every((x) => x)) return level;
         for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) return 4;
         if (singles()) continue;
-        if (pairs()) { level = Math.max(level, 2); continue; }
-        if (hard()) { level = Math.max(level, 3); continue; }
+        // 2つのペアだけで解ける問題は 1.5（どのレベルにもしない）。中級はポインティング・3つの組・Xウイングなど、難問は4つの組・XYチェーンなどが必要なもの
+        if (pairs()) { level = Math.max(level, 1.5); continue; }
+        if (hard()) { level = Math.max(level, 2); continue; }
         if (extreme()) { level = Math.max(level, 3); continue; }
         // 背理法を使わずに進めなくなった。最難関は、このとき15マス以上残っているものだけ（少なければ 3.5 = どのレベルにもしない）
         return v.filter((x) => !x).length >= 15 ? 4 : 3.5;
       }
     }
     // 1回だけ作ってみる。レベルが合えば問題（81桁の文字列）、合わなければ null
-    const FLOOR = { 1: 36, 2: 28, 3: 24, 4: 17 };
+    const FLOOR = { 1: 36, 2: 26, 3: 22, 4: 17 };
     function attempt(level) {
       const g = full();
       let left = 81;
@@ -4466,8 +4467,8 @@ p.msg:empty { display: none; }
   try { localStorage.removeItem("sudoku-gen-stock"); } catch (e) {}
   const genLevels = [
     { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
-    { label: "中級", desc: "2つの数字のペアなどを使うと解けます" },
-    { label: "難問", desc: "3つ・4つの数字の組、Xウイング、XYチェーンなど、背理法以外の解き方を使って解けます" },
+    { label: "中級", desc: "ポインティング、3つの数字の組、Xウイング、XYウイングなどが必要です" },
+    { label: "難問", desc: "4つの数字の組、XYZウイング、スカイスクレイパー、XYチェーンなどが必要です（背理法はいりません）" },
     { label: "最難関", desc: "背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です" },
   ];
   const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");
