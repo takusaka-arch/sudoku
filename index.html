@@ -276,7 +276,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 @media (max-width: 760px) {
   .pad { width: 100%; padding: 8px; gap: 4px 10px; border-width: 2px; grid-template-columns: auto 1fr; grid-template-areas: "keys title" "keys note"; grid-template-rows: auto 1fr; align-items: start; justify-items: stretch; align-content: start; }
   .pad .keys { grid-area: keys; gap: 6px; width: 216px; }
-  .pad #pad-title { grid-area: title; font-size: 0.85rem; padding: 0 30px 0 0; text-align: left; }
+  .pad #pad-title { grid-area: title; font-size: 0.85rem; line-height: 1.35; padding: 0; text-align: left; white-space: pre-line; }
   .pad #pad-note { grid-area: note; font-size: 0.7rem; line-height: 1.45; text-align: left; white-space: pre-line; }
   .pad .pad-close { width: 32px; height: 32px; font-size: 1.3rem; top: 2px; right: 2px; }
   .key { font-size: 1.6rem; border-radius: 7px; }
@@ -578,7 +578,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.144</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.145</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1162,7 +1162,11 @@ p.msg:empty { display: none; }
     });
     if (!show) return;
     const given = mode === "solve" && sel.classList.contains("fixed");
-    padTitle.textContent = `選択中：${+sel.dataset.row + 1}行${+sel.dataset.col + 1}列` + (given ? "（問題の数字）" : sel.classList.contains("tent") ? "（確定候補）" : "");
+    // スマホでは右側に「選択中」「○行○列」「（確定候補）」を1行ずつ並べる
+    const tag = given ? "（問題の数字）" : sel.classList.contains("tent") ? "（確定候補）" : "";
+    padTitle.textContent = matchMedia("(max-width: 760px)").matches
+      ? `選択中\n${+sel.dataset.row + 1}行${+sel.dataset.col + 1}列` + (tag ? "\n" + tag : "")
+      : `選択中：${+sel.dataset.row + 1}行${+sel.dataset.col + 1}列` + tag;
     for (const k of keys) {
       const cand = sel.querySelector(`.cand[data-n="${k.dataset.n}"]`);
       k.className = "key";
