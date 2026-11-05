@@ -569,7 +569,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.140</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.141</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -4333,6 +4333,81 @@ p.msg:empty { display: none; }
         }
         return false;
       }
+      // さらに上の解き方（背理法は使わない）: 4つの組、XYZウイング、スカイスクレイパー、XYチェーン（リモートペアを含む）
+      function extreme() {
+        let ch = false;
+        const sees = (a, b) => a !== b && peers[a].includes(b);
+        // 4つの数字の組（ネイキッド・隠れ）
+        for (const u of units) {
+          const e = u.filter((i) => !v[i] && pop(cand[i]) <= 4);
+          const n = e.length;
+          for (let a = 0; a < n; a++) for (let b = a + 1; b < n; b++) for (let c = b + 1; c < n; c++) for (let d = c + 1; d < n; d++) {
+            const m = cand[e[a]] | cand[e[b]] | cand[e[c]] | cand[e[d]];
+            if (pop(m) !== 4) continue;
+            const set = [e[a], e[b], e[c], e[d]];
+            for (const i of u) if (!set.includes(i)) ch = elim(i, m) || ch;
+          }
+          if (ch) return true;
+          const ds = [];
+          for (let d = 1; d <= 9; d++) { const w = where(u, d); if (w.length >= 2 && w.length <= 4) ds.push([d, w]); }
+          const k = ds.length;
+          for (let a = 0; a < k; a++) for (let b = a + 1; b < k; b++) for (let c = b + 1; c < k; c++) for (let d = c + 1; d < k; d++) {
+            const cells = new Set([...ds[a][1], ...ds[b][1], ...ds[c][1], ...ds[d][1]]);
+            if (cells.size !== 4) continue;
+            const keep = (1 << ds[a][0]) | (1 << ds[b][0]) | (1 << ds[c][0]) | (1 << ds[d][0]);
+            for (const i of cells) ch = elim(i, ALL & ~keep) || ch;
+          }
+          if (ch) return true;
+        }
+        // XYZウイング
+        const bi = [...Array(81).keys()].filter((i) => !v[i] && pop(cand[i]) === 2);
+        for (let p = 0; p < 81; p++) {
+          if (v[p] || pop(cand[p]) !== 3) continue;
+          const w = bi.filter((q) => sees(p, q) && (cand[q] & ~cand[p]) === 0);
+          for (let x = 0; x < w.length; x++) for (let y = x + 1; y < w.length; y++) {
+            const a = w[x], b = w[y];
+            if (cand[a] === cand[b]) continue;
+            const z = cand[a] & cand[b];
+            if (pop(z) !== 1) continue;
+            for (let i = 0; i < 81; i++) if (i !== p && i !== a && i !== b && sees(i, p) && sees(i, a) && sees(i, b)) ch = elim(i, z) || ch;
+            if (ch) return true;
+          }
+        }
+        // スカイスクレイパー
+        for (let d = 1; d <= 9; d++) for (const k of [0, 1]) {
+          const lines = [];
+          for (let L = 0; L < 9; L++) { const w = where(units[L * 3 + k], d); if (w.length === 2) lines.push(w); }
+          const pos = k ? rowOf : colOf;
+          for (let x = 0; x < lines.length; x++) for (let y = x + 1; y < lines.length; y++) {
+            const A = lines[x], B = lines[y];
+            for (const [ab, ae] of [[0, 1], [1, 0]]) for (const [bb, be] of [[0, 1], [1, 0]]) {
+              if (pos(A[ab]) !== pos(B[bb]) || pos(A[ae]) === pos(B[be])) continue;
+              for (let i = 0; i < 81; i++) if (sees(i, A[ae]) && sees(i, B[be])) ch = elim(i, 1 << d) || ch;
+              if (ch) return true;
+            }
+          }
+        }
+        // XYチェーン: 候補が2つのマスをつなぎ、両端で同じ数字 z が出てくれば、両端から見えるマスの z を消せる
+        for (const s0 of bi) for (const z of bits(cand[s0])) {
+          const start = { c: s0, out: bits(cand[s0] & ~(1 << z))[0] };
+          const seen = new Set([s0 * 10 + start.out]);
+          const q = [start];
+          while (q.length) {
+            const cur = q.shift();
+            for (const n of bi) {
+              if (n === cur.c || !sees(cur.c, n) || !(cand[n] & (1 << cur.out))) continue;
+              const out = bits(cand[n] & ~(1 << cur.out))[0];
+              if (out === z && n !== s0) {
+                for (let i = 0; i < 81; i++) if (i !== s0 && i !== n && sees(i, s0) && sees(i, n)) ch = elim(i, 1 << z) || ch;
+                if (ch) return true;
+              }
+              const key = n * 10 + out;
+              if (!seen.has(key)) { seen.add(key); q.push({ c: n, out }); }
+            }
+          }
+        }
+        return false;
+      }
       let level = 1;
       for (;;) {
         if (v.every((x) => x)) return level;
@@ -4340,7 +4415,9 @@ p.msg:empty { display: none; }
         if (singles()) continue;
         if (pairs()) { level = Math.max(level, 2); continue; }
         if (hard()) { level = Math.max(level, 3); continue; }
-        return 4;
+        if (extreme()) { level = Math.max(level, 3); continue; }
+        // 背理法を使わずに進めなくなった。最難関は、このとき15マス以上残っているものだけ（少なければ 3.5 = どのレベルにもしない）
+        return v.filter((x) => !x).length >= 15 ? 4 : 3.5;
       }
     }
     // 1回だけ作ってみる。レベルが合えば問題（81桁の文字列）、合わなければ null
@@ -4385,12 +4462,13 @@ p.msg:empty { display: none; }
   }
 
   // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
-  const GEN_STOCK_KEY = "sudoku-gen-stock", GEN_STOCK_MAX = 10;
+  const GEN_STOCK_KEY = "sudoku-gen-stock2", GEN_STOCK_MAX = 10;  // 最難関の条件を厳しくしたので、前の作り置き（sudoku-gen-stock）は使わない
+  try { localStorage.removeItem("sudoku-gen-stock"); } catch (e) {}
   const genLevels = [
     { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
     { label: "中級", desc: "2つの数字のペアなどを使うと解けます" },
-    { label: "難問", desc: "3つの数字の組、ブロックと行・列の関係、Xウイングなどが必要です" },
-    { label: "最難関", desc: "解き方だけでは最後まで進めず、仮に置いて矛盾したら消す、が必要です" },
+    { label: "難問", desc: "3つ・4つの数字の組、Xウイング、XYチェーンなど、背理法以外の解き方を使って解けます" },
+    { label: "最難関", desc: "背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です" },
   ];
   const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");
   const genStock = (list) => {
