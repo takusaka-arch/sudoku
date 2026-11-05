@@ -578,7 +578,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.145</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.147</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -2509,6 +2509,7 @@ p.msg:empty { display: none; }
     { head: "上級" },
     { label: "Xウイング", desc: "2つの行（列）で長方形の角にしか入らない数字と、それで消せる候補を示します", run: () => showXWing() },
     { label: "ソードフィッシュ", desc: "Xウイングを3つの行（列）に広げたものです", run: () => showSwordfish() },
+    { label: "シンプルカラーリング", desc: "ある数字が2か所にしか入らない所をたどって2色で塗り、どちらかの色が正解になることを使って候補を消します", run: () => showColoring() },
     { label: "スカイスクレイパー", desc: "2か所にしか入らない行（列）を2本使い、端どうしの両方から見えるマスの候補を消します", run: () => showSkyscraper() },
     { label: "XYウイング", desc: "候補が2つのマス3つ（AB・AC・BC）を使い、両端から見えるマスのCを消します。Y-Wingとも呼びます", run: () => showWing(false) },
     { label: "XYZウイング", desc: "軸のマスの候補が3つ（ABC）のXYウイングです。3マスすべてから見えるマスのCを消します", run: () => showWing(true) },
@@ -2517,7 +2518,7 @@ p.msg:empty { display: none; }
     { label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
     { label: "背理法", desc: "候補が2つのマスに片方を仮に入れ、矛盾が出たらもう一方が答えだと分かります", run: () => showContradiction() },
     { head: "答え" },
-    { label: "答えと理由", desc: "入る数字と、その理由を教えます", run: () => runHint(true) },
+    { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法が必要なら答えだけ示します）", run: () => runHint(true) },
     { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
   ];
   const hintMenu = document.getElementById("hint-menu");
@@ -2926,6 +2927,45 @@ p.msg:empty { display: none; }
     paintHint(st, found, found.flatMap((f) => f.gone), `同じ色の4マスの${ds}がスカイスクレイパーです（${found.length}組）。2つの行（または列）で、その数字は2か所にしか入らず、片方の端が同じ列（行）にそろっています。そろっていない側の2マスのどちらかには必ずその数字が入るので、その両方から見えるマスの同じ数字（赤い枠）は消せます。`);
   }
 
+  // シンプルカラーリング：ある数字が2か所にしか入らない行・列・ブロックをたどって、交互に2色で塗る。どちらか一方の色が正解
+  // ・同じ色の2マスが同じ行・列・ブロックにある → その色は正解ではないので、その色の数字は全部消せる
+  // ・両方の色から見えるマス → どちらかの色が正解なので、そのマスの同じ数字は消せる
+  function showColoring() {
+    const st = hintState();
+    if (!st) return;
+    const { cand } = st;
+    for (const d of DIGS) {
+      const has = (i) => cand[i].includes(d);
+      const link = [...Array(81)].map(() => []);
+      for (const u of UNITS) {
+        const w = u.ids.filter(has);
+        if (w.length === 2) { link[w[0]].push(w[1]); link[w[1]].push(w[0]); }
+      }
+      const color = new Array(81).fill(-1);
+      for (let s0 = 0; s0 < 81; s0++) {
+        if (color[s0] >= 0 || !link[s0].length) continue;
+        const comp = [s0];
+        color[s0] = 0;
+        for (let q = 0; q < comp.length; q++) for (const n of link[comp[q]]) if (color[n] < 0) { color[n] = 1 - color[comp[q]]; comp.push(n); }
+        if (comp.length < 3) continue;
+        const side = [comp.filter((i) => color[i] === 0), comp.filter((i) => color[i] === 1)];
+        const marks = side.map((cs, k) => ({ marks: cs.map((i) => [i, d]), color: PAIR_COLORS[k] }));
+        const names = ["1色目", "2色目"];
+        // 同じ色どうしが見えている
+        for (const k of [0, 1]) {
+          if (!combos(side[k], 2).some(([a, b]) => sees(a, b))) continue;
+          return paintHint(st, marks, side[k].map((i) => [i, d]),
+            `「${d}」のシンプルカラーリングです。「${d}」が2か所にしか入らない行・列・ブロックをたどって、交互に2色で塗りました（どちらか一方の色が正解）。${names[k]}のマスどうしが同じ行・列・ブロックにあるので、${names[k]}は正解ではありません。${names[k]}の「${d}」（赤い枠）は消せます。`);
+        }
+        // 両方の色から見えるマス
+        const gone = [...Array(81).keys()].filter((i) => has(i) && color[i] < 0 && side[0].some((a) => sees(a, i)) && side[1].some((b) => sees(b, i))).map((i) => [i, d]);
+        if (gone.length) return paintHint(st, marks, gone,
+          `「${d}」のシンプルカラーリングです。「${d}」が2か所にしか入らない行・列・ブロックをたどって、交互に2色で塗りました。どちらか一方の色が必ず正解なので、両方の色から見えるマスの「${d}」（赤い枠）は消せます。`);
+      }
+    }
+    noHint("シンプルカラーリング");
+  }
+
   // XYウイング（Y-Wing）：軸のマスが候補AB、それが見える2マスがAC・BC → その2マスの両方から見えるマスのCは消せる
   // XYZウイング：軸のマスが候補ABC、それが見える2マスがAC・BC → 3マスすべてから見えるマスのCは消せる
   function showWing(xyz) {
@@ -3200,7 +3240,8 @@ p.msg:empty { display: none; }
       workMsg.classList.remove("err");
       workMsg.textContent = full ? text : "ヒント：薄い紫の2マスに注目してください。（ヒントの「答えと理由」で、数字と理由を表示します）";
     };
-    for (const u of units) {
+    // （「答えと理由」では、ペアも含めて下の上級の解き方でまとめて探し、答えまで示す）
+    if (!full) for (const u of units) {
       const inUnit = cells.filter(u.has);
       const spots = {};
       for (const d of digits) spots[d] = inUnit.filter((o) => can(o, d));
@@ -3218,9 +3259,59 @@ p.msg:empty { display: none; }
         }
       }
     }
+    // 「答えと理由」: ここまでで見つからなければ、上級の解き方を順に使って候補を消し、答えの決まるマスを探す
+    if (full) {
+      const at = (i) => cells.find((o) => +o.dataset.row * 9 + +o.dataset.col === i);
+      const v = [], cand = [];
+      for (let i = 0; i < 81; i++) {
+        const o = at(i), x = val(o);
+        v.push(x ? +x : 0);
+        let m = 0;
+        if (!x) for (let d = 1; d <= 9; d++) if (can(o, String(d))) m |= 1 << d;
+        cand.push(m);
+      }
+      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} });
+      const r = hintEngine.grade(null, { v, cand });
+      const name = (i) => `${Math.floor(i / 9) + 1}行${(i % 9) + 1}列`;
+      const mark = (i, d) => {
+        const o = at(i);
+        o.classList.add("hint-cell");
+        o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
+      };
+      if (r.i !== undefined && r.log.length) {
+        hintsUsed++;
+        drawHints();
+        for (const e of r.log) for (let d = 1; d <= 9; d++) if (e.m & (1 << d)) at(e.i).querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
+        mark(r.i, r.d);
+        renderPad();
+        const techs = [...new Set(r.log.map((e) => e.tech))].join("→");
+        const UN = ["行目", "列目", "ブロック"];
+        const where = r.how === "cell" ? `${name(r.i)}に入れられる数字は「${r.d}」だけ`
+          : `${UN[r.unit % 3] === "ブロック" ? "このブロック" : Math.floor(r.unit / 3) + 1 + UN[r.unit % 3]}で「${r.d}」を入れられるのは${name(r.i)}だけ`;
+        workMsg.classList.remove("err");
+        workMsg.textContent = `ヒント：${techs}で赤い枠の候補を消すと、${where}になります（紫の数字）。`;
+        return;
+      }
+      if (r.stuck && solution && solution.n) {
+        // 背理法が要る所まで来た。候補の一番少ないマスの答えを、正解から教える
+        let best = -1;
+        for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || bitCount(cand[i]) < bitCount(cand[best]))) best = i;
+        if (best >= 0) {
+          hintsUsed++;
+          drawHints();
+          mark(best, solution.sol[best]);
+          renderPad();
+          workMsg.classList.remove("err");
+          workMsg.textContent = `ヒント：ここから先は、ヒントの解き方だけでは進めず、背理法が必要です。${name(best)}の答えは「${solution.sol[best]}」です（紫の数字。「背理法」のヒントで確かめられます）。`;
+          return;
+        }
+      }
+    }
     workMsg.classList.remove("err");
     workMsg.textContent = "ヒント：見つかりませんでした。消せる候補を消してから、もう一度押してみてください。";
   }
+  let hintEngine = null;
+  const bitCount = (m) => { let n = 0; for (; m; m &= m - 1) n++; return n; };
   exportCur.addEventListener("click", async () => {
     let givens = "";
     for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) givens += cellAt(r, c).dataset.value || "0";
@@ -4224,11 +4315,14 @@ p.msg:empty { display: none; }
       return a;
     }
     // 人の解き方で解いて、必要だった一番難しい解き方のレベルを返す（解き切れなければ 4）
-    function grade(g) {
-      const v = g.slice(), cand = new Array(81).fill(ALL);
+    // start を渡すと「答えと理由」用: 今の盤の候補から始め、答えの決まるマスが出るまでに使った解き方と消した候補を返す
+    function grade(g, start) {
+      const v = start ? start.v.slice() : g.slice(), cand = start ? start.cand.slice() : new Array(81).fill(ALL);
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
-      for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
-      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { cand[i] &= ~m; return true; } return false; };
+      if (!start) for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
+      let tech = "";
+      const log = [];
+      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { if (start) log.push({ i, m: cand[i] & m, tech }); cand[i] &= ~m; return true; } return false; };
       const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
       // 初級: そのマスに入る数字が1つだけ／その行・列・ブロックでその数字が入るマスが1つだけ
       function singles() {
@@ -4242,6 +4336,7 @@ p.msg:empty { display: none; }
       }
       // 中級: 2つの数字のペア（2マスに同じ2つの候補だけ／2つの数字が同じ2マスにしか入らない）
       function pairs() {
+        tech = "2つの数字のペア";
         let ch = false;
         for (const u of units) {
           const e = u.filter((i) => !v[i]);
@@ -4262,6 +4357,7 @@ p.msg:empty { display: none; }
       }
       // 難問: ブロックと行・列の関係、3つの数字の組、Xウイング
       function hard() {
+        tech = "ポインティング";
         let ch = false;
         for (let b = 0; b < 9; b++) {
           const box = units[b * 3 + 2];
@@ -4285,6 +4381,7 @@ p.msg:empty { display: none; }
           }
         }
         if (ch) return true;
+        tech = "3つの数字の組";
         for (const u of units) {
           const e = u.filter((i) => !v[i] && pop(cand[i]) <= 3);
           for (let x = 0; x < e.length; x++) for (let y = x + 1; y < e.length; y++) for (let z = y + 1; z < e.length; z++) {
@@ -4304,6 +4401,7 @@ p.msg:empty { display: none; }
           if (ch) return true;
         }
         // Xウイング（行で見つけて列から消す／列で見つけて行から消す）
+        tech = "Xウイング";
         for (let d = 1; d <= 9; d++) for (const k of [0, 1]) {
           const lines = [];
           for (let L = 0; L < 9; L++) {
@@ -4321,6 +4419,7 @@ p.msg:empty { display: none; }
           if (ch) return true;
         }
         // ソードフィッシュ（Xウイングの3行・3列版）
+        tech = "ソードフィッシュ";
         for (let d = 1; d <= 9; d++) for (const k of [0, 1]) {
           const lines = [];
           for (let L = 0; L < 9; L++) {
@@ -4337,6 +4436,7 @@ p.msg:empty { display: none; }
           }
           if (ch) return true;
         }
+        tech = "XYウイング";
         // XYウイング: 候補が2つのマス3つ（XY・XZ・YZ）で、XYが両方と同じ単位にあれば、XZとYZの両方から見えるマスのZを消せる
         const bi = [...Array(81).keys()].filter((i) => !v[i] && pop(cand[i]) === 2);
         const sees = (a, b) => peers[a].includes(b);
@@ -4358,6 +4458,7 @@ p.msg:empty { display: none; }
         let ch = false;
         const sees = (a, b) => a !== b && peers[a].includes(b);
         // 4つの数字の組（ネイキッド・隠れ）
+        tech = "4つの数字の組";
         for (const u of units) {
           const e = u.filter((i) => !v[i] && pop(cand[i]) <= 4);
           const n = e.length;
@@ -4380,6 +4481,7 @@ p.msg:empty { display: none; }
           if (ch) return true;
         }
         // XYZウイング
+        tech = "XYZウイング";
         const bi = [...Array(81).keys()].filter((i) => !v[i] && pop(cand[i]) === 2);
         for (let p = 0; p < 81; p++) {
           if (v[p] || pop(cand[p]) !== 3) continue;
@@ -4394,6 +4496,7 @@ p.msg:empty { display: none; }
           }
         }
         // スカイスクレイパー
+        tech = "スカイスクレイパー";
         for (let d = 1; d <= 9; d++) for (const k of [0, 1]) {
           const lines = [];
           for (let L = 0; L < 9; L++) { const w = where(units[L * 3 + k], d); if (w.length === 2) lines.push(w); }
@@ -4407,6 +4510,30 @@ p.msg:empty { display: none; }
             }
           }
         }
+        // シンプルカラーリング
+        tech = "シンプルカラーリング";
+        for (let d = 1; d <= 9; d++) {
+          const link = [...Array(81)].map(() => []);
+          for (const u of units) { const w = where(u, d); if (w.length === 2) { link[w[0]].push(w[1]); link[w[1]].push(w[0]); } }
+          const color = new Array(81).fill(-1);
+          for (let s0 = 0; s0 < 81; s0++) {
+            if (color[s0] >= 0 || !link[s0].length) continue;
+            const comp = [s0];
+            color[s0] = 0;
+            for (let q = 0; q < comp.length; q++) for (const n of link[comp[q]]) if (color[n] < 0) { color[n] = 1 - color[comp[q]]; comp.push(n); }
+            if (comp.length < 3) continue;
+            for (const k of [0, 1]) {
+              const side = comp.filter((i) => color[i] === k);
+              if (side.some((a) => side.some((b) => sees(a, b)))) { for (const i of side) ch = elim(i, 1 << d) || ch; return true; }
+            }
+            for (let i = 0; i < 81; i++) {
+              if (v[i] || color[i] >= 0 || !(cand[i] & (1 << d))) continue;
+              if (comp.some((a) => color[a] === 0 && sees(a, i)) && comp.some((b) => color[b] === 1 && sees(b, i))) ch = elim(i, 1 << d) || ch;
+            }
+            if (ch) return true;
+          }
+        }
+        tech = "XYチェーン";
         // XYチェーン: 候補が2つのマスをつなぎ、両端で同じ数字 z が出てくれば、両端から見えるマスの z を消せる
         for (const s0 of bi) for (const z of bits(cand[s0])) {
           const start = { c: s0, out: bits(cand[s0] & ~(1 << z))[0] };
@@ -4427,6 +4554,20 @@ p.msg:empty { display: none; }
           }
         }
         return false;
+      }
+      if (start) {
+        // 答えの決まるマスが出るまで、やさしい解き方から順に候補を消していく（マスに数字は入れない）
+        for (let step = 0; step < 200; step++) {
+          for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 1) return { log, i, d: bits(cand[i])[0], how: "cell" };
+          for (let k = 0; k < units.length; k++) for (let d = 1; d <= 9; d++) {
+            const u = units[k];
+            if (u.some((i) => v[i] === d)) continue;
+            const w = where(u, d);
+            if (w.length === 1) return { log, i: w[0], d, how: "unit", unit: k };
+          }
+          if (!(pairs() || hard() || extreme())) break;
+        }
+        return { log, stuck: true };
       }
       let level = 1;
       for (;;) {
