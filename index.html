@@ -272,6 +272,17 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .key:disabled { cursor: default; opacity: 0.45; }
 .key.val:disabled { opacity: 1; }
 .key:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+/* スマホの拡大表示は、全体を今までの約3分の2の大きさにする */
+@media (max-width: 760px) {
+  .pad { width: min(100%, 230px); padding: 6px; gap: 6px; border-width: 2px; }
+  .pad #pad-title { font-size: 0.85rem; padding: 0 30px; }
+  .pad .pad-close { width: 30px; height: 30px; font-size: 1.2rem; top: 2px; right: 2px; }
+  .pad p { font-size: 0.78rem; }
+  .pad p:last-child { font-size: 0.66rem; line-height: 1.35; text-align: left; }
+  .pad .note { font-size: 0.72rem; }
+  .keys { gap: 5px; width: min(100%, 200px); }
+  .key { font-size: 1.35rem; border-radius: 6px; }
+}
 /* 写真の盤面の四隅を合わせる画面（端末内での読み取り用） */
 .crop {
   position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
@@ -569,7 +580,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.142</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.143</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
