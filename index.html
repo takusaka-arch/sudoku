@@ -550,8 +550,10 @@ p.msg:empty { display: none; }
 .board[data-mode="paused"] :is(.cand, .big) { visibility: hidden; }
 .timer { margin: 0; font: 700 2.2rem var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; line-height: 1; }
 .timer[hidden] { display: none; }
-.timer-row { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 18px; row-gap: 4px; }
+.timer-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 18px; row-gap: 4px; }
 .timer-row:not(:has(> :not([hidden]))) { display: none; }
+.timer-side { display: flex; flex-direction: column; gap: 2px; }
+.timer-side:not(:has(> :not([hidden]))) { display: none; }
 .hints-used { margin: 0; font-size: 0.85rem; font-weight: 700; color: var(--muted); }
 .timer.paused { color: var(--muted); }
 .prompt {
@@ -578,7 +580,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.147</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.148</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -663,7 +665,10 @@ p.msg:empty { display: none; }
   </div>
   <div class="timer-row">
     <p class="timer" id="timer" role="timer" aria-label="経過時間" hidden>00:00</p>
-    <p class="hints-used" id="hints-used" hidden>使ったヒント：0回</p>
+    <div class="timer-side">
+      <p class="hints-used" id="left-cells" hidden>残り：81マス</p>
+      <p class="hints-used" id="hints-used" hidden>使ったヒント：0回</p>
+    </div>
   </div>
   <div class="photo" id="photo-box" hidden>
     <p><b>写真から問題を読み取る</b></p>
@@ -903,6 +908,7 @@ p.msg:empty { display: none; }
     if (typeof autoSave === "function") setTimeout(autoSave, 0);
     // 盤が変わったらヒントの表示を消す
     clearHints();
+    if (typeof drawLeft === "function") drawLeft();
     const cells = [...board.querySelectorAll(".cell")];
     const fixed = cells.filter((c) => c.dataset.value);
     cells.forEach((c) => c.classList.remove("conflict"));
@@ -1367,6 +1373,12 @@ p.msg:empty { display: none; }
   // 使ったヒントの回数（ヒントを示せたときだけ数える）
   const hintsEl = document.getElementById("hints-used");
   let hintsUsed = 0;
+  // 残りのマス数（問題の数字も確定候補も入っていないマス）
+  const leftEl = document.getElementById("left-cells");
+  function drawLeft() {
+    const n = [...board.querySelectorAll(".cell")].filter((c) => !c.dataset.value && !c.classList.contains("tent")).length;
+    leftEl.textContent = `残り：${n}マス`;
+  }
   function drawHints() {
     hintsEl.textContent = `使ったヒント：${hintsUsed}回`;
   }
@@ -1434,6 +1446,8 @@ p.msg:empty { display: none; }
     timerReset();
     timerEl.hidden = false;
     hintsEl.hidden = false;
+    leftEl.hidden = false;
+    drawLeft();
     prompt.textContent = `問題を登録しました：${currentName}（問題 ${count} マス）`;
     nameField.hidden = true;
     note.textContent = "「回答スタート」を押すと回答モードになり、タイマーが動き始めます。";
@@ -1525,6 +1539,7 @@ p.msg:empty { display: none; }
     timerReset();
     timerEl.hidden = true;
     hintsEl.hidden = true;
+    leftEl.hidden = true;
     go.hidden = true;
     pause.hidden = true;
     board.querySelectorAll(".cell.given").forEach((c) => {
@@ -3911,6 +3926,7 @@ p.msg:empty { display: none; }
     workPanel.hidden = false;
     timerEl.hidden = true;
     hintsEl.hidden = true;
+    leftEl.hidden = true;
     go.hidden = true;
     pause.hidden = true;
     showRegister();
