@@ -183,6 +183,8 @@ p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
 .cell.tent .cand { display: none; }
 .cell.tent .big { display: grid; color: var(--answer); font-weight: 700; }
 .cell.tent.tent-bad .big { color: var(--error); }
+/* 検証で正解と違った確定候補 */
+.cell.check-wrong, .cell.check-wrong .big { background: color-mix(in srgb, var(--error) 38%, var(--paper)) !important; }
 .cand.shadow, .cand.pick.shadow { color: var(--brown); font-weight: 700; }
 .cand.pick.shadow { background: var(--brown-bg); }
 .cand.pick.bad { color: var(--error); background: var(--bad-bg); }
@@ -567,7 +569,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.139</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.140</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -674,6 +676,7 @@ p.msg:empty { display: none; }
     <button type="button" id="edit" hidden>問題修正</button>
     <button type="button" class="btn" id="go" hidden>回答スタート</button>
     <button type="button" class="btn" id="pause" hidden>一時停止</button>
+    <button type="button" class="btn sub" id="check" hidden>検証</button>
     <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
     <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
     <button type="button" class="btn" id="replay" hidden>解いた順に再生</button>
@@ -887,6 +890,7 @@ p.msg:empty { display: none; }
   }
   // 同じ行・列・3x3ブロックに同じ数字があるマスを赤くする
   function markConflicts() {
+    board.querySelectorAll(".cell.check-wrong").forEach((c) => c.classList.remove("check-wrong"));
     if (typeof autoSave === "function") setTimeout(autoSave, 0);
     // 盤が変わったらヒントの表示を消す
     clearHints();
@@ -1351,7 +1355,57 @@ p.msg:empty { display: none; }
   let currentCount = 0;
   const go = document.getElementById("go");
   const pause = document.getElementById("pause");
+  // 正解を求める（仮に入れて矛盾したら戻る、をくり返す）。答えが無いときは {n:0}、2つ以上あるときは {n:2, sol: 1つ目}
+  let solution = null;
+  function solveGivens(g) {
+    const a = [...g].map(Number), row = new Array(9).fill(0), col = new Array(9).fill(0), box = new Array(9).fill(0);
+    const bx = (i) => Math.floor(i / 27) * 3 + Math.floor((i % 9) / 3);
+    for (let i = 0; i < 81; i++) if (a[i]) {
+      const b = 1 << a[i], r = Math.floor(i / 9), c = i % 9;
+      if ((row[r] | col[c] | box[bx(i)]) & b) return { n: 0 };
+      row[r] |= b; col[c] |= b; box[bx(i)] |= b;
+    }
+    let n = 0, first = null;
+    (function rec() {
+      if (n > 1) return;
+      let best = -1, bm = 0, bc = 10;
+      for (let i = 0; i < 81; i++) if (!a[i]) {
+        const m = 0x3fe & ~(row[Math.floor(i / 9)] | col[i % 9] | box[bx(i)]);
+        let k = 0; for (let x = m; x; x &= x - 1) k++;
+        if (k < bc) { bc = k; best = i; bm = m; if (k <= 1) break; }
+      }
+      if (best < 0) { n++; if (!first) first = a.join(""); return; }
+      const r = Math.floor(best / 9), c = best % 9, q = bx(best);
+      for (let d = 1; d <= 9; d++) if (bm & (1 << d)) {
+        const b = 1 << d;
+        a[best] = d; row[r] |= b; col[c] |= b; box[q] |= b;
+        rec();
+        a[best] = 0; row[r] &= ~b; col[c] &= ~b; box[q] &= ~b;
+        if (n > 1) return;
+      }
+    })();
+    return { n, sol: first };
+  }
+  // 検証: 確定候補を正解と比べ、違うマスを赤い背景で示す（盤を変えると消える）
+  document.getElementById("check").addEventListener("click", () => {
+    if (board.dataset.mode !== "solve") return;
+    board.querySelectorAll(".cell.check-wrong").forEach((c) => c.classList.remove("check-wrong"));
+    if (!solution || !solution.n) { workMsg.textContent = "この問題には答えがありません。問題の数字を確認してください。"; return; }
+    let total = 0, wrong = 0;
+    board.querySelectorAll(".cell.tent").forEach((c) => {
+      const v = c.querySelector(".big").textContent;
+      if (!v) return;
+      total++;
+      if (solution.sol[c.dataset.row * 9 + +c.dataset.col] !== v) { wrong++; c.classList.add("check-wrong"); }
+    });
+    const multi = solution.n > 1 ? "（この問題は答えが1つに決まらないため、答えの1つと比べています）" : "";
+    workMsg.textContent = !total ? "検証：まだ確定したマスがありません。" + multi
+      : wrong ? `検証：確定した${total}マスのうち、${wrong}マスが正解と違います（赤いマス）。` + multi
+      : `検証：確定した${total}マスは、すべて正解です。` + multi;
+  });
   function showReady(count) {
+    // 問題を登録した（開いた）時点で、裏で正解を計算して持っておく（検証ボタンで使う）
+    solution = solveGivens([...board.querySelectorAll(".cell")].sort((a, b) => (a.dataset.row * 9 + +a.dataset.col) - (b.dataset.row * 9 + +b.dataset.col)).map((c) => (c.classList.contains("given") && c.dataset.value) || "0").join(""));
     document.getElementById("trial").hidden = true;
     clearUndo();
     undoBtn.hidden = true;
@@ -1376,6 +1430,7 @@ p.msg:empty { display: none; }
     snapOpen.hidden = true;
     closeSnapUI();
     hintBtn.hidden = true;
+    document.getElementById("check").hidden = true;
     document.getElementById("hint-menu").hidden = true;
     viewBtn.hidden = true;
     document.getElementById("view-menu").hidden = true;
@@ -1399,6 +1454,7 @@ p.msg:empty { display: none; }
     saveProgress.hidden = false;
     snapOpen.hidden = false;
     hintBtn.hidden = false;
+    document.getElementById("check").hidden = false;
     viewBtn.hidden = false;
     undoBtn.hidden = false;
     timerStart();
@@ -1956,6 +2012,7 @@ p.msg:empty { display: none; }
     snapOpen.hidden = true;
     closeSnapUI();
     hintBtn.hidden = true;
+    document.getElementById("check").hidden = true;
     document.getElementById("hint-menu").hidden = true;
     viewBtn.hidden = true;
     document.getElementById("view-menu").hidden = true;
@@ -2299,6 +2356,7 @@ p.msg:empty { display: none; }
     note.textContent = "「リセット」で最初から解き直せます。";
     pause.hidden = true;
     hintBtn.hidden = true;
+    document.getElementById("check").hidden = true;
     document.getElementById("hint-menu").hidden = true;
     viewBtn.hidden = true;
     document.getElementById("view-menu").hidden = true;
@@ -3803,7 +3861,7 @@ p.msg:empty { display: none; }
     { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字に色が付きます。\n続けて別の数字を${TAP}すると、別の色で4つまで同時に表示できます。もう一度${TAP}でその数字だけ止まります。\n盤に9つそろった数字は、押せなくなります。` },
     { part: 2, title: "ヒント", text: "「ヒント」で、解き方を「基本」「上級」「最上級」から選べます。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
     { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」（保存先がGoogleドライブを優先のときは「Googleドライブに保存」）。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：🏠→「設定」で「Googleドライブに接続」し、保存先を選びます（Googleドライブを優先／保存のたびに選ぶ／この端末）。Googleドライブには「Sudoku」フォルダに保存されます。PCとスマホで同じ問題の続きを解けます\n・開くときは「問題を解く」→「Googleドライブから開く」（接続しているときだけ出ます）。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
-    { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・解いた順に再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
+    { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・検証：途中でも、確定したマスを正解と比べ、違うマスを赤い背景で示します\n・解いた順に再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
     { part: 2, title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
