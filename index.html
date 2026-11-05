@@ -410,6 +410,7 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .share-box p, .import p { margin: 0; font-size: 0.85rem; line-height: 1.6; }
 .share-box textarea, .import textarea { font: 500 0.85rem var(--font-num); padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 4px; background: var(--bg); color: var(--ink); resize: vertical; min-width: 0; overflow-wrap: anywhere; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#startup-set { margin-bottom: 12px; }
 .gdrive { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
 .gdrive[hidden], .gd-on[hidden], #gd-open-row[hidden] { display: none; }
 .gd-on { display: grid; gap: 8px; }
@@ -565,12 +566,12 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.137</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.138</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
       <button type="button" class="home-big" id="go-solve"><span class="hb-icon" aria-hidden="true">🧩</span><span class="hb-text">問題を解く<small>保存した問題・一時停止中・回答中のファイル</small></span></button>
-      <button type="button" class="home-big" id="go-settings"><span class="hb-icon" aria-hidden="true">⚙️</span><span class="hb-text">設定<small>Googleドライブとの接続</small></span></button>
+      <button type="button" class="home-big" id="go-settings"><span class="hb-icon" aria-hidden="true">⚙️</span><span class="hb-text">設定<small>起動するとき・Googleドライブとの接続</small></span></button>
     </div>
     <h2 class="p-make">問題を作る・登録する</h2>
     <div class="row p-make make-menu">
@@ -603,6 +604,15 @@ p.msg:empty { display: none; }
       <button type="button" class="btn" id="gd-open">☁️ Googleドライブから開く</button>
     </div>
     <h2 class="p-settings">設定</h2>
+    <div class="gdrive p-settings" id="startup-set">
+      <p class="gd-title">起動するとき</p>
+      <label class="gd-opt"><input type="checkbox" id="set-tut"> 起動時に使い方ガイドを出さない</label>
+      <fieldset class="gd-dest">
+        <legend>一時停止中の問題があるとき</legend>
+        <label class="gd-opt"><input type="radio" name="set-resume" value="resume"> 回答画面で続きを開く</label>
+        <label class="gd-opt"><input type="radio" name="set-resume" value="home"> ホームメニューを表示する（続きは「問題を解く」の一時停止中から）</label>
+      </fieldset>
+    </div>
     <div class="gdrive p-settings" id="gdrive">
       <p class="gd-title">Googleドライブ<span class="gd-account" id="gd-account"></span></p>
       <p class="note gd-na" id="gd-na" hidden>Googleドライブは、GitHub版（アプリ版・Web版）でのみ使えます。</p>
@@ -3747,7 +3757,7 @@ p.msg:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
     ] },
     { part: 1, title: "ボタン", text: "一つ戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する\nリセット：問題だけの最初の状態に戻す\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
-    { part: 1, title: "一時停止と保存（この端末）", text: "「一時停止」でタイマーが止まり、盤が隠れます。「再開」で続きから解けます。\n\n解いている途中の状態は、この端末に自動で保存されます。画面をロックしたり、アプリを閉じたり、🏠で戻ったりしても大丈夫です。\n続きは、最初の画面の「問題を解く」→「一時停止中」から開けます。\n\n「この状態を保存」→「アプリ内に保存」で、名前を付けてその時点を残せます。あとで「保存した状態に戻す」から、その時点に戻れます。" },
+    { part: 1, title: "一時停止と保存（この端末）", text: "「一時停止」でタイマーが止まり、盤が隠れます。「再開」で続きから解けます。\n\n解いている途中の状態は、この端末に自動で保存されます。画面をロックしたり、アプリを閉じたり、🏠で戻ったりしても大丈夫です。\n次に起動したときは、続きの画面から始まります（🏠→「設定」でホームメニューから始めるようにもできます）。最初の画面の「問題を解く」→「一時停止中」からも開けます。\n\n「この状態を保存」→「アプリ内に保存」で、名前を付けてその時点を残せます。あとで「保存した状態に戻す」から、その時点に戻れます。" },
     { part: 1, title: "初級編はここまで", text: "これで解き始められます。\n\nもっと速く解くための操作や、写真の読み取り・ヒント・保存などは中級編で説明します。中級編は「使い方」からいつでも見られます。", fork: true },
     { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
     { part: 2, title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
@@ -4424,7 +4434,29 @@ p.msg:empty { display: none; }
       else { clearAutoSave(); showStart("home"); }
     } catch (e) { restoring = false; }
   }
-  resumeSaved();
+  // 起動するときの設定: 一時停止中の問題を回答画面で開く（resume・はじめから）か、ホームメニューを出す（home）か
+  const RESUME_KEY = "sudoku-start-resume";
+  const startResume = () => { try { return localStorage.getItem(RESUME_KEY) !== "home"; } catch (e) { return true; } };
+  if (startResume()) resumeSaved();
+  {
+    const setTut = document.getElementById("set-tut");
+    const drawStartupSet = () => {
+      try { setTut.checked = localStorage.getItem(TUT_KEY) === "1"; } catch (e) {}
+      document.querySelector(`input[name="set-resume"][value="${startResume() ? "resume" : "home"}"]`).checked = true;
+    };
+    drawStartupSet();
+    document.getElementById("go-settings").addEventListener("click", drawStartupSet);
+    setTut.addEventListener("change", () => {
+      try {
+        if (setTut.checked) localStorage.setItem(TUT_KEY, "1");
+        else localStorage.removeItem(TUT_KEY);
+      } catch (e) {}
+    });
+    document.getElementById("startup-set").addEventListener("change", (e) => {
+      if (e.target.name !== "set-resume") return;
+      try { localStorage.setItem(RESUME_KEY, e.target.value); } catch (err) {}
+    });
+  }
   // 起動時のスプラッシュ画面: 少し見せてから消し、そのあと使い方ガイドを出す（タップですぐ閉じる）
   const splash = document.getElementById("splash");
   let splashDone = false;
