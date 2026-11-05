@@ -272,16 +272,14 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .key:disabled { cursor: default; opacity: 0.45; }
 .key.val:disabled { opacity: 1; }
 .key:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
-/* スマホの拡大表示は、全体を今までの約3分の2の大きさにする */
+/* スマホの拡大表示は、数字のボタンを左、説明を右に並べて、盤と一緒に画面に収まる大きさにする */
 @media (max-width: 760px) {
-  .pad { width: min(100%, 230px); padding: 6px; gap: 6px; border-width: 2px; }
-  .pad #pad-title { font-size: 0.85rem; padding: 0 30px; }
-  .pad .pad-close { width: 30px; height: 30px; font-size: 1.2rem; top: 2px; right: 2px; }
-  .pad p { font-size: 0.78rem; }
-  .pad p:last-child { font-size: 0.66rem; line-height: 1.35; text-align: left; }
-  .pad .note { font-size: 0.72rem; }
-  .keys { gap: 5px; width: min(100%, 200px); }
-  .key { font-size: 1.35rem; border-radius: 6px; }
+  .pad { width: 100%; padding: 8px; gap: 4px 10px; border-width: 2px; grid-template-columns: auto 1fr; grid-template-areas: "keys title" "keys note"; grid-template-rows: auto 1fr; align-items: start; justify-items: stretch; align-content: start; }
+  .pad .keys { grid-area: keys; gap: 6px; width: 216px; }
+  .pad #pad-title { grid-area: title; font-size: 0.85rem; padding: 0 30px 0 0; text-align: left; }
+  .pad #pad-note { grid-area: note; font-size: 0.7rem; line-height: 1.45; text-align: left; white-space: pre-line; }
+  .pad .pad-close { width: 32px; height: 32px; font-size: 1.3rem; top: 2px; right: 2px; }
+  .key { font-size: 1.6rem; border-radius: 7px; }
 }
 /* 写真の盤面の四隅を合わせる画面（端末内での読み取り用） */
 .crop {
@@ -580,7 +578,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.143</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.144</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1172,6 +1170,13 @@ p.msg:empty { display: none; }
       k.classList.toggle("val", sel.dataset.value === k.dataset.n);
       // 問題の数字のマスでは、その数字のボタンだけ押せる（トリプルタップで消し込みをする）
       k.disabled = given && k.dataset.n !== sel.dataset.value;
+    }
+    // スマホでは説明を短くして、拡大表示が画面に収まるようにする
+    const narrow = matchMedia("(max-width: 760px)").matches;
+    if (narrow && mode !== "register") {
+      padNote.textContent = given ? "問題の数字は変えられません。\nトリプルタップ：同じ行・列・ブロックの同じ数字の候補を消す・戻す\n長押し：メニュー"
+        : "1回タップ：候補（青）\n2回：確定候補にする・戻す\n3回：同じ数字を行・列・ブロックから消す・戻す\n長押し：メニュー";
+      return;
     }
     padNote.textContent = mode === "register"
       ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
