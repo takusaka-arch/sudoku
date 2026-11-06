@@ -277,6 +277,8 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
   .pad { width: 100%; padding: 8px; gap: 4px 10px; border-width: 2px; grid-template-columns: auto 1fr; grid-template-areas: "keys title" "keys note"; grid-template-rows: auto 1fr; align-items: start; justify-items: stretch; align-content: start; }
   .pad .keys { grid-area: keys; gap: 6px; width: 216px; }
   .pad #pad-title { grid-area: title; font-size: 0.85rem; line-height: 1.35; padding: 0; text-align: left; white-space: pre-line; }
+  .pad #pad-revive { grid-area: rev; justify-self: start; }
+  .pad:has(#pad-revive:not([hidden])) { grid-template-areas: "keys title" "keys note" "keys rev"; grid-template-rows: auto 1fr auto; }
   .pad #pad-note { grid-area: note; font-size: 0.7rem; line-height: 1.45; text-align: left; white-space: pre-line; }
   .pad .pad-close { width: 32px; height: 32px; font-size: 1.3rem; top: 2px; right: 2px; }
   .key { font-size: 1.6rem; border-radius: 7px; }
@@ -577,10 +579,11 @@ p.msg:empty { display: none; }
     <p id="pad-title"></p>
     <div class="keys" id="keys"></div>
     <p class="note" id="pad-note"></p>
+    <button type="button" class="btn sub small" id="pad-revive" hidden>候補を復活</button>
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.149</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.150</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1168,6 +1171,7 @@ p.msg:empty { display: none; }
     });
     if (!show) return;
     const given = mode === "solve" && sel.classList.contains("fixed");
+    document.getElementById("pad-revive").hidden = mode !== "solve" || given || sel.classList.contains("tent");
     // スマホでは右側に「選択中」「○行○列」「（確定候補）」を1行ずつ並べる
     const tag = given ? "（問題の数字）" : sel.classList.contains("tent") ? "（確定候補）" : "";
     padTitle.textContent = matchMedia("(max-width: 760px)").matches
@@ -1221,6 +1225,7 @@ p.msg:empty { display: none; }
       : cell.classList.contains("tent") ? [[`確定候補 ${n} を元に戻す`, 2], [`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
       : target.classList.contains("off") ? [[`消した ${n} を戻す`, 3]]
       : [[target.classList.contains("pick") ? `候補 ${n} を外す` : `${n} を候補（青）にする`, 1], [`${n} を確定候補にする`, 2], [`${n} を消す`, 3]];
+    if (!big) items.push(["このマスの消した候補を復活", "rev"]);
     ctx.textContent = "";
     const head = document.createElement("p");
     head.textContent = `${+cell.dataset.row + 1}行${+cell.dataset.col + 1}列`;
@@ -1230,7 +1235,7 @@ p.msg:empty { display: none; }
       b.type = "button";
       b.setAttribute("role", "menuitem");
       b.textContent = label;
-      b.addEventListener("click", () => { closeCtx(); if (board.dataset.mode === "solve") runTap(t, cell, k); });
+      b.addEventListener("click", () => { closeCtx(); if (board.dataset.mode !== "solve") return; if (k === "rev") reviveCell(cell); else runTap(t, cell, k); });
       ctx.appendChild(b);
     }
     const cancel = document.createElement("button");
@@ -2313,6 +2318,28 @@ p.msg:empty { display: none; }
     return res;
   };
   act = recorded(act);
+  // 選んだマスで消した候補のうち、同じ行・列・ブロックに問題の数字・確定候補として入っていない数字を戻す
+  const reviveCell = recorded(function (cell) {
+    if (!cell || board.dataset.mode !== "solve" || cell.classList.contains("fixed") || cell.classList.contains("tent")) return;
+    flushTap();
+    const r = +cell.dataset.row, c = +cell.dataset.col;
+    const used = new Set();
+    board.querySelectorAll(".cell").forEach((o) => {
+      if (o === cell) return;
+      const orr = +o.dataset.row, oc = +o.dataset.col;
+      if (orr !== r && oc !== c && !(Math.floor(orr / 3) === Math.floor(r / 3) && Math.floor(oc / 3) === Math.floor(c / 3))) return;
+      const v = o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "");
+      if (v) used.add(v);
+    });
+    const back = [...cell.querySelectorAll(".cand.off")].filter((x) => !used.has(x.dataset.n));
+    back.forEach((x) => x.classList.remove("off"));
+    markConflicts();
+    renderPad();
+    workMsg.classList.remove("err");
+    workMsg.textContent = back.length ? `${r + 1}行${c + 1}列の消した候補 ${back.map((x) => x.dataset.n).join("・")} を復活しました。（「一つ戻る」で元に戻せます）`
+      : `${r + 1}行${c + 1}列には、復活できる候補はありません。`;
+  });
+  document.getElementById("pad-revive").addEventListener("click", () => reviveCell(sel));
   runTap = recorded(runTap);
   // 隠し機能: Ctrl+Shift+Alt+Delete（Backspace でも可）で、問題の数字と確定候補をすべてトリプルクリックしたのと同じ消し込みを一度に行う
   // （消すだけで、戻すことはしない。「一つ戻る」1回で元に戻せる）
