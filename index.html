@@ -583,7 +583,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.153</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.154</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -4735,6 +4735,7 @@ p.msg:empty { display: none; }
     const FLOOR = { 1: 36, 2: 26, 3: 22, 4: 17 };
     function attempt(level) {
       const g = full();
+      const sol = g.slice();
       let left = 81;
       for (const i of shuffle([...Array(81).keys()])) {
         if (left <= FLOOR[level]) break;
@@ -4743,7 +4744,26 @@ p.msg:empty { display: none; }
         if (count(g, 2) !== 1 || (level < 4 && grade(g) > level)) g[i] = keep;
         else left--;
       }
-      return grade(g) === level ? g.join("") : null;
+      if (grade(g) !== level) return null;
+      // 最難関は問題の数字を21個以下にする。1つ足して、ほかを消せるだけ消し、最難関のまま数が減れば採り入れる
+      if (level === 4) {
+        if (left > 23) return null;
+        for (let step = 0; step < 200 && left > 21; step++) {
+          const blank = [...Array(81).keys()].filter((i) => !g[i]);
+          const a = blank[Math.floor(Math.random() * blank.length)];
+          const h = g.slice();
+          h[a] = sol[a];
+          for (const b of shuffle([...Array(81).keys()].filter((i) => h[i] && i !== a))) {
+            const x = h[b];
+            h[b] = 0;
+            if (count(h, 2) !== 1) h[b] = x;
+          }
+          const hl = h.filter((x) => x).length;
+          if (hl <= left && grade(h) === 4) { g.splice(0, 81, ...h); left = hl; }
+        }
+        if (left > 21) return null;
+      }
+      return g.join("");
     }
     // 頼まれた問題を先に作り、手が空いたら最難関を探してストックに回す
     const jobs = [];
@@ -4773,13 +4793,13 @@ p.msg:empty { display: none; }
   }
 
   // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
-  const GEN_STOCK_KEY = "sudoku-gen-stock3", GEN_STOCK_MAX = 10;  // 最難関の条件を変えたので、前の作り置きは使わない
-  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); } catch (e) {}
+  const GEN_STOCK_KEY = "sudoku-gen-stock4", GEN_STOCK_MAX = 10;  // 最難関の条件を変えたので、前の作り置きは使わない
+  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); } catch (e) {}
   const genLevels = [
     { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
     { label: "中級", desc: "ポインティング、3つの数字の組、Xウイング、XYウイングなどが必要です" },
     { label: "難問", desc: "4つの数字の組、XYZウイング、スカイスクレイパー、XYチェーンなどが必要です（背理法はいりません）" },
-    { label: "最難関", desc: "背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です" },
+    { label: "最難関", desc: "問題の数字は21個以下。背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です" },
   ];
   const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");
   const genStock = (list) => {
