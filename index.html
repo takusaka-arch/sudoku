@@ -583,7 +583,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.150</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.151</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -4600,6 +4600,48 @@ p.msg:empty { display: none; }
             }
           }
         }
+        // チェーン（AIC）: 「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぐ。
+        // 始めの候補が違うなら終わりの候補が正しい、が言えるので、両方と同時には成り立たない候補を消せる
+        tech = "チェーン";
+        const strong = [];
+        for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 2) { const [a, b] = bits(cand[i]); (strong[i * 10 + a] ||= []).push(i * 10 + b); (strong[i * 10 + b] ||= []).push(i * 10 + a); }
+        for (const u of units) for (let d = 1; d <= 9; d++) { const w = where(u, d); if (w.length === 2) { (strong[w[0] * 10 + d] ||= []).push(w[1] * 10 + d); (strong[w[1] * 10 + d] ||= []).push(w[0] * 10 + d); } }
+        const weak = (n) => {
+          const i = Math.floor(n / 10), d = n % 10, r = [];
+          for (const p of peers[i]) if (!v[p] && (cand[p] & (1 << d))) r.push(p * 10 + d);
+          for (const e of bits(cand[i])) if (e !== d) r.push(i * 10 + e);
+          return r;
+        };
+        for (let s0 = 0; s0 < 81; s0++) for (const sd of bits(v[s0] ? 0 : cand[s0])) {
+          const s = s0 * 10 + sd;
+          // 状態 = 候補*2 + (1: 正しい, 0: 違う)。始めの候補は「違う」とする
+          const seen = new Set([s * 2]);
+          let q = [s * 2];
+          for (let len = 1; len <= 14 && q.length; len++) {
+            const nq = [];
+            for (const st of q) {
+              const n = st >> 1, on = st & 1;
+              for (const m of on ? [...weak(n), ...(strong[n] || [])] : strong[n] || []) {
+                const ns = m * 2 + (on ? 0 : 1);
+                if (seen.has(ns)) continue;
+                seen.add(ns);
+                nq.push(ns);
+                if (on || len < 3) continue;
+                const m0 = Math.floor(m / 10), md = m % 10;
+                if (sd === md && s0 !== m0) {
+                  for (let i = 0; i < 81; i++) if (i !== s0 && i !== m0 && sees(i, s0) && sees(i, m0)) ch = elim(i, 1 << sd) || ch;
+                } else if (s0 === m0 && sd !== md) {
+                  ch = elim(s0, ALL & ~((1 << sd) | (1 << md))) || ch;
+                } else if (sd !== md && sees(s0, m0)) {
+                  ch = elim(s0, 1 << md) || ch;
+                  ch = elim(m0, 1 << sd) || ch;
+                }
+                if (ch) return true;
+              }
+            }
+            q = nq;
+          }
+        }
         return false;
       }
       if (start) {
@@ -4671,8 +4713,8 @@ p.msg:empty { display: none; }
   }
 
   // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
-  const GEN_STOCK_KEY = "sudoku-gen-stock2", GEN_STOCK_MAX = 10;  // 最難関の条件を厳しくしたので、前の作り置き（sudoku-gen-stock）は使わない
-  try { localStorage.removeItem("sudoku-gen-stock"); } catch (e) {}
+  const GEN_STOCK_KEY = "sudoku-gen-stock3", GEN_STOCK_MAX = 10;  // 最難関の条件を変えたので、前の作り置きは使わない
+  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); } catch (e) {}
   const genLevels = [
     { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
     { label: "中級", desc: "ポインティング、3つの数字の組、Xウイング、XYウイングなどが必要です" },
