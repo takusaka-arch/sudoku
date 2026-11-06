@@ -580,7 +580,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.148</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.149</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1378,6 +1378,16 @@ p.msg:empty { display: none; }
   function drawLeft() {
     const n = [...board.querySelectorAll(".cell")].filter((c) => !c.dataset.value && !c.classList.contains("tent")).length;
     leftEl.textContent = `残り：${n}マス`;
+  }
+  // ヒントを使った回数を数える。進まないヒント（消せる候補がない）と、盤が同じまま同じヒントを続けて押したときは数えない
+  let hintKindNow = "", lastHint = "";
+  function countHint(progress = true) {
+    const sig = hintKindNow + "|" + [...board.querySelectorAll(".cell")].map((o) =>
+      (o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "")) + [...o.querySelectorAll(".cand.off")].map((c) => c.dataset.n).join("")).join(",");
+    if (!progress || sig === lastHint) return;
+    lastHint = sig;
+    hintsUsed++;
+    drawHints();
   }
   function drawHints() {
     hintsEl.textContent = `使ったヒント：${hintsUsed}回`;
@@ -2577,6 +2587,7 @@ p.msg:empty { display: none; }
     b.addEventListener("click", () => {
       closeHintMenu();
       clearHints();
+      hintKindNow = k.label;
       k.run();
     });
     hintMenu.appendChild(item);
@@ -2717,8 +2728,8 @@ p.msg:empty { display: none; }
       workMsg.textContent = k === 2 ? "ヒント：隠れペアもネイキッドペアも、今はありません。" : `ヒント：同じ${kk}マスにしか入らない${kk}つの数字の組は、今はありません。`;
       return;
     }
-    hintsUsed++;
-    drawHints();
+    // その組で新しく消せる候補があるときだけ、ヒントを使った回数に数える
+    countHint(found.some((p) => (p.gone || []).length || (!p.naked && p.where.some((o) => digits.some((d) => !p.ds.includes(d) && can(o, d))))));
     found.forEach((p, i) => {
       const color = PAIR_COLORS[i % PAIR_COLORS.length];
       for (const o of p.where) for (const d of p.ds) {
@@ -2771,8 +2782,7 @@ p.msg:empty { display: none; }
       workMsg.textContent = "ヒント：今はポインティングで消せる候補はありません。";
       return;
     }
-    hintsUsed++;
-    drawHints();
+    countHint();
     found.forEach((x, i) => {
       const color = PAIR_COLORS[i % PAIR_COLORS.length];
       for (const o of x.spots) {
@@ -2817,8 +2827,7 @@ p.msg:empty { display: none; }
   }
   // groups: [{ marks: [[i, d], ...] }] を組ごとの色で、gone: [[i, d], ...] を赤い枠で、order: 鎖の順番の番号
   function paintHint(st, groups, gone, msg, extra = {}) {
-    hintsUsed++;
-    drawHints();
+    countHint();
     groups.forEach((g, n) => {
       const color = g.color || PAIR_COLORS[n % PAIR_COLORS.length];
       for (const [i, d] of g.marks) {
@@ -3186,8 +3195,7 @@ p.msg:empty { display: none; }
       workMsg.textContent = "ヒント：今はXウイングで消せる候補はありません。";
       return;
     }
-    hintsUsed++;
-    drawHints();
+    countHint();
     found.forEach((x, i) => {
       const color = PAIR_COLORS[i % PAIR_COLORS.length];
       for (const o of x.corners) {
@@ -3212,8 +3220,7 @@ p.msg:empty { display: none; }
     const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
       && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
     const show = (cand, text) => {
-      hintsUsed++;
-      drawHints();
+      countHint();
       if (full) cand.classList.add("hint");
       else cand.closest(".cell").classList.add("hint-cell");
       renderPad();
@@ -3245,8 +3252,7 @@ p.msg:empty { display: none; }
     // （そのペアでほかの候補を消せる場合だけ）
     const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
     const showPair = (two, a, b, text) => {
-      hintsUsed++;
-      drawHints();
+      countHint();
       for (const o of two) {
         if (full) for (const d of [a, b]) o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
         else o.classList.add("pair-cell");
@@ -3294,8 +3300,7 @@ p.msg:empty { display: none; }
         o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
       };
       if (r.i !== undefined && r.log.length) {
-        hintsUsed++;
-        drawHints();
+        countHint();
         for (const e of r.log) for (let d = 1; d <= 9; d++) if (e.m & (1 << d)) at(e.i).querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
         mark(r.i, r.d);
         renderPad();
@@ -3312,8 +3317,7 @@ p.msg:empty { display: none; }
         let best = -1;
         for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || bitCount(cand[i]) < bitCount(cand[best]))) best = i;
         if (best >= 0) {
-          hintsUsed++;
-          drawHints();
+          countHint();
           mark(best, solution.sol[best]);
           renderPad();
           workMsg.classList.remove("err");
