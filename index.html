@@ -583,7 +583,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.151</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.152</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -2568,6 +2568,7 @@ p.msg:empty { display: none; }
     { head: "最上級" },
     { label: "リモートペア", desc: "候補が同じ2つのマスが4つ以上つながるとき、交互に入る数字を使って候補を消します", run: () => showRemotePair() },
     { label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
+    { label: "チェーン", desc: "「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぎ、両端のどちらかが正しいことを使って候補を消します", run: () => showChain() },
     { label: "背理法", desc: "候補が2つのマスに片方を仮に入れ、矛盾が出たらもう一方が答えだと分かります", run: () => showContradiction() },
     { head: "答え" },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法が必要なら答えだけ示します）", run: () => runHint(true) },
@@ -3136,6 +3137,65 @@ p.msg:empty { display: none; }
     paintHint(st, [{ marks }], gone,
       `番号の順に、候補が2つのマスが${path.length}つつながっています（XYチェーン）。①のマスが「${z}」でないとすると、隣どうしで同じ数字は入らないので順に決まっていき、最後のマスが「${z}」になります。つまり①か最後のマスのどちらかは必ず「${z}」なので、その両方から見えるマスの「${z}」（赤い枠）は消せます。`,
       { order: path });
+  }
+
+  // チェーン：「2か所にしか入らない数字」「候補が2つのマス」（片方が違えばもう片方が正しい）と
+  // 「同じ行・列・ブロックの同じ数字」「同じマスのほかの数字」（片方が正しければもう片方は違う）を交互にたどる
+  function showChain() {
+    const st = hintState();
+    if (!st) return;
+    const { cand } = st;
+    const strong = new Map();
+    const link = (a, b) => { if (!strong.has(a)) strong.set(a, []); strong.get(a).push(b); };
+    for (let i = 0; i < 81; i++) if (cand[i].length === 2) { const [a, b] = cand[i]; link(i * 10 + +a, i * 10 + +b); link(i * 10 + +b, i * 10 + +a); }
+    for (const u of UNITS) for (const d of DIGS) { const w = u.ids.filter((i) => cand[i].includes(d)); if (w.length === 2) { link(w[0] * 10 + +d, w[1] * 10 + +d); link(w[1] * 10 + +d, w[0] * 10 + +d); } }
+    const weak = (n) => {
+      const i = Math.floor(n / 10), d = String(n % 10), r = [];
+      for (let j = 0; j < 81; j++) if (sees(i, j) && cand[j].includes(d)) r.push(j * 10 + +d);
+      for (const e of cand[i]) if (e !== d) r.push(i * 10 + +e);
+      return r;
+    };
+    let best = null;
+    for (let s0 = 0; s0 < 81; s0++) for (const sdS of cand[s0]) {
+      const sd = +sdS, sn = s0 * 10 + sd;
+      // 状態 = 候補*2 + (1: 正しい, 0: 違う)。始めの候補は「違う」とする
+      const prev = new Map([[sn * 2, -1]]);
+      let q = [sn * 2];
+      for (let len = 1; len <= 12 && q.length && (!best || len < best.len); len++) {
+        const nq = [];
+        for (const stt of q) {
+          const n = stt >> 1, on = stt & 1;
+          for (const m of on ? [...weak(n), ...(strong.get(n) || [])] : strong.get(n) || []) {
+            const ns = m * 2 + (on ? 0 : 1);
+            if (prev.has(ns)) continue;
+            prev.set(ns, stt);
+            nq.push(ns);
+            if (on || len < 3) continue;
+            const m0 = Math.floor(m / 10), md = m % 10;
+            let gone = [];
+            if (sd === md && s0 !== m0) gone = [...Array(81).keys()].filter((i) => i !== s0 && i !== m0 && sees(i, s0) && sees(i, m0) && cand[i].includes(String(sd))).map((i) => [i, String(sd)]);
+            else if (s0 === m0 && sd !== md) gone = cand[s0].filter((e) => +e !== sd && +e !== md).map((e) => [s0, e]);
+            else if (sd !== md && sees(s0, m0)) gone = [[s0, String(md)], [m0, String(sd)]].filter(([i, e]) => cand[i].includes(e));
+            if (!gone.length) continue;
+            const chain = [];
+            for (let k = ns; k !== -1; k = prev.get(k)) chain.unshift(k);
+            best = { len, chain, gone, sd, md, s0, m0 };
+            break;
+          }
+          if (best && best.len === len) break;
+        }
+        q = nq;
+      }
+    }
+    if (!best) return noHint("チェーン");
+    const { chain, gone, sd, md, s0, m0 } = best;
+    const offs = chain.filter((k) => !(k & 1)).map((k) => [Math.floor(k / 20), String((k >> 1) % 10)]);
+    const ons = chain.filter((k) => k & 1).map((k) => [Math.floor(k / 20), String((k >> 1) % 10)]);
+    const order = [];
+    for (const k of chain) { const i = Math.floor(k / 20); if (!order.includes(i)) order.push(i); }
+    paintHint(st, [{ marks: offs, color: PAIR_COLORS[1] }, { marks: ons, color: PAIR_COLORS[0] }], gone,
+      `番号の順にたどるチェーンです。①の「${sd}」が違うとすると、オレンジの数字は違う・青の数字は正しい、と交互に決まっていき、最後の${cellName(m0)}の「${md}」が正しくなります。つまり${cellName(s0)}の「${sd}」と${cellName(m0)}の「${md}」のどちらかは必ず正しいので、赤い枠の候補は消せます。`,
+      { order });
   }
 
   // 背理法：候補が2つのマスで片方を入れたと仮定し、確実に決まる数字をたどる。どこかで矛盾したら、その仮定は誤りなので、もう一方が答え
