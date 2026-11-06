@@ -554,6 +554,11 @@ p.msg:empty { display: none; }
 .timer[hidden] { display: none; }
 .timer-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 18px; row-gap: 4px; }
 .timer-row:not(:has(> :not([hidden]))) { display: none; }
+/* 回答中は「戻る・再生・リセット」と「この状態を保存・保存した状態に戻す」をそれぞれ1行にまとめる */
+.bar-break { display: none; flex-basis: 100%; height: 0; }
+.bar:has(#pause:not([hidden])) { row-gap: 0; margin-bottom: -8px; }
+.bar:has(#pause:not([hidden])) > :not(.bar-break) { margin-bottom: 8px; }
+.bar:has(#pause:not([hidden])) .bar-break { display: block; }
 .timer-side { display: flex; flex-direction: column; gap: 2px; }
 .timer-side:not(:has(> :not([hidden]))) { display: none; }
 .hints-used { margin: 0; font-size: 0.85rem; font-weight: 700; color: var(--muted); }
@@ -583,7 +588,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.154</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.155</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -688,7 +693,6 @@ p.msg:empty { display: none; }
   </div>
   <div class="bar">
     <p class="prompt" id="prompt" aria-live="polite">問題を登録してください</p>
-    <button type="button" class="btn sub" id="undo" hidden disabled>戻る</button>
     <button type="button" id="done">問題登録完了</button>
     <button type="button" id="edit" hidden>問題修正</button>
     <button type="button" class="btn" id="go" hidden>回答スタート</button>
@@ -696,10 +700,13 @@ p.msg:empty { display: none; }
     <button type="button" class="btn sub" id="check" hidden>検証</button>
     <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
     <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
+    <span class="bar-break" aria-hidden="true"></span>
+    <button type="button" class="btn sub" id="undo" hidden disabled>戻る</button>
     <button type="button" class="btn" id="replay" hidden>再生</button>
     <button type="button" class="btn sub" id="save-solved" hidden>完成形を保存</button>
     <button type="button" id="reset" hidden>リセット</button>
     <button type="button" class="btn sub" id="export-cur" hidden>問題を書き出す</button>
+    <span class="bar-break" aria-hidden="true"></span>
     <button type="button" class="btn sub" id="save-progress" hidden>この状態を保存</button>
     <button type="button" class="btn sub" id="snap-open" aria-haspopup="menu" aria-expanded="false" hidden>保存した状態に戻す ▾</button>
   </div>
