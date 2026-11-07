@@ -605,6 +605,8 @@ p.msg:empty { display: none; }
   background: var(--paper); border-left: 4px solid var(--ink);
   font-size: 1rem; font-weight: 700;
 }
+.prompt .prompt-sub { display: block; margin-top: 2px; font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+p.note:empty { display: none; }
 </style>
 
 <main>
@@ -625,7 +627,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.167</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方">？</button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.168</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方">？</button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1600,6 +1602,14 @@ p.msg:empty { display: none; }
     markConflicts();
   }
   go.addEventListener("click", showSolve);
+  // 一時停止中の表示。「再開」の説明は一時停止中の表示のすぐ下に小さく出す
+  function setPausedPrompt(extra) {
+    prompt.textContent = `一時停止中：${currentName}${extra}`;
+    const sub = document.createElement("span");
+    sub.className = "prompt-sub";
+    sub.textContent = "「再開」を押すと回答を続けられます。";
+    prompt.appendChild(sub);
+  }
   // 一時停止中はタイマーを止め、盤を薄くして操作できなくする
   pause.addEventListener("click", () => {
     if (board.dataset.mode === "solve") {
@@ -1607,8 +1617,8 @@ p.msg:empty { display: none; }
       timerStop();
       pause.textContent = "再開";
       renderPad();
-      prompt.textContent = `一時停止中：${currentName}`;
-      note.textContent = "「再開」を押すと回答を続けられます。";
+      setPausedPrompt("");
+      note.textContent = "";
       confirmBox.hidden = true;
       autoSave();
     } else {
@@ -5074,7 +5084,7 @@ p.msg:empty { display: none; }
       restoring = true;
       openProgressData(cur, "回答中");
       restoring = false;
-      if (board.dataset.mode === "paused") prompt.textContent = `一時停止中：${currentName}（前回の続き）`;
+      if (board.dataset.mode === "paused") setPausedPrompt("（前回の続き）");
       else { clearAutoSave(); showStart("home"); }
     } catch (e) { restoring = false; }
   }
