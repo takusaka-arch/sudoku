@@ -1,5 +1,5 @@
 // アプリ本体と読み取り用ファイルを端末に保存し、ネットなしでも開けるようにする
-const CACHE = "sudoku-v157";
+const CACHE = "sudoku-v158";
 const FILES = [
   "./", "./index.html", "./manifest.webmanifest",
   "./icons/icon-180.png", "./icons/icon-192.png", "./icons/icon-512.png",
@@ -9,7 +9,13 @@ const FILES = [
   "./opencv/opencv.js",
 ];
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FILES.map((f) => new Request(f, { cache: "reload" })))).then(() => self.skipWaiting()));
+  // GitHubの配信サーバーに古いファイルが残っていても、毎回ちがうURL（?v=…）で取りに行って最新を保存する
+  const bust = Date.now();
+  e.waitUntil(caches.open(CACHE).then((c) => Promise.all(FILES.map((f) =>
+    fetch(f + (f.includes("?") ? "&" : "?") + "v=" + bust, { cache: "no-store" }).then((res) => {
+      if (!res.ok) throw new Error(f);
+      return c.put(f, res);
+    })))).then(() => self.skipWaiting()));
 });
 self.addEventListener("activate", (e) => {
   e.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((k) => k !== CACHE).map((k) => caches.delete(k)))).then(() => self.clients.claim()));
@@ -18,10 +24,14 @@ self.addEventListener("fetch", (e) => {
   if (e.request.method !== "GET") return;
   // Google など別のサイトへの通信はそのまま通す
   if (new URL(e.request.url).origin !== location.origin) return;
-  // アプリ本体はネットにつながっていれば（ブラウザの一時保存も使わず）常に最新を取りに行き、つながらないときだけ保存分を使う
+  // 新しい版があるかの確認（?check=…）は、保存分を使わずにそのままネットへ
+  if (new URL(e.request.url).searchParams.has("check")) return;
+  // アプリ本体はネットにつながっていれば（ブラウザや配信サーバーの一時保存も使わず）常に最新を取りに行き、つながらないときだけ保存分を使う
   const path = new URL(e.request.url).pathname;
   if (e.request.mode === "navigate" && (path.endsWith("/") || path.endsWith("/index.html"))) {
-    e.respondWith(fetch(e.request.url, { cache: "no-cache" }).then((res) => {
+    // 配信サーバーの古い控えを使わないよう、毎回ちがうURLで取りに行く
+    e.respondWith(fetch("./index.html?t=" + Date.now(), { cache: "no-store" }).then((res) => {
+      if (!res.ok) throw new Error("index");
       const copy = res.clone();
       caches.open(CACHE).then((c) => c.put("./index.html", copy));
       return res;

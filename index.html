@@ -12,7 +12,7 @@
 <script>window.TESS_BASE = "tesseract/";
 window.CV_URL = "opencv/opencv.js";
 window.GDRIVE_CLIENT_ID = "282686886479-467ds4bfj0gmjg9mefj1nskgc50ej2ra.apps.googleusercontent.com";
-if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));</script>
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {}));</script>
 <style>[hidden]{display:none!important} body{margin:0}</style>
 <title>数独回答支援アプリ</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=IBM+Plex+Mono:wght@500;700&display=swap">
@@ -435,6 +435,9 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .share-box textarea, .import textarea { font: 500 0.85rem var(--font-num); padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 4px; background: var(--bg); color: var(--ink); resize: vertical; min-width: 0; overflow-wrap: anywhere; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 #startup-set { margin-bottom: 12px; }
+/* 新しい版があるときに画面の下に出すお知らせ（GitHub版のみ） */
+.upd-banner { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; padding: 10px 12px; background: var(--paper); color: var(--ink); border: 2px solid var(--answer); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); font-size: 0.9rem; }
+.upd-banner[hidden] { display: none; }
 .gdrive { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
 .gdrive[hidden], .gd-on[hidden], #gd-open-row[hidden] { display: none; }
 .gd-on { display: grid; gap: 8px; }
@@ -598,7 +601,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.157</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.158</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -645,6 +648,11 @@ p.msg:empty { display: none; }
         <label class="gd-opt"><input type="radio" name="set-resume" value="home"> ホームメニューを表示する（続きは「問題を解く」の一時停止中から）</label>
       </fieldset>
     </div>
+    <div class="gdrive p-settings" id="app-update" hidden>
+      <p class="gd-title">アプリの更新<span class="gd-account" id="app-ver-now"></span></p>
+      <div class="row"><button type="button" class="btn" id="app-refresh">最新の版に更新する</button></div>
+      <p class="note">新しい版がうまく表示されないときに押してください。古い版の保存分を消して、最新の版を読み込み直します（解いている途中の状態や保存した問題は消えません）。</p>
+    </div>
     <div class="gdrive p-settings" id="gdrive">
       <p class="gd-title">Googleドライブ<span class="gd-account" id="gd-account"></span></p>
       <p class="note gd-na" id="gd-na" hidden>Googleドライブは、GitHub版（アプリ版・Web版）でのみ使えます。</p>
@@ -664,6 +672,11 @@ p.msg:empty { display: none; }
       </div>
     </div>
   </section>
+  <div class="upd-banner" id="upd-banner" role="status" hidden>
+    <span id="upd-text">新しい版があります。</span>
+    <button type="button" class="btn small" id="upd-go">更新する</button>
+    <button type="button" class="btn sub small" id="upd-later">あとで</button>
+  </div>
   <div class="crop" id="gd-box" role="dialog" aria-modal="true" aria-labelledby="gd-box-title" hidden>
     <div class="crop-inner gd-inner">
       <p class="gd-box-title" id="gd-box-title">Googleドライブの「Sudoku」フォルダ</p>
@@ -4984,6 +4997,44 @@ p.msg:empty { display: none; }
   const RESUME_KEY = "sudoku-start-resume";
   const startResume = () => { try { return localStorage.getItem(RESUME_KEY) !== "home"; } catch (e) { return true; } };
   if (startResume()) resumeSaved();
+  // ===== アプリの更新（GitHub版） =====
+  // 古い保存分（キャッシュ）が残って新しい版が出ないときのために、
+  // 起動時と画面に戻ったときに新しい版を確かめ、あればお知らせを出す。設定からも手動で更新できる
+  (function () {
+    const sw = navigator.serviceWorker;
+    if (!sw || !/^https?:$/.test(location.protocol) || !sw.controller) return;
+    const myVer = Number((document.querySelector(".ver")?.textContent.match(/\d+/) || [0])[0]);
+    document.getElementById("app-update").hidden = false;
+    document.getElementById("app-ver-now").textContent = `（今の版：ver.${myVer}）`;
+    async function refreshApp() {
+      try { if (typeof autoSave === "function") autoSave(); } catch (e) {}
+      try { for (const r of await sw.getRegistrations()) await r.unregister(); } catch (e) {}
+      try { for (const k of await caches.keys()) await caches.delete(k); } catch (e) {}
+      location.replace(location.pathname + "?v=" + Date.now());
+    }
+    document.getElementById("app-refresh").addEventListener("click", refreshApp);
+    document.getElementById("upd-go").addEventListener("click", refreshApp);
+    const banner = document.getElementById("upd-banner");
+    let dismissed = 0;
+    document.getElementById("upd-later").addEventListener("click", () => { banner.hidden = true; dismissed = Date.now(); });
+    let checking = false;
+    async function checkNew() {
+      if (checking || !navigator.onLine || Date.now() - dismissed < 30 * 60 * 1000) return;
+      checking = true;
+      try {
+        sw.getRegistration().then((r) => r && r.update()).catch(() => {});
+        const txt = await (await fetch("./index.html?check=" + Date.now(), { cache: "no-store" })).text();
+        const v = Number((txt.match(/class="ver">ver\.(\d+)</) || [0, 0])[1]);
+        if (v > myVer) {
+          document.getElementById("upd-text").textContent = `新しい版（ver.${v}）があります。`;
+          banner.hidden = false;
+        }
+      } catch (e) {}
+      checking = false;
+    }
+    setTimeout(checkNew, 3000);
+    document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") checkNew(); });
+  })();
   {
     const setTut = document.getElementById("set-tut");
     const drawStartupSet = () => {
