@@ -619,7 +619,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.163</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.164</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -4128,6 +4128,16 @@ p.msg:empty { display: none; }
     pname.focus();
   }
   document.getElementById("back").addEventListener("click", showStart);
+  // パソコンでは「問題一覧へ」を「問題の管理」のまとまり（リセットの右）に置く。スマホでは今までどおり一番下
+  (function () {
+    const back = document.getElementById("back");
+    const home = document.createComment("back");
+    back.before(home);
+    const pcMQ = matchMedia("(min-width: 761px)");
+    const place = () => { if (pcMQ.matches) document.querySelector(".grp-prob .grp-btns").appendChild(back); else home.after(back); };
+    place();
+    pcMQ.addEventListener?.("change", place);
+  })();
   // ---- 使い方ガイド: 小さな盤で実際にタップを試しながら、1つずつ説明する ----
   const TUT_KEY = "sudoku-tutorial-hide";
   const tutEl = document.getElementById("tut");
