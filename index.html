@@ -411,9 +411,10 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .start:not([data-page="home"]) .p-home, .start:not([data-page="make"]) .p-make, .start:not([data-page="solve"]) .p-solve, .start:not([data-page="settings"]) .p-settings { display: none !important; }
 .head-btns { display: flex; gap: 6px; align-items: center; }
 .head { flex-wrap: nowrap; }
-.head h1 { display: flex; align-items: baseline; flex-wrap: nowrap; white-space: nowrap; column-gap: 6px; min-width: 0; font-size: min(1.35rem, 5.4vw); }
-.help-btn { align-self: center; flex: none; width: 28px; height: 28px; margin-left: 4px; padding: 0; border: 1.5px solid var(--ink); border-radius: 50%; background: var(--paper); color: var(--ink); font: 700 0.95rem var(--font-ui); line-height: 1; cursor: pointer; touch-action: manipulation; }
-.help-btn:hover { background: var(--hover); }
+.head h1 { display: flex; align-items: baseline; flex-wrap: nowrap; white-space: nowrap; column-gap: 6px; min-width: 0; font-size: min(1.35rem, 5vw); }
+/* 「？」は🏠と同じ見た目のボタン（大きさ・枠・角）にそろえる */
+.head .home-btn { width: 38px; padding-left: 0; padding-right: 0; justify-content: center; text-align: center; }
+.head h1 .help-btn { align-self: center; flex: none; margin-left: 4px; font-weight: 700; letter-spacing: 0; touch-action: manipulation; }
 .home-btn { font-size: 1rem; line-height: 1; padding: 4px 8px; }
 .home-menu { display: grid; gap: 12px; }
 .home-big { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); color: var(--ink); font: 700 1.15rem var(--font-ui); cursor: pointer; }
@@ -624,7 +625,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.166</small><button type="button" class="help-btn" id="tut-open" aria-label="使い方" title="使い方">？</button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.167</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方">？</button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
