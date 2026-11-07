@@ -388,7 +388,8 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .tut-fork { justify-content: center; }
 .tut-hide { font-size: 0.9rem; display: flex; gap: 6px; align-items: center; justify-content: center; }
 .tut-hide[hidden] { display: none; }
-.tut-demo { display: flex; justify-content: center; }
+.tut-demo { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.tut-demo .tut-undo-row { flex-basis: 100%; display: flex; justify-content: center; }
 .tut-demo:empty { display: none; }
 .tut-demo .row3 { display: grid; grid-template-columns: repeat(3, 96px); gap: var(--cell); background: var(--line-cell); border: var(--thick) solid var(--ink); }
 .tut-demo .cell { width: 96px; height: 96px; touch-action: manipulation; }
@@ -601,7 +602,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.158</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.159</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -787,7 +788,7 @@ p.msg:empty { display: none; }
     <p class="tut-status" id="tut-status" aria-live="polite"></p>
     <label class="tut-hide" id="tut-hide-wrap" hidden><input type="checkbox" id="tut-hide"> 次回から表示しない</label>
     <div class="row tut-nav">
-      <button type="button" class="btn sub" id="tut-prev">戻る</button>
+      <button type="button" class="btn sub" id="tut-prev">前へ</button>
       <button type="button" class="btn" id="tut-next">次へ</button>
       <button type="button" class="btn sub" id="tut-skip">閉じる</button>
     </div>
@@ -4119,7 +4120,9 @@ p.msg:empty { display: none; }
     { part: 1, title: "4. 候補を消す", text: `メニューの「消す」を選ぶと、その数字が消えます。\n同じ行・列・ブロックに同じ数字が確定していれば、まとめて消えます。もう一度選ぶと戻ります。`,
       cells: ["5", 0, 0], target: [1, "5"], menu: true, ask: `左に「5」が確定しています。真ん中のマスの「5」を${MENU}して、「5 を消す」を選んでください。`,
       goal: (d) => d.cand(1, "5").classList.contains("off") && d.cand(2, "5").classList.contains("off"), ok: "できました！ この行の「5」がまとめて消えました。" },
-    { part: 1, title: "5. 「戻る」で取り消す", text: "まちがえたときは「戻る」ボタンを押すと、1つ前の操作に戻ります。何回でも戻れます。\n\n間違って消した候補は、マスを選んで「候補を復活」（またはメニューの「このマスの消した候補を復活」）でも戻せます。" },
+    { part: 1, title: "5. 「戻る」で取り消す", text: "まちがえたときは「戻る」ボタンを押すと、1つ前の操作に戻ります。何回でも戻れます。\n\n間違って消した候補は、マスを選んで「候補を復活」（またはメニューの「このマスの消した候補を復活」）でも戻せます。",
+      cells: [0], target: [0, "4"], menu: true, undo: true, ask: `「4」を${MENU}して「4 を消す」を選んでから、下の「戻る」を押して元に戻してください。`,
+      goal: (d) => d.undone && !d.cand(0, "4").classList.contains("off"), ok: "できました！ 「戻る」で1つ前に戻りました。" },
     { part: 1, title: "6. 自動保存と、解き始め", text: "解いている途中の状態は、この端末に自動で保存されます。アプリを閉じても、次に開くと続きから始まります。\n「一時停止」でタイマーを止められます。\n\nこれで解き始められます。速く解く操作や、ヒント・保存などは中級編で説明します（「使い方」からいつでも見られます）。", fork: true },
     { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
     { part: 2, title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
@@ -4149,6 +4152,7 @@ p.msg:empty { display: none; }
     { part: 2, title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
+  let tutBeforeTap = null;
   function demoApi(cells) {
     return { cell: (i) => cells[i], cand: (i, n) => cells[i].querySelector(`.cand[data-n="${n}"]`) };
   }
@@ -4180,6 +4184,7 @@ p.msg:empty { display: none; }
     tutStatus.classList.remove("ok");
     tutStatus.textContent = st.ask || "";
     tutDemo.innerHTML = "";
+    tutBeforeTap = null;
     // 初級編の終わり: 中級編に進むか、使ってみるかを選ぶ
     if (st.fork) {
       const box = document.createElement("div");
@@ -4252,6 +4257,35 @@ p.msg:empty { display: none; }
     const [ti, tn] = st.target;
     (cells[ti].classList.contains("fixed") ? cells[ti].querySelector(".big") : cells[ti].querySelector(`.cand[data-n="${tn}"]`)).classList.add("target");
     const d = demoApi(cells);
+    // 「戻る」の練習：操作の前の小さな盤の状態を積んでおき、「戻る」で1つ前に戻す
+    const hist = [];
+    const snap = () => cells.map((c) => ({ cls: c.className, v: c.dataset.value, big: c.querySelector(".big").textContent, cands: [...c.querySelectorAll(".cand")].map((x) => x.className) }));
+    let undoBtn2 = null;
+    tutBeforeTap = st.undo ? () => { hist.push(snap()); undoBtn2.disabled = false; } : null;
+    if (st.undo) {
+      undoBtn2 = document.createElement("button");
+      undoBtn2.type = "button";
+      undoBtn2.className = "btn sub tut-undo";
+      undoBtn2.textContent = "戻る";
+      undoBtn2.disabled = true;
+      undoBtn2.addEventListener("click", () => {
+        const sn = hist.pop();
+        if (!sn) return;
+        cells.forEach((c, i) => {
+          c.className = sn[i].cls;
+          if (sn[i].v === undefined) delete c.dataset.value; else c.dataset.value = sn[i].v;
+          c.querySelector(".big").textContent = sn[i].big;
+          c.querySelectorAll(".cand").forEach((x, k) => { x.className = sn[i].cands[k]; });
+        });
+        undoBtn2.disabled = !hist.length;
+        d.undone = true;
+        if (st.goal(d)) showTutOk(st); else { tutStatus.classList.remove("ok"); tutStatus.textContent = st.ask; }
+      });
+      const ur = document.createElement("div");
+      ur.className = "tut-undo-row";
+      ur.appendChild(undoBtn2);
+      tutDemo.appendChild(ur);
+    }
     row.addEventListener("click", (e) => {
       const el = e.target.closest(".cand, .big");
       if (!el) return;
@@ -4268,6 +4302,7 @@ p.msg:empty { display: none; }
       tutTap.n++;
       clearTimeout(tutTap.t);
       tutTap.t = setTimeout(() => {
+        tutBeforeTap?.();
         demoTap(cells, el, Math.min(tutTap.n, 3));
         tutTap = { el: null, n: 0, t: null };
         if (st.goal(d)) showTutOk(st);
@@ -4300,7 +4335,7 @@ p.msg:empty { display: none; }
       b.type = "button";
       b.setAttribute("role", "menuitem");
       b.textContent = label;
-      b.addEventListener("click", () => { closeTutMenu(); demoTap(cells, t, k); after(); });
+      b.addEventListener("click", () => { closeTutMenu(); tutBeforeTap?.(); demoTap(cells, t, k); after(); });
       tutMenu.appendChild(b);
     }
     const cancel = document.createElement("button");
