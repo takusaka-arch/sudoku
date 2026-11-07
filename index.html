@@ -413,7 +413,9 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .head { flex-wrap: nowrap; justify-content: flex-start; gap: 6px; }
 .head h1 { display: flex; align-items: baseline; flex-wrap: nowrap; white-space: nowrap; column-gap: 6px; min-width: 0; font-size: min(1.35rem, 5vw); }
 /* 「？」は🏠と同じ見た目のボタン（大きさ・枠・角）にそろえる */
-.head .home-btn { width: 38px; padding-left: 0; padding-right: 0; justify-content: center; text-align: center; }
+/* ❓と🏠は幅・高さとも同じ大きさにそろえる */
+.head .home-btn { width: 38px; height: 30px; padding: 0; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+.help-ico { width: 20px; height: 20px; display: block; }
 .head h1 .help-btn { align-self: center; flex: none; margin-left: 4px; font-size: 1rem; line-height: 1; letter-spacing: 0; touch-action: manipulation; }
 .home-btn { font-size: 1rem; line-height: 1; padding: 4px 8px; }
 .home-menu { display: grid; gap: 12px; }
@@ -627,7 +629,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.169</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方">❓</button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.170</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -4183,7 +4185,7 @@ p.note:empty { display: none; }
     { part: 1, title: "5. 「戻る」で取り消す", text: "まちがえたときは「戻る」ボタンを押すと、1つ前の操作に戻ります。何回でも戻れます。\n\n間違って消した候補は、マスを選んで「候補を復活」（またはメニューの「このマスの消した候補を復活」）でも戻せます。",
       cells: [0], target: [0, "4"], menu: true, undo: true, ask: `「4」を${MENU}して「4 を消す」を選んでから、下の「戻る」を押して元に戻してください。`,
       goal: (d) => d.undone && !d.cand(0, "4").classList.contains("off"), ok: "できました！ 「戻る」で1つ前に戻りました。" },
-    { part: 1, title: "6. 自動保存と、解き始め", text: "解いている途中の状態は、この端末に自動で保存されます。アプリを閉じても、次に開くと続きから始まります。\n「一時停止」でタイマーを止められます。\n\nこれで解き始められます。速く解く操作や、ヒント・保存などは中級編で説明します（アプリ名の右の「❓」からいつでも見られます）。", fork: true },
+    { part: 1, title: "6. 自動保存と、解き始め", text: "解いている途中の状態は、この端末に自動で保存されます。アプリを閉じても、次に開くと続きから始まります。\n「一時停止」でタイマーを止められます。\n\nこれで解き始められます。速く解く操作や、ヒント・保存などは中級編で説明します（アプリ名の右の「？」ボタンからいつでも見られます）。", fork: true },
     { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
     { part: 2, title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
       cells: [0], target: [0, "5"], ask: `下のマスの「5」を${TAP1}してみてください。`,
@@ -4209,7 +4211,7 @@ p.note:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
     ] },
     { part: 2, title: "ボタン", text: "戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する／正解を表示する\nリセット：問題だけの最初の状態に戻す\nこの状態を保存：名前を付けてその時点を残す（「保存した状態に戻す」で戻れる）\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
-    { part: 2, title: "準備ができました", text: "このガイドは、アプリ名の右の「❓」からいつでも見られます。", last: true },
+    { part: 2, title: "準備ができました", text: "このガイドは、アプリ名の右の「？」ボタンからいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
   let tutBeforeTap = null;
