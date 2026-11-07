@@ -220,6 +220,16 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
   padding: 12px 14px; background: var(--bad-bg); border-left: 4px solid var(--error);
 }
 .confirm[hidden] { display: none; }
+/* 正解を表示：確定していないマスに、正解を緑の数字で重ねる（自分の確定候補は青のまま、違うものは赤い背景） */
+.ans { display: none; }
+.board[data-mode="solve"][data-view-answer] .cell { position: relative; }
+.board[data-mode="solve"][data-view-answer] .cell:not(.fixed):not(.tent) .ans {
+  display: grid; place-items: center; position: absolute; inset: 0; z-index: 1;
+  background: var(--paper); color: var(--ans-color, #2e9d4f); font-family: var(--font-num); font-weight: 500;
+  font-size: clamp(18px, 6.2vw, 40px); line-height: 1; pointer-events: none;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ans-color: #6fcf8f; } }
+:root[data-theme="dark"] { --ans-color: #6fcf8f; }
 /* この状態を保存：名前を付けて保存する欄 */
 .save-box { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px; }
 .save-box[hidden] { display: none; }
@@ -588,7 +598,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.155</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.156</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -728,6 +738,11 @@ p.msg:empty { display: none; }
     <p id="confirm-msg">リセットしますか？選んだ候補と確定候補がすべて消えます。</p>
     <button type="button" id="reset-yes">リセットする</button>
     <button type="button" id="reset-no">キャンセル</button>
+  </div>
+  <div class="confirm" id="ans-confirm" role="alertdialog" aria-labelledby="ans-confirm-msg" hidden>
+    <p id="ans-confirm-msg">本当に全部の正解を表示しますか？</p>
+    <button type="button" id="ans-yes">表示する</button>
+    <button type="button" id="ans-no">キャンセル</button>
   </div>
   <p class="note" id="note">小さな数字をクリックすると、そのマスにその数字を大きく表示します。大きな数字をクリックすると元に戻ります。</p>
   <button type="button" class="btn sub" id="back">問題一覧へ</button>
@@ -913,8 +928,20 @@ p.msg:empty { display: none; }
     if (typeof renderPad === "function") renderPad();
   }
   // 同じ行・列・3x3ブロックに同じ数字があるマスを赤くする
+  // 正解の表示：確定していないマスに正解の数字を置き、違う確定候補に赤い背景を付ける
+  function drawAnswer() {
+    if (!board.hasAttribute("data-view-answer") || !solution || !solution.sol) return;
+    board.querySelectorAll(".cell").forEach((c) => {
+      const d = solution.sol[c.dataset.row * 9 + +c.dataset.col];
+      let a = c.querySelector(".ans");
+      if (!a) { a = document.createElement("span"); a.className = "ans"; a.setAttribute("aria-hidden", "true"); c.appendChild(a); }
+      a.textContent = d;
+      if (c.classList.contains("tent") && c.querySelector(".big").textContent !== d) c.classList.add("check-wrong");
+    });
+  }
   function markConflicts() {
     board.querySelectorAll(".cell.check-wrong").forEach((c) => c.classList.remove("check-wrong"));
+    if (board.hasAttribute("data-view-answer")) drawAnswer();
     if (typeof autoSave === "function") setTimeout(autoSave, 0);
     // 盤が変わったらヒントの表示を消す
     clearHints();
@@ -1459,6 +1486,8 @@ p.msg:empty { display: none; }
   });
   function showReady(count) {
     // 問題を登録した（開いた）時点で、裏で正解を計算して持っておく（検証ボタンで使う）
+    board.removeAttribute("data-view-answer");
+    document.getElementById("ans-confirm").hidden = true;
     solution = solveGivens([...board.querySelectorAll(".cell")].sort((a, b) => (a.dataset.row * 9 + +a.dataset.col) - (b.dataset.row * 9 + +b.dataset.col)).map((c) => (c.classList.contains("given") && c.dataset.value) || "0").join(""));
     document.getElementById("trial").hidden = true;
     clearUndo();
@@ -2654,18 +2683,23 @@ p.msg:empty { display: none; }
   const viewKinds = [
     { key: "blank", label: "未確定のマスを空白にする", desc: "大きな数字が入っていないマスの小さな数字を、すべて隠します" },
     { key: "", label: "未確定のマスの候補を表示する", desc: "小さな数字を表示する、いつもの表示です" },
+    { key: "answer", label: "正解を表示する", desc: "確定していないマスに正解を緑で表示します。違う確定候補は赤い背景になります。ほかの表示を選ぶと元に戻ります" },
   ];
   function applyView(v) {
     board.toggleAttribute("data-view-blank", !!v.blank);
-    try { localStorage.setItem(VIEW_KEY, JSON.stringify(v)); } catch {}
+    // 正解の表示は、選んだときだけ（次回には持ち越さない）
+    const was = board.hasAttribute("data-view-answer");
+    board.toggleAttribute("data-view-answer", !!v.answer);
+    if (v.answer) drawAnswer(); else if (was) board.querySelectorAll(".cell.check-wrong").forEach((c) => c.classList.remove("check-wrong"));
+    try { localStorage.setItem(VIEW_KEY, JSON.stringify({ blank: !!v.blank })); } catch {}
     viewMenu.querySelectorAll("button").forEach((b) => {
-      const on = b.dataset.key ? !!v.blank : !v.blank;
+      const on = b.dataset.key === "answer" ? !!v.answer : b.dataset.key ? !!v.blank && !v.answer : !v.blank && !v.answer;
       b.setAttribute("aria-checked", String(on));
       b.querySelector(".hm-check").textContent = on ? "✓" : "";
     });
-    viewBtn.classList.toggle("on", !!v.blank);
+    viewBtn.classList.toggle("on", !!v.blank || !!v.answer);
   }
-  const curView = () => ({ blank: board.hasAttribute("data-view-blank") });
+  const curView = () => ({ blank: board.hasAttribute("data-view-blank"), answer: board.hasAttribute("data-view-answer") });
   viewKinds.forEach((k) => {
     const b = document.createElement("button");
     b.type = "button";
@@ -2675,12 +2709,27 @@ p.msg:empty { display: none; }
     b.querySelector(".hm-label").textContent = k.label;
     b.querySelector(".hm-desc").textContent = k.desc;
     b.addEventListener("click", () => {
-      applyView({ blank: !!k.key });
       closeViewMenu();
+      if (k.key === "answer") {
+        if (board.hasAttribute("data-view-answer")) return;
+        if (!solution || !solution.n) { workMsg.classList.remove("err"); workMsg.textContent = "この問題は答えがないため、正解を表示できません。"; return; }
+        ansConfirm.hidden = false;
+        document.getElementById("ans-no").focus();
+        return;
+      }
+      applyView({ blank: k.key === "blank" });
     });
     viewMenu.appendChild(b);
   });
-  try { applyView(JSON.parse(localStorage.getItem(VIEW_KEY)) || {}); } catch { applyView({}); }
+  const ansConfirm = document.getElementById("ans-confirm");
+  document.getElementById("ans-no").addEventListener("click", () => { ansConfirm.hidden = true; viewBtn.focus(); });
+  document.getElementById("ans-yes").addEventListener("click", () => {
+    ansConfirm.hidden = true;
+    applyView({ blank: board.hasAttribute("data-view-blank"), answer: true });
+    workMsg.classList.remove("err");
+    workMsg.textContent = "正解を緑で表示しています。" + (solution && solution.n > 1 ? "（答えが1つに決まらない問題なので、答えの1つです）" : "") + "元に戻すときは「表示方法変更」でほかの表示を選んでください。";
+  });
+  try { applyView({ blank: !!(JSON.parse(localStorage.getItem(VIEW_KEY)) || {}).blank }); } catch { applyView({}); }
   function closeViewMenu() {
     viewMenu.hidden = true;
     viewBtn.setAttribute("aria-expanded", "false");
@@ -2689,6 +2738,7 @@ p.msg:empty { display: none; }
     if (!viewMenu.hidden) return closeViewMenu();
     closeHintMenu();
     closeSnapUI();
+    applyView(curView());
     viewMenu.hidden = false;
     viewBtn.setAttribute("aria-expanded", "true");
     viewMenu.querySelector("button").focus({ preventScroll: true });
@@ -4065,7 +4115,7 @@ p.msg:empty { display: none; }
       ["red", "3", "赤", "数字の重複"],
       ["brown", "6", "茶", "入らない候補"],
     ] },
-    { part: 1, title: "ボタン", text: "戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する\nリセット：問題だけの最初の状態に戻す\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
+    { part: 1, title: "ボタン", text: "戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する／正解を表示する\nリセット：問題だけの最初の状態に戻す\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
     { part: 1, title: "一時停止と保存（この端末）", text: "「一時停止」でタイマーが止まり、盤が隠れます。「再開」で続きから解けます。\n\n解いている途中の状態は、この端末に自動で保存されます。画面をロックしたり、アプリを閉じたり、🏠で戻ったりしても大丈夫です。\n次に起動したときは、続きの画面から始まります（🏠→「設定」でホームメニューから始めるようにもできます）。最初の画面の「問題を解く」→「一時停止中」からも開けます。\n\n「この状態を保存」→「アプリ内に保存」で、名前を付けてその時点を残せます。あとで「保存した状態に戻す」から、その時点に戻れます。" },
     { part: 1, title: "初級編はここまで", text: "これで解き始められます。\n\nもっと速く解くための操作や、写真の読み取り・ヒント・保存などは中級編で説明します。中級編は「使い方」からいつでも見られます。", fork: true },
     { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
