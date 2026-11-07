@@ -409,6 +409,10 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .make-menu > .btn { justify-self: stretch; width: 100%; box-sizing: border-box; justify-content: flex-start; text-align: left; }
 .start:not([data-page="home"]) .p-home, .start:not([data-page="make"]) .p-make, .start:not([data-page="solve"]) .p-solve, .start:not([data-page="settings"]) .p-settings { display: none !important; }
 .head-btns { display: flex; gap: 6px; align-items: center; }
+.head { flex-wrap: nowrap; }
+.head h1 { display: flex; align-items: baseline; flex-wrap: nowrap; white-space: nowrap; column-gap: 6px; min-width: 0; font-size: min(1.35rem, 5.4vw); }
+.help-btn { align-self: center; flex: none; width: 28px; height: 28px; margin-left: 4px; padding: 0; border: 1.5px solid var(--ink); border-radius: 50%; background: var(--paper); color: var(--ink); font: 700 0.95rem var(--font-ui); line-height: 1; cursor: pointer; touch-action: manipulation; }
+.help-btn:hover { background: var(--hover); }
 .home-btn { font-size: 1rem; line-height: 1; padding: 4px 8px; }
 .home-menu { display: grid; gap: 12px; }
 .home-big { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); color: var(--ink); font: 700 1.15rem var(--font-ui); cursor: pointer; }
@@ -619,7 +623,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.164</small></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button><button type="button" class="btn sub small" id="tut-open">使い方</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.165</small><button type="button" class="help-btn" id="tut-open" aria-label="使い方" title="使い方">？</button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -4166,7 +4170,7 @@ p.msg:empty { display: none; }
     { part: 1, title: "5. 「戻る」で取り消す", text: "まちがえたときは「戻る」ボタンを押すと、1つ前の操作に戻ります。何回でも戻れます。\n\n間違って消した候補は、マスを選んで「候補を復活」（またはメニューの「このマスの消した候補を復活」）でも戻せます。",
       cells: [0], target: [0, "4"], menu: true, undo: true, ask: `「4」を${MENU}して「4 を消す」を選んでから、下の「戻る」を押して元に戻してください。`,
       goal: (d) => d.undone && !d.cand(0, "4").classList.contains("off"), ok: "できました！ 「戻る」で1つ前に戻りました。" },
-    { part: 1, title: "6. 自動保存と、解き始め", text: "解いている途中の状態は、この端末に自動で保存されます。アプリを閉じても、次に開くと続きから始まります。\n「一時停止」でタイマーを止められます。\n\nこれで解き始められます。速く解く操作や、ヒント・保存などは中級編で説明します（「使い方」からいつでも見られます）。", fork: true },
+    { part: 1, title: "6. 自動保存と、解き始め", text: "解いている途中の状態は、この端末に自動で保存されます。アプリを閉じても、次に開くと続きから始まります。\n「一時停止」でタイマーを止められます。\n\nこれで解き始められます。速く解く操作や、ヒント・保存などは中級編で説明します（アプリ名の右の「？」からいつでも見られます）。", fork: true },
     { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
     { part: 2, title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
       cells: [0], target: [0, "5"], ask: `下のマスの「5」を${TAP1}してみてください。`,
@@ -4192,7 +4196,7 @@ p.msg:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
     ] },
     { part: 2, title: "ボタン", text: "戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する／正解を表示する\nリセット：問題だけの最初の状態に戻す\nこの状態を保存：名前を付けてその時点を残す（「保存した状態に戻す」で戻れる）\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
-    { part: 2, title: "準備ができました", text: "このガイドは「使い方」からいつでも見られます。", last: true },
+    { part: 2, title: "準備ができました", text: "このガイドは、アプリ名の右の「？」からいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
   let tutBeforeTap = null;
