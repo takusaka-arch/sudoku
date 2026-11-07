@@ -81,7 +81,7 @@ main {
 @media (max-width: 760px) {
   main { grid-template-columns: minmax(0, 1fr); }
 }
-.head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.head { display: flex; align-items: center; justify-content: flex-start; gap: 6px; flex-wrap: nowrap; }
 h1 .ver { font: 500 0.7rem var(--font-num); color: var(--muted); letter-spacing: 0; display: inline-block; padding: 8px 6px; margin: -8px -6px; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 h1 { font-size: 1.35rem; font-weight: 700; margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
 p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
@@ -385,7 +385,6 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .tut-color.c-blue .tc-num { color: var(--answer); }
 .tut-color.c-red .tc-num { color: var(--error); }
 .tut-color.c-brown .tc-num { color: var(--brown); }
-.tut-color.c-grey .tc-num { color: var(--cand); opacity: 0.55; text-decoration: line-through; font-weight: 500; }
 .tut-nav { justify-content: center; }
 .tut-fork { justify-content: center; }
 .tut-hide { font-size: 0.9rem; display: flex; gap: 6px; align-items: center; justify-content: center; }
@@ -411,14 +410,13 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .make-menu > .btn { justify-self: stretch; width: 100%; box-sizing: border-box; justify-content: flex-start; text-align: left; }
 .start:not([data-page="home"]) .p-home, .start:not([data-page="make"]) .p-make, .start:not([data-page="solve"]) .p-solve, .start:not([data-page="settings"]) .p-settings { display: none !important; }
 .head-btns { display: flex; gap: 6px; align-items: center; }
-.head { flex-wrap: nowrap; justify-content: flex-start; gap: 6px; }
 .head h1 { display: flex; align-items: baseline; flex-wrap: nowrap; white-space: nowrap; column-gap: 6px; min-width: 0; font-size: min(1.35rem, 5vw); }
 /* 「？」は🏠と同じ見た目のボタン（大きさ・枠・角）にそろえる */
 /* ❓と🏠は幅・高さとも同じ大きさにそろえる */
 :root .head .home-btn { width: 38px; height: 30px; padding: 0; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
 .help-ico { width: 20px; height: 20px; display: block; }
 .head h1 .help-btn { align-self: center; flex: none; margin-left: 4px; font-size: 1rem; line-height: 1; letter-spacing: 0; touch-action: manipulation; }
-.home-btn { font-size: 1rem; line-height: 1; padding: 4px 8px; }
+.home-btn { font-size: 1rem; line-height: 1; }
 .home-menu { display: grid; gap: 12px; }
 .home-big { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); color: var(--ink); font: 700 1.15rem var(--font-ui); cursor: pointer; }
 .home-big:hover { background: var(--hover); }
@@ -439,10 +437,6 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .paused-box .open { border-color: var(--answer); border-width: 2px; }
 .list .open small { display: block; margin-top: 2px; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
 .list .del, .list .share { flex: 0 0 auto; padding: 6px 10px; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
-.share-box, .import { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
-.share-box[hidden] { display: none; }
-.share-box p, .import p { margin: 0; font-size: 0.85rem; line-height: 1.6; }
-.share-box textarea, .import textarea { font: 500 0.85rem var(--font-num); padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 4px; background: var(--bg); color: var(--ink); resize: vertical; min-width: 0; overflow-wrap: anywhere; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 #startup-set { margin-bottom: 12px; }
 /* 新しい版があるときに画面の下に出すお知らせ（GitHub版のみ） */
@@ -577,8 +571,7 @@ p.msg:empty { display: none; }
 .timer[hidden] { display: none; }
 .timer-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 18px; row-gap: 4px; }
 .timer-row:not(:has(> :not([hidden]))) { display: none; }
-/* 回答中は「戻る・再生・リセット」と「この状態を保存・保存した状態に戻す」をそれぞれ1行にまとめる */
-/* 回答中のボタンのまとまり。パソコン：用途別の3つの枠（戻るは大きく先頭）。スマホ：前と同じ3行 */
+/* 回答中のボタンのまとまり。パソコン：用途別の3つの枠（よく使う操作／状態の管理／問題の管理）。スマホ：枠なしで同じ順の3行 */
 .grp:not(:has(button:not([hidden]))) { display: none; }
 .bar-break { display: none !important; }
 @media (max-width: 760px) { .bar:has(#pause:not([hidden])) .bar-break { display: block !important; } }
@@ -599,7 +592,6 @@ p.msg:empty { display: none; }
   .bar-break { flex-basis: 100%; height: 0; }
   .bar:has(#pause:not([hidden])) { row-gap: 0; margin-bottom: -8px; }
   .bar:has(#pause:not([hidden])) :is(.prompt, button) { margin-bottom: 8px; }
-  .bar:has(#pause:not([hidden])) .bar-break { display: block; }
   /* 一時停止ボタンは状態表示の右に並べ、ボタンは1行に収まるよう少し詰める */
   .bar:has(#pause:not([hidden])) .prompt { flex: 1 1 0; min-width: 0; }
   .bar:has(#pause:not([hidden])) button { padding-left: 9px; padding-right: 9px; letter-spacing: 0; }
@@ -635,7 +627,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.173</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.174</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1293,9 +1285,8 @@ p.note:empty { display: none; }
     padNote.textContent = mode === "register"
       ? "数字をタップすると問題の数字になります。同じ数字をもう一度タップすると消えます。"
       : given ? "問題の数字は変えられません。この数字をトリプルタップ（または長押しでメニュー）すると、同じ行・列・ブロックの同じ数字の候補を消す・戻すができます。"
-      : "1回タップ：候補（青）の選択・解除　ダブルタップ：確定候補にする・戻す　トリプルタップ：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（問題の数字・確定候補をトリプルタップ：その行・列・ブロックの同じ数字を消す・戻す）　長押し：メニューから選ぶ";
+      : "1回タップ：候補（青）の選択・解除\nダブルタップ：確定候補にする・戻す\nトリプルタップ：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す\n長押し：メニューから選ぶ";
   }
-  let lastTap = { key: null, t: 0 };
   pad.addEventListener("click", (e) => {
     const k = e.target.closest(".key");
     if (!k || !sel || k.disabled) return;
@@ -2377,7 +2368,7 @@ p.note:empty { display: none; }
   // ヒント: 入れられる数字が1つだけのマス、または行・列・ブロックで1か所にしか入らない数字を、1つだけ薄い赤で示す
   // どちらも無ければ、2つの数字が同じ2マスにしか入らないペアを薄い紫で示す
   // 入れられる = 問題の数字・確定候補で埋まっておらず、消しておらず、同じ行・列・ブロックにその数字が確定していない
-  // 一つ戻る: 操作の前の盤の状態を積んでおき、押すたびに1つ前に戻す（Ctrl+Z / ⌘Z でも可）
+  // 戻る: 操作の前の盤の状態を積んでおき、押すたびに1つ前に戻す（Ctrl+Z / ⌘Z でも可）
   const undoBtn = document.getElementById("undo");
   let undoStack = [];
   function snapshot() {
@@ -2451,7 +2442,7 @@ p.note:empty { display: none; }
   document.getElementById("pad-revive").addEventListener("click", () => reviveCell(sel));
   runTap = recorded(runTap);
   // 隠し機能: Ctrl+Shift+Alt+Delete（Backspace でも可）で、問題の数字と確定候補をすべてトリプルクリックしたのと同じ消し込みを一度に行う
-  // （消すだけで、戻すことはしない。「一つ戻る」1回で元に戻せる）
+  // （消すだけで、戻すことはしない。「戻る」1回で元に戻せる）
   const eliminateAll = recorded(() => {
     if (board.dataset.mode !== "solve") return;
     flushTap();
@@ -2566,7 +2557,7 @@ p.note:empty { display: none; }
   }
   saveSolvedBtn.addEventListener("click", saveSolved);
   document.getElementById("clear-save").addEventListener("click", saveSolved);
-  // 解いた順に再生: 確定候補を、最後に確定した順に1マスずつ出していく
+  // 再生: 確定候補を、最後に確定した順に1マスずつ出していく
   const replayBtn = document.getElementById("replay");
   let replayTimer = null;
   let replayFrom = "", replayPrompt = "";
@@ -3691,7 +3682,7 @@ p.note:empty { display: none; }
       go.addEventListener("click", () => {
         closeSnapUI();
         flushTap();
-        // 戻す前の状態は「一つ戻る」で取り戻せるようにしておく
+        // 戻す前の状態は「戻る」で取り戻せるようにしておく
         undoStack.push(snapshot());
         undoBtn.disabled = false;
         restore(x.snap);
@@ -4209,7 +4200,7 @@ p.note:empty { display: none; }
       ["red", "3", "赤", "数字の重複"],
       ["brown", "6", "茶", "入らない候補"],
     ] },
-    { part: 2, title: "ボタン", text: "戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する／正解を表示する\nリセット：問題だけの最初の状態に戻す\nこの状態を保存：名前を付けてその時点を残す（「保存した状態に戻す」で戻れる）\n\n全マスが大きな数字で埋まり、赤がなければ完成です。" },
+    { part: 2, title: "ボタン", text: "戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する／正解を表示する\nリセット：問題だけの最初の状態に戻す\nこの状態を保存：名前を付けてその時点を残す（「保存した状態に戻す」で戻れる）" },
     { part: 2, title: "準備ができました", text: "このガイドは、アプリ名の右の「？」ボタンからいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
