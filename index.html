@@ -103,6 +103,11 @@ p.note u { color: var(--ink); text-underline-offset: 3px; text-decoration-thickn
 @media (max-width: 760px) {
   .board { width: 100%; }
 }
+/* パソコンでは候補の数字を盤の大きさに合わせて大きくする（13px〜22px） */
+@media (min-width: 761px) {
+  .board { container-type: inline-size; }
+  .board .cand { font-size: clamp(13px, 2.2cqw, 22px); }
+}
 /* 盤の下の 1〜9：押した数字が候補として残っているマスで点滅させる */
 .board-wrap { display: grid; gap: 8px; justify-items: center; min-width: 0; }
 .num-hl { display: grid; gap: 4px; justify-items: center; width: 100%; position: relative; }
@@ -627,7 +632,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.174</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.175</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -749,7 +754,7 @@ p.note:empty { display: none; }
     <div class="grp grp-main">
       <p class="grp-h">よく使う操作</p>
       <div class="grp-btns">
-        <button type="button" class="btn sub" id="undo" hidden disabled>戻る</button>
+        <button type="button" class="btn sub" id="undo" title="Ctrl+Z（Macは⌘Z）でも戻れます" hidden disabled>戻る</button>
         <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
         <button type="button" class="btn sub" id="check" hidden>検証</button>
         <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
@@ -762,7 +767,7 @@ p.note:empty { display: none; }
       <div class="grp-btns">
         <button type="button" class="btn sub" id="save-progress" hidden>この状態を保存</button>
         <button type="button" class="btn sub" id="snap-open" aria-haspopup="menu" aria-expanded="false" hidden>保存した状態に戻す ▾</button>
-        <button type="button" class="btn" id="replay" hidden>再生</button>
+        <button type="button" class="btn sub" id="replay" hidden>再生</button>
         <button type="button" class="btn sub" id="save-solved" hidden>完成形を保存</button>
       </div>
     </div>
@@ -1540,6 +1545,7 @@ p.note:empty { display: none; }
       : `検証：確定した${total}マスは、すべて正解です。` + multi;
   });
   function showReady(count) {
+    setPauseLock(false);
     // 問題を登録した（開いた）時点で、裏で正解を計算して持っておく（検証ボタンで使う）
     board.removeAttribute("data-view-answer");
     document.getElementById("ans-confirm").hidden = true;
@@ -1580,6 +1586,7 @@ p.note:empty { display: none; }
   }
   function showSolve() {
     board.dataset.mode = "solve";
+    setPauseLock(false);
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
     const [t1, t2, t3] = matchMedia("(hover: hover) and (pointer: fine)").matches ? ["1回クリック", "ダブルクリック", "トリプルクリック"] : ["1回タップ", "ダブルタップ", "トリプルタップ"];
     // 操作の名前（項目）に下線を引き、説明と見分けやすくする
@@ -1603,6 +1610,12 @@ p.note:empty { display: none; }
   }
   go.addEventListener("click", showSolve);
   // 一時停止中の表示。「再開」の説明は一時停止中の表示のすぐ下に小さく出す
+  // 一時停止中は、盤を見たり動かしたりするボタン（戻る・ヒント・検証・表示方法変更・再生）を押せなくする。
+  // 保存・リセット・問題一覧へは一時停止中でも使える
+  function setPauseLock(on) {
+    for (const id of ["hint", "check", "view", "replay"]) document.getElementById(id).disabled = on;
+    document.getElementById("undo").disabled = on || undoStack.length === 0;
+  }
   function setPausedPrompt(extra) {
     prompt.textContent = `一時停止中：${currentName}${extra}`;
     const sub = document.createElement("span");
@@ -1618,6 +1631,7 @@ p.note:empty { display: none; }
       pause.textContent = "再開";
       renderPad();
       setPausedPrompt("");
+      setPauseLock(true);
       note.textContent = "";
       confirmBox.hidden = true;
       autoSave();
@@ -2142,6 +2156,7 @@ p.note:empty { display: none; }
   });
 
   function showRegister() {
+    setPauseLock(false);
     clearUndo();
     undoBtn.hidden = false;
     photoStatus.classList.remove("err", "warn");
@@ -2196,6 +2211,7 @@ p.note:empty { display: none; }
   });
   // 解いている途中で一覧やホームに戻るときは、その時点を保存してから戻る（「問題を解く」の「一時停止中」から続きを開ける）
   function showStart(page) {
+    setPauseLock(false);
     if (["solve", "paused"].includes(board.dataset.mode) && typeof autoSave === "function") autoSave();
     // 「問題一覧へ」から来たときは、保存した問題の一覧（解くページ）
     startPanel.dataset.page = typeof page === "string" ? page : "solve";
@@ -4200,7 +4216,7 @@ p.note:empty { display: none; }
       ["red", "3", "赤", "数字の重複"],
       ["brown", "6", "茶", "入らない候補"],
     ] },
-    { part: 2, title: "ボタン", text: "戻る：1つ前の操作に戻す\n一時停止：タイマーを止める\n表示方法変更：未確定のマスを空白にする／候補を表示する／正解を表示する\nリセット：問題だけの最初の状態に戻す\nこの状態を保存：名前を付けてその時点を残す（「保存した状態に戻す」で戻れる）" },
+    { part: 2, title: "ボタン", text: "【よく使う操作】\n戻る：1つ前の操作に戻す（パソコンは Ctrl+Z でも可）\nヒント：次に使える解き方を示す\n検証：確定したマスを正解と比べる\n表示方法変更：未確定のマスを空白／候補を表示／正解を表示\n\n【状態の管理】\nこの状態を保存：その時点を残す\n保存した状態に戻す：残した時点に戻る\n再生：確定した順に数字を再生する\n\n【問題の管理】\nリセット：問題だけの最初の状態に戻す\n問題一覧へ：問題の一覧に戻る\n\n一時停止：タイマーを止める。一時停止中は保存と問題の管理だけ使えます" },
     { part: 2, title: "準備ができました", text: "このガイドは、アプリ名の右の「？」ボタンからいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
@@ -5076,7 +5092,7 @@ p.note:empty { display: none; }
       restoring = true;
       openProgressData(cur, "回答中");
       restoring = false;
-      if (board.dataset.mode === "paused") setPausedPrompt("（前回の続き）");
+      if (board.dataset.mode === "paused") { setPausedPrompt("（前回の続き）"); setPauseLock(true); }
       else { clearAutoSave(); showStart("home"); }
     } catch (e) { restoring = false; }
   }
