@@ -84,6 +84,7 @@ main {
 h1 .ver { font: 500 0.7rem var(--font-num); color: var(--muted); letter-spacing: 0; display: inline-block; padding: 8px 6px; margin: -8px -6px; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
 h1 { font-size: 1.35rem; font-weight: 700; margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
 p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+p.note u { color: var(--ink); text-underline-offset: 3px; text-decoration-thickness: 1px; }
 
 .board {
   touch-action: manipulation;
@@ -623,7 +624,7 @@ p.msg:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.165</small><button type="button" class="help-btn" id="tut-open" aria-label="使い方" title="使い方">？</button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.166</small><button type="button" class="help-btn" id="tut-open" aria-label="使い方" title="使い方">？</button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1578,7 +1579,8 @@ p.msg:empty { display: none; }
     board.dataset.mode = "solve";
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
     const [t1, t2, t3] = matchMedia("(hover: hover) and (pointer: fine)").matches ? ["1回クリック", "ダブルクリック", "トリプルクリック"] : ["1回タップ", "ダブルタップ", "トリプルタップ"];
-    note.textContent = `小さな数字を ${t1}：候補（青）の選択・解除　${t2}：確定候補にする（大きな数字を${t2}で戻す）　${t3}：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（問題の数字・確定候補を${t3}：その行・列・ブロックの同じ数字を消す・戻す）　${t1 === "1回クリック" ? "右クリック" : "長押し"}：メニューから選ぶ`;
+    // 操作の名前（項目）に下線を引き、説明と見分けやすくする
+    note.innerHTML = `<u>小さな数字を ${t1}</u>：候補（青）の選択・解除　<u>${t2}</u>：確定候補にする（大きな数字を${t2}で戻す）　<u>${t3}</u>：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す（<u>問題の数字・確定候補を${t3}</u>：その行・列・ブロックの同じ数字を消す・戻す）　<u>${t1 === "1回クリック" ? "右クリック" : "長押し"}</u>：メニューから選ぶ`;
     go.hidden = true;
     pause.hidden = false;
     pause.textContent = "一時停止";
