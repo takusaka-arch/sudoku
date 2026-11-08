@@ -115,6 +115,7 @@ p.note u { color: var(--ink); text-underline-offset: 3px; text-decoration-thickn
 .nh-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
 .btn-tip { position: fixed; z-index: 9999; max-width: 260px; padding: 6px 10px; border-radius: 6px; background: #263238; color: #fff; font-size: 0.8rem; line-height: 1.5; box-shadow: 0 2px 8px rgba(0,0,0,0.25); pointer-events: none; opacity: 0; transition: opacity 0.12s; }
 .btn-tip.show { opacity: 1; }
+@media not ((hover: hover) and (pointer: fine)) { button { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; } }
 .nh-keys { display: grid; grid-template-columns: repeat(9, minmax(0, 40px)); gap: 4px; justify-content: center; width: 100%; }
 .nh-keys button { aspect-ratio: 1; min-width: 0; padding: 0; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1.05rem var(--font-num); cursor: pointer; touch-action: manipulation; }
 .nh-keys button:hover { background: var(--hover); }
@@ -634,7 +635,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.177</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.178</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -4218,7 +4219,7 @@ p.note:empty { display: none; }
       ["red", "3", "赤", "数字の重複"],
       ["brown", "6", "茶", "入らない候補"],
     ] },
-    { part: 2, title: "ボタン", text: "【よく使う操作】\n戻る：1つ前の操作に戻す（パソコンは Ctrl+Z でも可）\nヒント：次に使える解き方を示す\n検証：確定したマスを正解と比べる\n表示方法変更：未確定のマスを空白／候補を表示／正解を表示\n\n【状態の管理】\nこの状態を保存：その時点を残す\n保存した状態に戻す：残した時点に戻る\n再生：確定した順に数字を再生する\n\n【問題の管理】\nリセット：問題だけの最初の状態に戻す\n問題一覧へ：問題の一覧に戻る\n\n一時停止：タイマーを止める。一時停止中は保存と問題の管理だけ使えます" },
+    { part: 2, title: "ボタン", text: "【よく使う操作】\n戻る：1つ前の操作に戻す（パソコンは Ctrl+Z でも可）\nヒント：次に使える解き方を示す\n検証：確定したマスを正解と比べる\n表示方法変更：未確定のマスを空白／候補を表示／正解を表示\n\n【状態の管理】\nこの状態を保存：その時点を残す\n保存した状態に戻す：残した時点に戻る\n再生：確定した順に数字を再生する\n\n【問題の管理】\nリセット：問題だけの最初の状態に戻す\n問題一覧へ：問題の一覧に戻る\n\n一時停止：タイマーを止める。一時停止中は保存と問題の管理だけ使えます\n\n" + (matchMedia("(hover: hover) and (pointer: fine)").matches ? "ボタンにマウスを乗せると" : "ボタンを長押しすると") + "、説明が出ます" },
     { part: 2, title: "準備ができました", text: "このガイドは、アプリ名の右の「？」ボタンからいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
@@ -5213,9 +5214,9 @@ p.note:empty { display: none; }
   });
 })();
 
-// PC：ボタンにマウスを乗せると、その機能の説明を出す
+// ボタンの説明：PCはマウスを乗せると、スマホは長押しすると出す（長押しのときはボタンを押したことにしない）
 (() => {
-  if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  const mouse = matchMedia("(hover: hover) and (pointer: fine)").matches;
   const tips = {
     "tut-open": "使い方ガイドを開きます", "home-btn": "最初の画面に戻ります",
     "go-make": "新しい問題を作るか、問題ファイルを読み込みます", "go-solve": "保存した問題を選んで解きます",
@@ -5248,25 +5249,49 @@ p.note:empty { display: none; }
     if (b.closest(".nh-keys")) return `${b.textContent.trim()} が入れる候補を点滅させます。もう一度押すと消えます`;
     return tips[b.id];
   };
-  document.addEventListener("mouseover", (e) => {
-    const b = e.target.closest && e.target.closest("button");
-    if (b === cur) return;
-    hide();
-    if (!b || !textOf(b)) return;
-    cur = b;
-    timer = setTimeout(() => {
-      if (cur !== b || !b.isConnected || b.offsetParent === null) return;
-      tip.textContent = textOf(b);
-      const r = b.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
-      let x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
-      let y = r.bottom + 8;
-      if (y + h > innerHeight - 8) y = r.top - h - 8;
-      tip.style.left = x + "px"; tip.style.top = y + "px";
-      tip.classList.add("show");
-    }, 450);
-  });
-  document.addEventListener("mousedown", hide, true);
-  document.addEventListener("keydown", hide, true);
+  const show = (b, above) => {
+    if (cur !== b || !b.isConnected || b.offsetParent === null) return;
+    tip.textContent = textOf(b);
+    const r = b.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+    const x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+    let y = above ? r.top - h - 10 : r.bottom + 8; // 指で隠れないよう、スマホはボタンの上に出す
+    if (above ? y < 8 : y + h > innerHeight - 8) y = above ? r.bottom + 10 : r.top - h - 8;
+    tip.style.left = x + "px"; tip.style.top = y + "px";
+    tip.classList.add("show");
+  };
+  if (mouse) {
+    document.addEventListener("mouseover", (e) => {
+      const b = e.target.closest && e.target.closest("button");
+      if (b === cur) return;
+      hide();
+      if (!b || !textOf(b)) return;
+      cur = b;
+      timer = setTimeout(() => show(b, false), 450);
+    });
+    document.addEventListener("mousedown", hide, true);
+    document.addEventListener("keydown", hide, true);
+  } else {
+    let sx = 0, sy = 0, shown = null;
+    document.addEventListener("touchstart", (e) => {
+      hide(); shown = null;
+      const b = e.target.closest && e.target.closest("button");
+      if (!b || e.touches.length > 1 || !textOf(b)) return;
+      cur = b; sx = e.touches[0].clientX; sy = e.touches[0].clientY;
+      timer = setTimeout(() => { show(b, true); if (cur === b) shown = b; }, 500);
+    }, { passive: true });
+    document.addEventListener("touchmove", (e) => {
+      if (cur && Math.hypot(e.touches[0].clientX - sx, e.touches[0].clientY - sy) > 10) hide();
+    }, { passive: true });
+    const end = (e) => {
+      if (shown && e.cancelable) e.preventDefault(); // 説明を出したときは、ボタンを押したことにしない
+      hide();
+    };
+    document.addEventListener("touchend", end, true);
+    document.addEventListener("touchcancel", end, true);
+    // 長押し後に遅れて届くクリックも無視する
+    document.addEventListener("click", (e) => { if (shown && e.target.closest && e.target.closest("button") === shown) { e.preventDefault(); e.stopPropagation(); } shown = null; }, true);
+    document.addEventListener("contextmenu", (e) => { if (e.target.closest && e.target.closest("button")) e.preventDefault(); }, true);
+  }
   addEventListener("scroll", hide, true);
 })();
 </script>
