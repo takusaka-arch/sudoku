@@ -113,6 +113,8 @@ p.note u { color: var(--ink); text-underline-offset: 3px; text-decoration-thickn
 .num-hl { display: grid; gap: 4px; justify-items: center; width: 100%; position: relative; }
 .board-wrap:has(.board:not([data-mode="solve"])) .num-hl { display: none; }
 .nh-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+.btn-tip { position: fixed; z-index: 9999; max-width: 260px; padding: 6px 10px; border-radius: 6px; background: #263238; color: #fff; font-size: 0.8rem; line-height: 1.5; box-shadow: 0 2px 8px rgba(0,0,0,0.25); pointer-events: none; opacity: 0; transition: opacity 0.12s; }
+.btn-tip.show { opacity: 1; }
 .nh-keys { display: grid; grid-template-columns: repeat(9, minmax(0, 40px)); gap: 4px; justify-content: center; width: 100%; }
 .nh-keys button { aspect-ratio: 1; min-width: 0; padding: 0; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1.05rem var(--font-num); cursor: pointer; touch-action: manipulation; }
 .nh-keys button:hover { background: var(--hover); }
@@ -632,7 +634,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.176</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方" title="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" title="ホーム" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.177</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -754,7 +756,7 @@ p.note:empty { display: none; }
     <div class="grp grp-main">
       <p class="grp-h">よく使う操作</p>
       <div class="grp-btns">
-        <button type="button" class="btn sub" id="undo" title="Ctrl+Z（Macは⌘Z）でも戻れます" hidden disabled>戻る</button>
+        <button type="button" class="btn sub" id="undo" hidden disabled>戻る</button>
         <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
         <button type="button" class="btn sub" id="check" hidden>検証</button>
         <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
@@ -5209,5 +5211,62 @@ p.note:empty { display: none; }
   board.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); act(e.target); }
   });
+})();
+
+// PC：ボタンにマウスを乗せると、その機能の説明を出す
+(() => {
+  if (!matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  const tips = {
+    "tut-open": "使い方ガイドを開きます", "home-btn": "最初の画面に戻ります",
+    "go-make": "新しい問題を作るか、問題ファイルを読み込みます", "go-solve": "保存した問題を選んで解きます",
+    "go-settings": "Googleドライブの接続やアプリの更新をします",
+    "new": "空の盤に問題の数字を入力して登録します", "new-auto": "レベルを選ぶと、問題を自動で作ります",
+    "edit-saved": "保存した問題を選んで直します", "gd-open": "Googleドライブに保存した問題を開きます",
+    "app-refresh": "最新の版を読み込み直します", "photo-paste": "コピーした画像を貼り付けて、問題を読み取ります",
+    "done": "入力した数字を問題として登録します", "go": "タイマーを動かして回答を始めます",
+    "pause": "タイマーを止めて盤を隠します。「再開」で続きから解けます",
+    "undo": "1つ前の操作に戻します（Ctrl+Z、Macは⌘Zでも戻れます）",
+    "hint": "次に使える解き方を教えます。基本・上級・最上級・答えから選べます",
+    "check": "確定したマスが正解かどうかを調べます",
+    "view": "未確定のマスを空白にする・候補を表示する・正解を表示する、を切り替えます",
+    "save-progress": "今の状態を保存します。あとで「保存した状態に戻す」で戻れます",
+    "snap-open": "保存した状態を選んで、その時点に戻ります",
+    "replay": "確定候補を入れた順に、盤の上で再生します", "clear-replay": "確定候補を入れた順に、盤の上で再生します",
+    "save-solved": "完成した盤を保存します", "clear-save": "完成した盤を保存します",
+    "edit": "問題の数字を直します", "export-cur": "この問題をファイルに書き出します",
+    "reset": "回答を消して最初からやり直します（問題の数字は残ります）", "back": "問題一覧に戻ります",
+    "pad-revive": "行・列・ブロックに無い数字のうち、消した候補を元に戻します",
+  };
+  const tip = document.createElement("div");
+  tip.className = "btn-tip"; tip.setAttribute("role", "tooltip");
+  document.body.appendChild(tip);
+  let cur = null, timer = null;
+  const hide = () => { clearTimeout(timer); cur = null; tip.classList.remove("show"); };
+  const textOf = (b) => {
+    if (b.id === "replay" && b.textContent.includes("止める")) return "再生を止めます";
+    if (b.id === "pause" && b.textContent.includes("再開")) return "タイマーを動かして、続きから解きます";
+    if (b.closest(".nh-keys")) return `${b.textContent.trim()} が入れる候補を点滅させます。もう一度押すと消えます`;
+    return tips[b.id];
+  };
+  document.addEventListener("mouseover", (e) => {
+    const b = e.target.closest && e.target.closest("button");
+    if (b === cur) return;
+    hide();
+    if (!b || !textOf(b)) return;
+    cur = b;
+    timer = setTimeout(() => {
+      if (cur !== b || !b.isConnected || b.offsetParent === null) return;
+      tip.textContent = textOf(b);
+      const r = b.getBoundingClientRect(), w = tip.offsetWidth, h = tip.offsetHeight;
+      let x = Math.min(Math.max(8, r.left + r.width / 2 - w / 2), innerWidth - w - 8);
+      let y = r.bottom + 8;
+      if (y + h > innerHeight - 8) y = r.top - h - 8;
+      tip.style.left = x + "px"; tip.style.top = y + "px";
+      tip.classList.add("show");
+    }, 450);
+  });
+  document.addEventListener("mousedown", hide, true);
+  document.addEventListener("keydown", hide, true);
+  addEventListener("scroll", hide, true);
 })();
 </script>
