@@ -329,6 +329,24 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 #board, #pad, .tut-menu-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
 .crop-inner { background: var(--paper); color: var(--ink); border-radius: 8px; padding: 14px; display: grid; gap: 10px; max-width: 100%; justify-items: center; }
 .crop-inner p { margin: 0; font-size: 0.9rem; line-height: 1.6; }
+/* 回答の方式の詳細説明（表） */
+.style-inner #style-box-title { font-size: 1.2rem; font-weight: 700; }
+.style-inner #style-close { justify-self: center; }
+.style-inner { width: min(600px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; box-sizing: border-box; }
+.style-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 1.05rem; line-height: 1.6; }
+.style-tbl th, .style-tbl td { padding: 8px 6px; vertical-align: top; text-align: left; }
+.style-tbl thead th { text-align: center; font-size: 1.12rem; border-bottom: 2px solid var(--ink); }
+.style-tbl .sb-row th { padding: 10px 6px 2px; font-size: 0.95rem; color: var(--muted); border-top: 1px solid var(--line-cell); }
+.style-tbl .sb-pick td { text-align: center; padding-top: 12px; }
+.sb-vis { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.sb-cell { display: grid; grid-template-columns: repeat(3, 22px); grid-template-rows: repeat(3, 22px); border: 2px solid var(--ink); background: var(--paper); }
+.sb-cell span { display: grid; place-items: center; font: 600 16px/1 var(--font-num); color: var(--cand); }
+.sb-cell span.b { color: var(--answer); font-weight: 800; }
+.sb-cell span.x { color: transparent; }
+.sb-arw { color: var(--muted); font-size: 0.8rem; }
+.sb-cap { display: flex; justify-content: space-around; font-size: 0.78rem; color: var(--muted); margin: 2px 0 6px; }
+.sb-who { color: #2e7d32; font-weight: 700; }
+@media (max-width: 420px) { .style-tbl { font-size: 0.95rem; } .sb-cell { grid-template-columns: repeat(3, 17px); grid-template-rows: repeat(3, 17px); } .sb-cell span { font-size: 13px; } .sb-vis { gap: 3px; } }
 .clear-inner { padding: 28px 36px; gap: 14px; text-align: center; }
 .gen-inner { width: min(100%, 420px); box-sizing: border-box; justify-items: stretch; }
 .gen-inner .gen-title { font-size: 1.1rem; font-weight: 700; }
@@ -645,7 +663,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.184</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.185</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -693,7 +711,7 @@ p.note:empty { display: none; }
       </fieldset>
     </div>
     <div class="gdrive p-settings" id="style-set">
-      <p class="gd-title">回答の方式<button type="button" class="linkbtn" id="style-more" aria-pressed="false">詳細説明</button></p>
+      <p class="gd-title">回答の方式<button type="button" class="linkbtn" id="style-more" aria-haspopup="dialog">詳細説明</button></p>
       <fieldset class="gd-dest">
         <legend>回答スタートしたときの盤</legend>
         <label class="gd-opt"><input type="radio" name="set-style" value="erase"> <span class="style-txt" id="style-erase">消し込み方式（すべてのマスに1〜9の候補を並べ、入らない数字を消していく）</span></label>
@@ -860,6 +878,27 @@ p.note:empty { display: none; }
       <button type="button" class="btn" id="tut-next">次へ</button>
       <button type="button" class="btn sub" id="tut-skip">閉じる</button>
     </div>
+  </div>
+</div>
+<div class="crop" id="style-box" role="dialog" aria-modal="true" aria-labelledby="style-box-title" hidden>
+  <div class="crop-inner style-inner">
+    <p class="gen-title" id="style-box-title">回答の方式</p>
+    <table class="style-tbl">
+      <thead><tr><th>消し込み方式</th><th>書き込み方式</th></tr></thead>
+      <tbody>
+        <tr class="sb-row"><th colspan="2">はじめの盤</th></tr>
+        <tr><td><div class="sb-vis"><div class="sb-cell"><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span><span>7</span><span>8</span><span>9</span></div><span class="sb-arw">→</span><div class="sb-cell"><span class="x">1</span><span class="b">2</span><span class="x">3</span><span class="">4</span><span class="b">5</span><span class="x">6</span><span class="x">7</span><span class="b">8</span><span class="x">9</span></div></div><div class="sb-cap"><span>はじめ</span><span>解き進めると</span></div>すべてのマスに1〜9の候補が並んだ状態から始め、入らない数字を<b>消して</b>いきます。</td>
+            <td><div class="sb-vis"><div class="sb-cell"><span class="x">1</span><span class="x">2</span><span class="x">3</span><span class="x">4</span><span class="x">5</span><span class="x">6</span><span class="x">7</span><span class="x">8</span><span class="x">9</span></div><span class="sb-arw">→</span><div class="sb-cell"><span class="x">1</span><span class="b">2</span><span class="x">3</span><span class="x">4</span><span class="b">5</span><span class="x">6</span><span class="x">7</span><span class="b">8</span><span class="x">9</span></div></div><div class="sb-cap"><span>はじめ</span><span>解き進めると</span></div>空白のマスから始め、入りそうな数字を候補（青）にして<b>書き加えて</b>いきます。</td></tr>
+        <tr class="sb-row"><th colspan="2">おすすめ</th></tr>
+        <tr><td><span class="sb-who">候補を絞り込みながら、じっくり考えたい方</span><br>難しい問題に挑戦するときに</td>
+            <td><span class="sb-who">紙の数独と同じ感覚で解きたい方</span><br>数独に慣れていない方にも</td></tr>
+        <tr class="sb-row"><th colspan="2">その他</th></tr>
+        <tr><td>このアプリならではの方式です。候補を書き込む手間がかかりません。</td>
+            <td>一般的な数独アプリと同じ方式です。盤がすっきりして見やすくなります。</td></tr>
+        <tr class="sb-pick"><td><button type="button" class="btn" data-style="erase">この方式にする</button></td><td><button type="button" class="btn" data-style="write">この方式にする</button></td></tr>
+      </tbody>
+    </table>
+    <button type="button" class="btn sub" id="style-close">閉じる</button>
   </div>
 </div>
 <div class="crop" id="dest-box" role="dialog" aria-modal="true" aria-labelledby="dest-title" hidden>
@@ -5199,21 +5238,21 @@ p.note:empty { display: none; }
     document.getElementById("go-settings").addEventListener("click", () => {
       document.querySelector(`input[name="set-style"][value="${getStyle()}"]`).checked = true;
     });
-    // 「詳細説明」を押すと、2つの方式の説明が詳しい文に変わり、リンクは「簡易説明」になる（押すと元に戻る）
-    const styleMore = document.getElementById("style-more");
-    const STYLE_TXT = {
-      short: ["消し込み方式（すべてのマスに1〜9の候補を並べ、入らない数字を消していく）", "書き込み方式（マスは空白から始め、候補（青）にした数字だけを表示する）"],
-      long: ["消し込み方式（すべてのマスに1〜9の候補を並べ、入らない数字を消していく）。スタート時は確定候補となりえない数字が一つも決まっていないという状態。この方式は本アプリの特徴。", "書き込み方式（マスは空白から始め、候補（青）にした数字だけを表示する）。スタート時は確定候補が一つも決まっていない状態。紙で解くときと同じで、一般的なアプリはこちらの方式。"],
-    };
-    const showStyleTxt = (long) => {
-      const t = STYLE_TXT[long ? "long" : "short"];
-      document.getElementById("style-erase").textContent = t[0];
-      document.getElementById("style-write").textContent = t[1];
-      styleMore.textContent = long ? "簡易説明" : "詳細説明";
-      styleMore.setAttribute("aria-pressed", String(long));
-    };
-    styleMore.addEventListener("click", () => showStyleTxt(styleMore.getAttribute("aria-pressed") !== "true"));
-    document.getElementById("go-settings").addEventListener("click", () => showStyleTxt(false));
+    // 「詳細説明」を押すと、2つの方式を表で比べるポップアップを出す（「この方式にする」で選んで閉じる）
+    const styleBox = document.getElementById("style-box");
+    const closeStyleBox = () => { styleBox.hidden = true; document.getElementById("style-more").focus(); };
+    document.getElementById("style-more").addEventListener("click", () => { styleBox.hidden = false; styleBox.querySelector(".style-inner").scrollTop = 0; document.getElementById("style-close").focus({ preventScroll: true }); });
+    document.getElementById("style-close").addEventListener("click", closeStyleBox);
+    styleBox.addEventListener("click", (e) => {
+      if (e.target === styleBox) return closeStyleBox();
+      const b = e.target.closest("button[data-style]");
+      if (!b) return;
+      const r = document.querySelector(`input[name="set-style"][value="${b.dataset.style}"]`);
+      r.checked = true;
+      r.dispatchEvent(new Event("change", { bubbles: true }));
+      closeStyleBox();
+    });
+    document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !styleBox.hidden) closeStyleBox(); });
     document.getElementById("style-set").addEventListener("change", (e) => {
       if (e.target.name !== "set-style") return;
       try { localStorage.setItem(STYLE_KEY, e.target.value); } catch (err) {}
