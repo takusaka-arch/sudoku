@@ -121,11 +121,14 @@ p.note u { color: var(--ink); text-underline-offset: 3px; text-decoration-thickn
 .nh-keys button:hover { background: var(--hover); }
 .nh-keys button.nh-done, .nh-keys button:disabled { opacity: 0.3; cursor: default; background: var(--paper); box-shadow: none; }
 /* ハイライトは4色まで。押した順に 黄・青・緑・ピンク */
+:root { --same-bg: #ddd0f5; }
 :root { --hl0: #d98c00; --hl0-bg: #ffd75e; --hl1: #2f7de1; --hl1-bg: #b9d3f8; --hl2: #2e9d4f; --hl2-bg: #b6e3c3; --hl3: #d6408f; --hl3-bg: #f5bcdb; }
 /* ダークモード：暗い背景でも色の違いがはっきり分かるよう、塗りは濃くて鮮やかな色、枠は明るい色にする */
 @media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --same-bg: #4b3c74; }
   :root:not([data-theme="light"]) { --hl0: #ffd84d; --hl0-bg: #9a7400; --hl1: #7db4ff; --hl1-bg: #2860b8; --hl2: #6fe39a; --hl2-bg: #1f8a47; --hl3: #ff8fcf; --hl3-bg: #b02f78; }
 }
+:root[data-theme="dark"] { --same-bg: #4b3c74; }
 :root[data-theme="dark"] { --hl0: #ffd84d; --hl0-bg: #9a7400; --hl1: #7db4ff; --hl1-bg: #2860b8; --hl2: #6fe39a; --hl2-bg: #1f8a47; --hl3: #ff8fcf; --hl3-bg: #b02f78; }
 .hlc0 { --hlc: var(--hl0); --hlc-bg: var(--hl0-bg); }
 .hlc1 { --hlc: var(--hl1); --hlc-bg: var(--hl1-bg); }
@@ -137,6 +140,7 @@ p.note u { color: var(--ink); text-underline-offset: 3px; text-decoration-thickn
 .cand.hl-on { animation: hl-blink 1s ease-in-out infinite; }
 @keyframes hl-blink { 50% { background: var(--hlc-bg); color: var(--ink); font-weight: 700; } }
 /* 問題の数字・確定候補（大きな数字）は、同じ数字なら点滅させずに色を付ける */
+#board[data-mode="solve"] .cell.same-num, #board[data-mode="solve"] .cell.same-num .big { background: var(--same-bg); }
 .cell.hl-big, .cell.hl-big .big { background: var(--hlc-bg); }
 .cell.hl-big { box-shadow: inset 0 0 0 3px var(--hlc); }
 @media (prefers-reduced-motion: reduce) { .cand.hl-on { animation: none; background: var(--hlc-bg); color: var(--ink); font-weight: 700; } }
@@ -635,7 +639,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.178</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.179</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -925,7 +929,17 @@ p.note:empty { display: none; }
 
   // 盤の下で選んだ数字を、候補として残っているマスで点滅させる
   // （消しておらず、同じ行・列・ブロックに問題の数字や確定候補として同じ数字が無いマス）
+  // 問題の数字・確定候補を1回押すと、同じ数字の問題の数字・確定候補に色を付ける（もう一度押すと消す）
+  let sameNum = "";
+  function applySame() {
+    board.querySelectorAll(".cell.same-num").forEach((x) => x.classList.remove("same-num"));
+    if (!sameNum) return;
+    board.querySelectorAll(".cell").forEach((o) => {
+      if ((o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "")) === sameNum) o.classList.add("same-num");
+    });
+  }
   function applyHighlight() {
+    applySame();
     const HLC = ["hlc0", "hlc1", "hlc2", "hlc3"];
     board.querySelectorAll(".cand.hl-on").forEach((x) => x.classList.remove("hl-on", ...HLC));
     board.querySelectorAll(".cell.hl-big").forEach((x) => x.classList.remove("hl-big", ...HLC));
@@ -1150,6 +1164,12 @@ p.note:empty { display: none; }
   }
   function runTap(target, cell, n) {
     // 問題の数字・確定候補を3回: その行・列・ブロックにある同じ数字の候補をすべて消す（全部消えていれば元に戻す）
+    if (n === 1 && (cell.classList.contains("given") || cell.classList.contains("tent"))) {
+      const num = cell.dataset.value || cell.querySelector(".big").textContent;
+      sameNum = sameNum === num ? "" : num;
+      applySame();
+      return;
+    }
     if (cell.classList.contains("given") || (cell.classList.contains("tent") && n === 3)) {
       if (n !== 3) return;
       const num = cell.dataset.value || cell.querySelector(".big").textContent, r = +cell.dataset.row, c = +cell.dataset.col;
@@ -1548,6 +1568,7 @@ p.note:empty { display: none; }
       : `検証：確定した${total}マスは、すべて正解です。` + multi;
   });
   function showReady(count) {
+    sameNum = ""; applySame();
     setPauseLock(false);
     // 問題を登録した（開いた）時点で、裏で正解を計算して持っておく（検証ボタンで使う）
     board.removeAttribute("data-view-answer");
@@ -1593,7 +1614,7 @@ p.note:empty { display: none; }
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
     const [t1, t2, t3] = matchMedia("(hover: hover) and (pointer: fine)").matches ? ["1回クリック", "ダブルクリック", "トリプルクリック"] : ["1回タップ", "ダブルタップ", "トリプルタップ"];
     // 操作の名前（項目）に下線を引き、説明と見分けやすくする
-    note.innerHTML = `<u>小さな数字を ${t1}</u>：候補（青）の選択・解除<br><u>${t2}</u>：確定候補にする（大きな数字を${t2}で戻す）<br><u>${t3}</u>：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す<br><u>問題の数字・確定候補を${t3}</u>：その行・列・ブロックの同じ数字を消す・戻す<br><u>${t1 === "1回クリック" ? "右クリック" : "長押し"}</u>：メニューから選ぶ`;
+    note.innerHTML = `<u>小さな数字を ${t1}</u>：候補（青）の選択・解除<br><u>${t2}</u>：確定候補にする（大きな数字を${t2}で戻す）<br><u>${t3}</u>：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す<br><u>問題の数字・確定候補を${t1}</u>：同じ数字の問題の数字・確定候補に色を付ける・消す<br><u>問題の数字・確定候補を${t3}</u>：その行・列・ブロックの同じ数字を消す・戻す<br><u>${t1 === "1回クリック" ? "右クリック" : "長押し"}</u>：メニューから選ぶ`;
     go.hidden = true;
     pause.hidden = false;
     pause.textContent = "一時停止";
@@ -2214,6 +2235,7 @@ p.note:empty { display: none; }
   });
   // 解いている途中で一覧やホームに戻るときは、その時点を保存してから戻る（「問題を解く」の「一時停止中」から続きを開ける）
   function showStart(page) {
+    sameNum = ""; applySame();
     setPauseLock(false);
     if (["solve", "paused"].includes(board.dataset.mode) && typeof autoSave === "function") autoSave();
     // 「問題一覧へ」から来たときは、保存した問題の一覧（解くページ）
