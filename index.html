@@ -215,6 +215,13 @@ p.note u { color: var(--ink); text-underline-offset: 3px; text-decoration-thickn
 .key.hint { background: var(--hint-bg); border-color: var(--error); color: var(--error); }
 /* 除外した候補は消して見えなくする（同じ場所をもう一度3回押すと戻る） */
 .cand.off, .cand.off.shadow { color: transparent; text-decoration: none; }
+/* 書き込み方式：候補（青）にした数字だけを表示する（PCはマスにマウスを乗せると、選べる数字を薄く表示） */
+.board[data-mode="solve"][data-style-write] .cell:not(.fixed):not(.tent) .cand:not(.pick):not(.hint):not(.pair) { color: transparent; }
+.board[data-mode="solve"][data-style-write] .cell:not(.fixed):not(.tent) { background: var(--paper); }
+@media (hover: hover) and (pointer: fine) {
+  .board[data-mode="solve"][data-style-write] .cell:not(.fixed):not(.tent):hover .cand:not(.pick):not(.off):not(.hint):not(.pair) { color: var(--line-sub); }
+  .board[data-mode="solve"][data-style-write] .cell:not(.fixed):not(.tent):hover .cand:not(.pick):not(.off):not(.hint):not(.pair):hover { color: var(--ink); }
+}
 .key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
 .cell.conflict .big { color: var(--error); }
 .bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
@@ -637,12 +644,12 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.180</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.181</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
       <button type="button" class="home-big" id="go-solve"><span class="hb-icon" aria-hidden="true">🧩</span><span class="hb-text">問題を解く<small>保存した問題・一時停止中・回答中のファイル</small></span></button>
-      <button type="button" class="home-big" id="go-settings"><span class="hb-icon" aria-hidden="true">⚙️</span><span class="hb-text">設定<small>起動するとき・Googleドライブとの接続</small></span></button>
+      <button type="button" class="home-big" id="go-settings"><span class="hb-icon" aria-hidden="true">⚙️</span><span class="hb-text">設定<small>起動するとき・回答の方式・Googleドライブとの接続</small></span></button>
     </div>
     <h2 class="p-make">問題を作る・登録する</h2>
     <div class="row p-make make-menu">
@@ -682,6 +689,14 @@ p.note:empty { display: none; }
         <legend>一時停止中の問題があるとき</legend>
         <label class="gd-opt"><input type="radio" name="set-resume" value="resume"> 回答画面で続きを開く</label>
         <label class="gd-opt"><input type="radio" name="set-resume" value="home"> ホームメニューを表示する（続きは「問題を解く」の一時停止中から）</label>
+      </fieldset>
+    </div>
+    <div class="gdrive p-settings" id="style-set">
+      <p class="gd-title">回答の方式</p>
+      <fieldset class="gd-dest">
+        <legend>回答スタートしたときの盤</legend>
+        <label class="gd-opt"><input type="radio" name="set-style" value="erase"> 消し込み方式（すべてのマスに1〜9の候補を並べ、入らない数字を消していく）</label>
+        <label class="gd-opt"><input type="radio" name="set-style" value="write"> 書き込み方式（マスは空白から始め、候補（青）にした数字だけを表示する）</label>
       </fieldset>
     </div>
     <div class="gdrive p-settings" id="app-update" hidden>
@@ -5175,6 +5190,19 @@ p.note:empty { display: none; }
         else localStorage.removeItem(TUT_KEY);
       } catch (e) {}
     });
+    // 回答の方式（消し込み方式／書き込み方式）。選んだ方式は次回も使う
+    const STYLE_KEY = "sudoku-style";
+    const getStyle = () => { try { return localStorage.getItem(STYLE_KEY) === "write" ? "write" : "erase"; } catch (e) { return "erase"; } };
+    const applyStyle = () => board.toggleAttribute("data-style-write", getStyle() === "write");
+    applyStyle();
+    document.getElementById("go-settings").addEventListener("click", () => {
+      document.querySelector(`input[name="set-style"][value="${getStyle()}"]`).checked = true;
+    });
+    document.getElementById("style-set").addEventListener("change", (e) => {
+      if (e.target.name !== "set-style") return;
+      try { localStorage.setItem(STYLE_KEY, e.target.value); } catch (err) {}
+      applyStyle();
+    });
     document.getElementById("startup-set").addEventListener("change", (e) => {
       if (e.target.name !== "set-resume") return;
       try { localStorage.setItem(RESUME_KEY, e.target.value); } catch (err) {}
@@ -5240,7 +5268,7 @@ p.note:empty { display: none; }
   const tips = {
     "tut-open": "使い方ガイドを開きます", "home-btn": "最初の画面に戻ります",
     "go-make": "新しい問題を作るか、問題ファイルを読み込みます", "go-solve": "保存した問題を選んで解きます",
-    "go-settings": "Googleドライブの接続やアプリの更新をします",
+    "go-settings": "起動するときの動き、回答の方式（消し込み・書き込み）、Googleドライブの接続などを設定します",
     "new": "空の盤に問題の数字を入力して登録します", "new-auto": "レベルを選ぶと、問題を自動で作ります",
     "edit-saved": "保存した問題を選んで直します", "gd-open": "Googleドライブに保存した問題を開きます",
     "app-refresh": "最新の版を読み込み直します", "photo-paste": "コピーした画像を貼り付けて、問題を読み取ります",
