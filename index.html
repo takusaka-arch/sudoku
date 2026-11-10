@@ -663,7 +663,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.186</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.187</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -2772,6 +2772,7 @@ p.note:empty { display: none; }
     { label: "スカイスクレイパー", desc: "2か所にしか入らない行（列）を2本使い、端どうしの両方から見えるマスの候補を消します", run: () => showSkyscraper() },
     { label: "XYウイング", desc: "候補が2つのマス3つ（AB・AC・BC）を使い、両端から見えるマスのCを消します。Y-Wingとも呼びます", run: () => showWing(false) },
     { label: "XYZウイング", desc: "軸のマスの候補が3つ（ABC）のXYウイングです。3マスすべてから見えるマスのCを消します", run: () => showWing(true) },
+    { label: "唯一解の原則", desc: "ユニークレクタングル。2つのブロックにまたがる長方形の4マスが同じ2つの候補だけになると答えが2通りになってしまうので、そうならないように候補を消します", run: () => showUR() },
     { head: "最上級" },
     { label: "リモートペア", desc: "候補が同じ2つのマスが4つ以上つながるとき、交互に入る数字を使って候補を消します", run: () => showRemotePair() },
     { label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
@@ -3290,6 +3291,48 @@ p.note:empty { display: none; }
 
   // リモートペア：候補が同じ2つ（AB）のマスが、互いに見える形で4つ以上つながる。つながりの順に交互にA・Bになるので、
   // 交互の反対側どうしの両方から見えるマスのA・Bは消せる
+  // 唯一解の原則（ユニークレクタングル）：2つのブロックにまたがる長方形の4マスが、どれも同じ2つの候補 a・b だけになると、
+  // a と b を入れ替えても成り立ち、答えが2通りになってしまう。問題の答えは1通りなので、そうならないように候補を消せる
+  // タイプ1：3マスが a・b だけ → 残る1マスの a・b は消せる
+  // タイプ2：2マスが a・b だけ、残る2マスが a・b・x（同じ x 1つ） → x はその2マスのどちらかに入るので、両方から見えるマスの x は消せる
+  // タイプ4：2マスが a・b だけ、残る2マス（同じ行か列）では、その行（列）で a がこの2マスにしか入らない → この2マスの b は消せる
+  function showUR() {
+    const st = hintState();
+    if (!st) return;
+    const { cand } = st;
+    const same = (i, a, b) => cand[i].length === 2 && cand[i].includes(a) && cand[i].includes(b);
+    for (const [r1, r2] of combos([...Array(9).keys()], 2)) for (const [c1, c2] of combos([...Array(9).keys()], 2)) {
+      const four = [r1 * 9 + c1, r1 * 9 + c2, r2 * 9 + c1, r2 * 9 + c2];
+      if (new Set(four.map(boxOf)).size !== 2 || four.some((i) => !cand[i].length)) continue;
+      for (const [a, b] of combos(DIGS, 2)) {
+        if (!four.every((i) => cand[i].includes(a) && cand[i].includes(b))) continue;
+        const bi = four.filter((i) => same(i, a, b)), rest = four.filter((i) => !bi.includes(i));
+        const where = four.map(cellName).join("・");
+        const base = `${where}の4マスは、2つのブロックにまたがる長方形で、どれにも「${a}」と「${b}」の候補があります。もし4マスとも「${a}」「${b}」だけになると、入れ替えても成り立ち答えが2通りになってしまいます。問題の答えは1通りなので、そうはなりません。`;
+        const marks = [{ marks: four.flatMap((i) => [[i, a], [i, b]]) }];
+        if (bi.length === 3) {
+          const t = rest[0];
+          return paintHint(st, marks, [[t, a], [t, b]], `唯一解の原則（タイプ1）です。${base}3マスは「${a}」「${b}」だけなので、残る${cellName(t)}は「${a}」「${b}」以外の数字になります。${cellName(t)}の「${a}」「${b}」（赤い枠）は消せます。`, { cells: [t] });
+        }
+        if (bi.length !== 2) continue;
+        const [p, q] = rest;
+        if (rowOf(p) !== rowOf(q) && colOf(p) !== colOf(q)) continue; // 対角の2マスは対象外
+        const xp = cand[p].filter((d) => d !== a && d !== b), xq = cand[q].filter((d) => d !== a && d !== b);
+        if (xp.length === 1 && xq.length === 1 && xp[0] === xq[0]) {
+          const x = xp[0];
+          const gone = [...Array(81).keys()].filter((i) => i !== p && i !== q && cand[i].includes(x) && sees(i, p) && sees(i, q)).map((i) => [i, x]);
+          if (gone.length) return paintHint(st, [...marks, { marks: [[p, x], [q, x]] }], gone, `唯一解の原則（タイプ2）です。${base}${cellName(p)}と${cellName(q)}のどちらかには必ず「${x}」が入ります。なので、この2マスの両方から見えるマスの「${x}」（赤い枠）は消せます。`);
+        }
+        const unit = UNITS.filter((u) => u.ids.includes(p) && u.ids.includes(q));
+        for (const [d, e] of [[a, b], [b, a]]) {
+          const u = unit.find((u) => u.ids.every((i) => i === p || i === q || !cand[i].includes(d)));
+          if (!u) continue;
+          return paintHint(st, [{ marks: four.flatMap((i) => [[i, a], [i, b]]) }, { marks: [[p, d], [q, d]] }], [[p, e], [q, e]], `唯一解の原則（タイプ4）です。${base}${u.name}では「${d}」が${cellName(p)}と${cellName(q)}にしか入らないので、どちらかが「${d}」になります。このとき、もう一方が「${e}」だと4マスが「${a}」「${b}」だけで埋まってしまいます。なので、この2マスの「${e}」（赤い枠）は消せます。`);
+        }
+      }
+    }
+    noHint("唯一解の原則");
+  }
   function showRemotePair() {
     const st = hintState();
     if (!st) return;
