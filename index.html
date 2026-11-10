@@ -620,7 +620,7 @@ p.msg:empty { display: none; }
   .bar .grp, .bar .grp-btns { display: contents; }
   .bar .grp-h { display: none; }
   /* 1行目：戻る・検証・ヒント・表示方法変更／2行目：この状態を保存・保存した状態に戻す・再生／3行目：問題の管理 */
-  .bar #pause { order: 10; } .bar .b0 { order: 11; } .bar #undo { order: 12; } .bar #check { order: 13; } .bar #hint { order: 14; } .bar #view { order: 15; }
+  .bar #reg-cancel { order: 35; } .bar #pause { order: 10; } .bar .b0 { order: 11; } .bar #undo { order: 12; } .bar #check { order: 13; } .bar #hint { order: 14; } .bar #view { order: 15; }
   .bar .b1 { order: 20; }
   .bar #save-progress { order: 21; } .bar #snap-open { order: 22; } .bar #replay { order: 23; } .bar #save-solved { order: 24; }
   .bar .b2 { order: 30; }
@@ -663,7 +663,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.187</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.188</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -789,6 +789,7 @@ p.note:empty { display: none; }
     <p class="prompt" id="prompt" aria-live="polite">問題を登録してください</p>
     <button type="button" class="btn" id="pause" hidden>一時停止</button>
     <button type="button" id="done">問題登録完了</button>
+    <button type="button" class="btn sub" id="reg-cancel">キャンセル</button>
     <button type="button" class="btn" id="go" hidden>回答スタート</button>
     <!-- パソコンでは用途別に3つのまとまりで表示する。スマホでは前と同じ3行の並び（CSSの order で並べ替え） -->
     <div class="grp grp-main">
@@ -1587,6 +1588,7 @@ p.note:empty { display: none; }
   const pause = document.getElementById("pause");
   // 正解を求める（仮に入れて矛盾したら戻る、をくり返す）。答えが無いときは {n:0}、2つ以上あるときは {n:2, sol: 1つ目}
   let solution = null;
+  const regCancel = document.getElementById("reg-cancel");
   function solveGivens(g) {
     const a = [...g].map(Number), row = new Array(9).fill(0), col = new Array(9).fill(0), box = new Array(9).fill(0);
     const bx = (i) => Math.floor(i / 27) * 3 + Math.floor((i % 9) / 3);
@@ -1654,6 +1656,7 @@ p.note:empty { display: none; }
     nameField.hidden = true;
     note.textContent = "「回答スタート」を押すと回答モードになり、タイマーが動き始めます。";
     done.hidden = true;
+    regCancel.hidden = true;
     go.hidden = false;
     pause.hidden = true;
     edit.hidden = true;
@@ -2262,6 +2265,7 @@ p.note:empty { display: none; }
     stopReplay();
     confirmBox.hidden = true;
     done.hidden = false;
+    regCancel.hidden = false;
     exportCur.hidden = true;
     saveProgress.hidden = true;
     snapOpen.hidden = true;
@@ -4295,8 +4299,11 @@ p.note:empty { display: none; }
     pname.focus();
   }
   document.getElementById("back").addEventListener("click", showStart);
+  // 問題登録のキャンセル：登録せずに最初の画面へ戻る
+  regCancel.addEventListener("click", () => showStart("home"));
   // 「問題一覧へ」はパソコンもスマホも「問題の管理」のまとまり（リセットの右）に置く
   document.querySelector(".grp-prob .grp-btns").appendChild(document.getElementById("back"));
+  document.querySelector(".grp-prob .grp-btns").appendChild(regCancel);
   // ---- 使い方ガイド: 小さな盤で実際にタップを試しながら、1つずつ説明する ----
   const TUT_KEY = "sudoku-tutorial-hide";
   const tutEl = document.getElementById("tut");
@@ -5389,7 +5396,7 @@ p.note:empty { display: none; }
     "new": "空の盤に問題の数字を入力して登録します", "new-auto": "レベルを選ぶと、問題を自動で作ります",
     "edit-saved": "保存した問題を選んで直します", "gd-open": "Googleドライブに保存した問題を開きます",
     "app-refresh": "最新の版を読み込み直します", "photo-paste": "コピーした画像を貼り付けて、問題を読み取ります",
-    "done": "入力した数字を問題として登録します", "go": "タイマーを動かして回答を始めます",
+    "done": "入力した数字を問題として登録します", "reg-cancel": "問題を登録せずに、最初の画面に戻ります", "go": "タイマーを動かして回答を始めます",
     "pause": "タイマーを止めて盤を隠します。「再開」で続きから解けます",
     "undo": "1つ前の操作に戻します（Ctrl+Z、Macは⌘Zでも戻れます）",
     "hint": "次に使える解き方を教えます。基本・上級・最上級・答えから選べます",
