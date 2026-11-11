@@ -664,7 +664,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.193</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.194</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -770,7 +770,7 @@ p.note:empty { display: none; }
     <p class="timer" id="timer" role="timer" aria-label="経過時間" hidden>00:00</p>
     <div class="timer-side">
       <p class="hints-used tl-row"><span id="target-time" hidden>目標：--</span><span id="left-cells" hidden>残り：81マス</span></p>
-      <p class="hints-used" id="hints-used" hidden>使ったヒント：0回</p>
+      <p class="hints-used" id="hints-used" hidden>使ったヒント：0回・0ポイント</p>
     </div>
   </div>
   <div class="photo" id="photo-box" hidden>
@@ -1558,11 +1558,21 @@ p.note:empty { display: none; }
     elapsed = 0;
     drawTimer();
     hintsUsed = 0;
+    hintPts = 0;
     drawHints();
   }
   // 使ったヒントの回数（ヒントを示せたときだけ数える）
   const hintsEl = document.getElementById("hints-used");
-  let hintsUsed = 0;
+  let hintsUsed = 0, hintPts = 0;
+  // ヒントのポイント = そのヒントのレベル（次に注目するマスは1）。「答えと理由」は、理由に使った解き方のレベルの2倍
+  function hintLevel(label) {
+    let lv = 0;
+    for (const k of hintKinds) {
+      if (k.head) lv = k.head === "次に注目するマス" ? 1 : (+(k.head.match(/レベル(\d)/) || [])[1] || 0);
+      else if (k.label === label) return lv;
+    }
+    return 0;
+  }
   // 残りのマス数（問題の数字も確定候補も入っていないマス）
   const leftEl = document.getElementById("left-cells");
   // 目標完成時間 = 解き終わるまでの1手ごとに、使うヒントのレベルの秒数を足したもの
@@ -1591,16 +1601,17 @@ p.note:empty { display: none; }
   }
   // ヒントを使った回数を数える。進まないヒント（消せる候補がない）と、盤が同じまま同じヒントを続けて押したときは数えない
   let hintKindNow = "", lastHint = "";
-  function countHint(progress = true) {
+  function countHint(progress = true, pts) {
     const sig = hintKindNow + "|" + [...board.querySelectorAll(".cell")].map((o) =>
       (o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "")) + [...o.querySelectorAll(".cand.off")].map((c) => c.dataset.n).join("")).join(",");
     if (!progress || sig === lastHint) return;
     lastHint = sig;
     hintsUsed++;
+    hintPts += pts === undefined ? hintLevel(hintKindNow) : pts;
     drawHints();
   }
   function drawHints() {
-    hintsEl.textContent = `使ったヒント：${hintsUsed}回`;
+    hintsEl.textContent = `使ったヒント：${hintsUsed}回・${hintPts}ポイント`;
   }
 
   // 登録済み（回答前）: 「回答スタート」を待つ
@@ -2672,7 +2683,7 @@ p.note:empty { display: none; }
     closeSnapUI();
     confirmBox.hidden = true;
     document.getElementById("clear-time").textContent = `かかった時間 ${timerEl.textContent}`;
-    document.getElementById("clear-hints").textContent = `使ったヒント ${hintsUsed}回`;
+    document.getElementById("clear-hints").textContent = `使ったヒント ${hintsUsed}回・${hintPts}ポイント`;
     replayBtn.hidden = false;
     saveSolvedBtn.hidden = false;
     clearBox.hidden = false;
@@ -3607,7 +3618,7 @@ p.note:empty { display: none; }
     const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
       && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
     const show = (cand, text) => {
-      countHint();
+      countHint(true, full ? 2 : 1);
       if (full) cand.classList.add("hint");
       else cand.closest(".cell").classList.add("hint-cell");
       renderPad();
@@ -3687,7 +3698,8 @@ p.note:empty { display: none; }
         o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
       };
       if (r.i !== undefined && r.log.length) {
-        countHint();
+        const TL = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3 };
+        countHint(true, 2 * Math.max(1, ...r.log.map((e) => TL[e.tech] || 4)));
         for (const e of r.log) for (let d = 1; d <= 9; d++) if (e.m & (1 << d)) at(e.i).querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
         mark(r.i, r.d);
         renderPad();
@@ -3704,7 +3716,7 @@ p.note:empty { display: none; }
         let best = -1;
         for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || bitCount(cand[i]) < bitCount(cand[best]))) best = i;
         if (best >= 0) {
-          countHint();
+          countHint(true, 10);
           mark(best, solution.sol[best]);
           renderPad();
           workMsg.classList.remove("err");
@@ -3916,7 +3928,7 @@ p.note:empty { display: none; }
       offs.push([...cell.querySelectorAll(".cand.off")].map((s) => s.dataset.n).sort().join(""));
     }
     const ms = elapsed + (startedAt ? Date.now() - startedAt : 0);
-    return { app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, hints: hintsUsed, order: sureOrder.map((o) => (o ? o.seq : 0)), saved: new Date().toISOString() };
+    return { app: "sudoku-board", kind: "progress", version: 1, name: currentName, givens, picks, sure, off: offs, elapsed: ms, hints: hintsUsed, hintPts, order: sureOrder.map((o) => (o ? o.seq : 0)), saved: new Date().toISOString() };
   }
   // 解いている途中は端末に自動保存し、画面ロックやアプリの終了のあとも続きから再開できるようにする
   const CUR_KEY = "sudoku-current";
@@ -3989,6 +4001,7 @@ p.note:empty { display: none; }
     // 経過時間を戻して回答モードに入り、すぐ一時停止にする（完成の記録はそのまま完成の画面になる）
     elapsed = Math.max(0, Number(obj.elapsed) || 0);
     hintsUsed = Math.max(0, Math.floor(Number(obj.hints) || 0));
+    hintPts = Math.max(0, Math.floor(Number(obj.hintPts) || 0));
     drawHints();
     viewingSolved = !!solved;
     showSolve();
