@@ -530,7 +530,7 @@ p.msg:empty { display: none; }
 .hint-menu button:focus-visible { outline: 3px solid var(--answer); outline-offset: 1px; }
 #hint-menu { gap: 3px; padding: 6px; }
 #hint-menu .hm-item { display: grid; grid-template-columns: 1fr auto; gap: 4px 6px; align-items: center; }
-#hint-menu .hm-go { grid-template-columns: auto 1fr; padding: 3px 10px; min-height: 30px; line-height: 1.2; }
+#hint-menu .hm-go { grid-template-columns: auto 1fr auto; padding: 3px 10px; min-height: 30px; line-height: 1.2; }
 #hint-menu .hm-go .hm-no { grid-row: auto; }
 #hint-menu .hm-q { display: block; width: 36px; height: 100%; min-height: 30px; padding: 0; justify-content: center; font-weight: 700; color: var(--muted); text-align: center; }
 #hint-menu .hm-q[aria-expanded="true"] { color: var(--paper); background: var(--answer); border-color: var(--answer); }
@@ -540,6 +540,7 @@ p.msg:empty { display: none; }
 #hint-menu .hm-head:first-child { margin-top: 0; }
 .hint-menu .hm-no { grid-row: span 2; font: 700 1.1rem var(--font-num); color: var(--answer); }
 .hint-menu .hm-label { font-weight: 700; font-size: 0.92rem; }
+#hint-menu .hm-lv { justify-self: end; font-size: 0.75rem; letter-spacing: -0.05em; color: #c08a00; white-space: nowrap; }
 .hint-menu .hm-check { grid-row: span 2; width: 1.2em; text-align: center; font-weight: 700; color: var(--answer); }
 /* 表示方法変更：回答中だけ効く。マスの位置は変えずに見えなくする */
 .board[data-mode="solve"][data-view-blank] .cell:not(.fixed):not(.tent) .cand { visibility: hidden; }
@@ -664,7 +665,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.194</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.195</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1566,19 +1567,15 @@ p.note:empty { display: none; }
   let hintsUsed = 0, hintPts = 0;
   // ヒントのポイント = そのヒントのレベル（次に注目するマスは1）。「答えと理由」は、理由に使った解き方のレベルの2倍
   function hintLevel(label) {
-    let lv = 0;
-    for (const k of hintKinds) {
-      if (k.head) lv = k.head === "次に注目するマス" ? 1 : (+(k.head.match(/レベル(\d)/) || [])[1] || 0);
-      else if (k.label === label) return lv;
-    }
-    return 0;
+    const k = hintKinds.find((x) => x.label === label);
+    return (k && k.lv) || 0;
   }
   // 残りのマス数（問題の数字も確定候補も入っていないマス）
   const leftEl = document.getElementById("left-cells");
   // 目標完成時間 = 解き終わるまでの1手ごとに、使うヒントのレベルの秒数を足したもの
-  // 1手ごとにヒントレベルの秒数を足す: レベル1 5秒・レベル2 1分・レベル3 2分30秒・レベル4 4分・レベル5（背理法） 10分
+  // 1手ごとにヒントレベルの秒数を足す: レベル1 5秒・レベル2 1分・レベル3 2分30秒・レベル4 4分・レベル5 4分・レベル6（背理法） 10分
   const targetEl = document.getElementById("target-time");
-  const TARGET_SEC = { 1: 5, 2: 60, 3: 150, 4: 240, 5: 600 };
+  const TARGET_SEC = { 1: 5, 2: 60, 3: 150, 4: 240, 5: 240, 6: 600 };
   function drawTarget() {
     targetEl.hidden = true;
     if (!solution) return;
@@ -2797,28 +2794,23 @@ p.note:empty { display: none; }
   }
   // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
   const hintKinds = [
-    { head: "次に注目するマス" },
-    { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
-    { head: "レベル2（中級）" },
-    { label: "ポインティング", desc: "ブロックの中で1つの行（列）にしか入らない数字と、それでブロックの外から消せる候補を示します", run: () => showPointing() },
-    { label: "2つの数字のペア", desc: "隠れペア（2つの数字が同じ2マスにしか入らない）と、ネイキッドペア（候補が同じ2つだけのマスが2つある）を、組ごとに色分けします", run: () => showPairs(2) },
-    { head: "レベル3（上級）" },
-    { label: "3つの数字の組", desc: "隠れた3つの組と、ネイキッド3つの組（3マスの候補を合わせると3つの数字だけ）を、消せる候補と一緒に示します", run: () => showSubsets(3) },
-    { label: "Xウイング", desc: "2つの行（列）で長方形の角にしか入らない数字と、それで消せる候補を示します", run: () => showXWing() },
-    { head: "レベル4（それ以上）" },
-    { label: "4つの数字の組", desc: "3つの組と同じ考え方を、4つの数字と4マスで使います", run: () => showSubsets(4) },
-    { label: "ソードフィッシュ", desc: "Xウイングを3つの行（列）に広げたものです", run: () => showSwordfish() },
-    { label: "XYウイング", desc: "候補が2つのマス3つ（AB・AC・BC）を使い、両端から見えるマスのCを消します。Y-Wingとも呼びます", run: () => showWing(false) },
-    { label: "XYZウイング", desc: "軸のマスの候補が3つ（ABC）のXYウイングです。3マスすべてから見えるマスのCを消します", run: () => showWing(true) },
-    { label: "スカイスクレイパー", desc: "2か所にしか入らない行（列）を2本使い、端どうしの両方から見えるマスの候補を消します", run: () => showSkyscraper() },
-    { label: "シンプルカラーリング", desc: "ある数字が2か所にしか入らない所をたどって2色で塗り、どちらかの色が正解になることを使って候補を消します", run: () => showColoring() },
-    { label: "唯一解の原則", desc: "ユニークレクタングル。2つのブロックにまたがる長方形の4マスが同じ2つの候補だけになると答えが2通りになってしまうので、そうならないように候補を消します", run: () => showUR() },
-    { label: "リモートペア", desc: "候補が同じ2つのマスが4つ以上つながるとき、交互に入る数字を使って候補を消します", run: () => showRemotePair() },
-    { label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
-    { label: "チェーン", desc: "「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぎ、両端のどちらかが正しいことを使って候補を消します", run: () => showChain() },
-    { head: "レベル5（背理法）" },
-    { label: "背理法", desc: "候補が2つのマスに片方を仮に入れ、矛盾が出たらもう一方が答えだと分かります", run: () => showContradiction() },
-    { head: "答え" },
+    // lv: ヒントのレベル（右の★の数・ポイント）。1 = 次に注目するマス、2 中級、3 上級、4 達人、5 超上級、6 背理法
+    { lv: 1, label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
+    { lv: 2, label: "ポインティング", desc: "ブロックの中で1つの行（列）にしか入らない数字と、それでブロックの外から消せる候補を示します", run: () => showPointing() },
+    { lv: 2, label: "2つの数字のペア", desc: "隠れペア（2つの数字が同じ2マスにしか入らない）と、ネイキッドペア（候補が同じ2つだけのマスが2つある）を、組ごとに色分けします", run: () => showPairs(2) },
+    { lv: 3, label: "3つの数字の組", desc: "隠れた3つの組と、ネイキッド3つの組（3マスの候補を合わせると3つの数字だけ）を、消せる候補と一緒に示します", run: () => showSubsets(3) },
+    { lv: 3, label: "Xウイング", desc: "2つの行（列）で長方形の角にしか入らない数字と、それで消せる候補を示します", run: () => showXWing() },
+    { lv: 4, label: "4つの数字の組", desc: "3つの組と同じ考え方を、4つの数字と4マスで使います", run: () => showSubsets(4) },
+    { lv: 4, label: "ソードフィッシュ", desc: "Xウイングを3つの行（列）に広げたものです", run: () => showSwordfish() },
+    { lv: 4, label: "XYウイング", desc: "候補が2つのマス3つ（AB・AC・BC）を使い、両端から見えるマスのCを消します。Y-Wingとも呼びます", run: () => showWing(false) },
+    { lv: 4, label: "XYZウイング", desc: "軸のマスの候補が3つ（ABC）のXYウイングです。3マスすべてから見えるマスのCを消します", run: () => showWing(true) },
+    { lv: 4, label: "スカイスクレイパー", desc: "2か所にしか入らない行（列）を2本使い、端どうしの両方から見えるマスの候補を消します", run: () => showSkyscraper() },
+    { lv: 4, label: "唯一解の原則", desc: "ユニークレクタングル。2つのブロックにまたがる長方形の4マスが同じ2つの候補だけになると答えが2通りになってしまうので、そうならないように候補を消します", run: () => showUR() },
+    { lv: 5, label: "シンプルカラーリング", desc: "ある数字が2か所にしか入らない所をたどって2色で塗り、どちらかの色が正解になることを使って候補を消します", run: () => showColoring() },
+    { lv: 5, label: "リモートペア", desc: "候補が同じ2つのマスが4つ以上つながるとき、交互に入る数字を使って候補を消します", run: () => showRemotePair() },
+    { lv: 5, label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
+    { lv: 5, label: "チェーン", desc: "「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぎ、両端のどちらかが正しいことを使って候補を消します", run: () => showChain() },
+    { lv: 6, label: "背理法", desc: "候補が2つのマスに片方を仮に入れ、矛盾が出たらもう一方が答えだと分かります", run: () => showContradiction() },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法が必要なら答えだけ示します）", run: () => runHint(true) },
     { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
   ];
@@ -2842,6 +2834,13 @@ p.note:empty { display: none; }
     b.setAttribute("role", "menuitem");
     b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"[i]}</span><span class="hm-label"></span>`;
     b.querySelector(".hm-label").textContent = k.label;
+    if (k.lv) {
+      const st = document.createElement("span");
+      st.className = "hm-lv";
+      st.textContent = "★".repeat(k.lv);
+      st.setAttribute("aria-label", `レベル${k.lv}`);
+      b.appendChild(st);
+    }
     const q = document.createElement("button");
     q.type = "button";
     q.className = "hm-q";
@@ -3698,7 +3697,7 @@ p.note:empty { display: none; }
         o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
       };
       if (r.i !== undefined && r.log.length) {
-        const TL = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3 };
+        const TL = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
         countHint(true, 2 * Math.max(1, ...r.log.map((e) => TL[e.tech] || 4)));
         for (const e of r.log) for (let d = 1; d <= 9; d++) if (e.m & (1 << d)) at(e.i).querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
         mark(r.i, r.d);
@@ -3716,7 +3715,7 @@ p.note:empty { display: none; }
         let best = -1;
         for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || bitCount(cand[i]) < bitCount(cand[best]))) best = i;
         if (best >= 0) {
-          countHint(true, 10);
+          countHint(true, 12);
           mark(best, solution.sol[best]);
           renderPad();
           workMsg.classList.remove("err");
@@ -4388,7 +4387,7 @@ p.note:empty { display: none; }
     { part: 2, title: "問題を作る：写真から読み取る", text: `「写真から問題を読み取る」で、撮影・画像ファイル・貼り付けのどれかを選びます。\n四隅のオレンジの丸を盤の角に合わせて「読み取る」を押します。\n読み取った数字は写真と見比べて、まちがいを直してください。自信のない数字には「?」が付きます。\n\nコツ：真上から明るい場所で撮る`,
       tryPhoto: true },
     { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字に色が付きます。\n続けて別の数字を${TAP}すると、別の色で4つまで同時に表示できます。もう一度${TAP}でその数字だけ止まります。\n盤に9つそろった数字は、押せなくなります。` },
-    { part: 2, title: "ヒント", text: "「ヒント」で、解き方をレベル1〜5から選べます。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
+    { part: 2, title: "ヒント", text: "「ヒント」で、解き方を選べます。右の★の数がレベルです。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
     { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」（保存先がGoogleドライブを優先のときは「Googleドライブに保存」）。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：🏠→「設定」で「Googleドライブに接続」し、保存先を選びます（Googleドライブを優先／保存のたびに選ぶ／この端末）。Googleドライブには「Sudoku」フォルダに保存されます。PCとスマホで同じ問題の続きを解けます\n・開くときは「問題を解く」→「Googleドライブから開く」（接続しているときだけ出ます）。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
     { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・検証：途中でも、確定したマスを正解と比べ、違うマスを赤い背景で示します\n・再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
     { part: 2, title: "色の意味", text: "数字の色の意味です。", colors: [
@@ -5068,8 +5067,8 @@ p.note:empty { display: none; }
         return { log, stuck: true };
       }
       // grade.steps（timing のとき）: 1手ごとのヒントレベル。目標完成時間の計算に使う
-      // レベル1 = シングル、レベル2 = ポインティング・2つの数字のペア、レベル3 = 3つの数字の組・Xウイング、レベル4 = それ以外、レベル5 = 背理法
-      const LV = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3 };
+      // レベル1 = シングル、レベル2 = ポインティング・2つの数字のペア、レベル3 = 3つの数字の組・Xウイング、レベル4 = 4つの組・ソードフィッシュ・XY/XYZウイング・スカイスクレイパー、レベル5 = カラーリング・チェーン、レベル6 = 背理法
+      const LV = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
       const steps = [];
       grade.steps = steps;
       // 背理法: 候補が2つのマスに片方を仮に入れ、シングルだけで進めて矛盾が出たら、その候補を消す
@@ -5105,8 +5104,8 @@ p.note:empty { display: none; }
         if (hard()) { level = Math.max(level, 2); steps.push(LV[tech] || 4); continue; }
         if (extreme()) { level = Math.max(level, 3); steps.push(LV[tech] || 4); continue; }
         if (timing) {
-          if (contra()) { steps.push(5); continue; }
-          for (let k = v.filter((x) => !x).length; k > 0; k--) steps.push(5);
+          if (contra()) { steps.push(6); continue; }
+          for (let k = v.filter((x) => !x).length; k > 0; k--) steps.push(6);
         }
         // 背理法を使わずに進めなくなった。最難関は、このとき15マス以上残っているものだけ（少なければ 3.5 = どのレベルにもしない）
         return v.filter((x) => !x).length >= 15 ? 4 : 3.5;
@@ -5470,7 +5469,7 @@ p.note:empty { display: none; }
     "done": "入力した数字を問題として登録します", "reg-cancel": "問題を登録せずに、最初の画面に戻ります", "go": "タイマーを動かして回答を始めます",
     "pause": "タイマーを止めて盤を隠します。「再開」で続きから解けます",
     "undo": "1つ前の操作に戻します（Ctrl+Z、Macは⌘Zでも戻れます）",
-    "hint": "次に使える解き方を教えます。レベル1〜5と答えから選べます",
+    "hint": "次に使える解き方を教えます。★の数がレベルです",
     "check": "確定したマスが正解かどうかを調べます",
     "view": "未確定のマスを空白にする・候補を表示する・正解を表示する、を切り替えます",
     "save-progress": "今の状態を保存します。あとで「保存した状態に戻す」で戻れます",
