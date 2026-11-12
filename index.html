@@ -493,7 +493,13 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .gd-dest:disabled .gd-opt { opacity: 0.5; cursor: default; }
 .dest-inner { width: min(100%, 360px); box-sizing: border-box; }
 .dest-inner .gen-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
-.dest-inner #dest-cancel { justify-self: center; }
+.dest-inner #dest-cancel, .dest-inner #exp-cancel { justify-self: center; }
+.exp-out { display: grid; gap: 8px; }
+.exp-out[hidden] { display: none; }
+.exp-out textarea { width: 100%; box-sizing: border-box; font: 1rem/1.5 var(--font-num); letter-spacing: 0.05em; word-break: break-all; padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); resize: none; }
+.exp-msg { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.digits-row { display: flex; gap: 8px; align-items: center; }
+.photo .digits-row input { position: static; width: auto; height: auto; opacity: 1; flex: 1; min-width: 0; font: 0.95rem var(--font-num); padding: 6px 8px; border: 1.5px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); }
 .gd-policy { font-size: 0.75rem; color: var(--muted); }
 .gd-inner { width: min(100%, 440px); box-sizing: border-box; justify-items: stretch; max-height: calc(100dvh - 32px); }
 .gd-box-title { margin: 0; font-weight: 700; }
@@ -668,7 +674,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.201</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.202</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -789,6 +795,14 @@ p.note:empty { display: none; }
       <button type="button" class="btn sub small" id="photo-paste">クリップボードから貼り付け</button>
     </div>
     <p id="photo-status">問題の盤面全体がまっすぐ写っている写真を使ってください。コピーした画像は Ctrl+V（Mac は ⌘V）でも貼り付けられます。</p>
+  </div>
+  <div class="photo" id="digits-box" hidden>
+    <p><b>81桁の盤面データを読み込む</b></p>
+    <div class="digits-row">
+      <input type="text" id="digits-in" inputmode="numeric" autocomplete="off" placeholder="例：530070000600195000…" aria-label="81桁の盤面データ">
+      <button type="button" class="btn sub small" id="digits-go">読み込む</button>
+    </div>
+    <p id="digits-status">上の行から順に81個の数字を並べたものです。空きマスは 0 か . にします（空白や改行は無視します）。</p>
   </div>
   <div class="bar">
     <p class="prompt" id="prompt" aria-live="polite">問題を登録してください</p>
@@ -912,6 +926,21 @@ p.note:empty { display: none; }
       </tbody>
     </table>
     <button type="button" class="btn sub" id="style-close">閉じる</button>
+  </div>
+</div>
+<div class="crop" id="exp-box" role="dialog" aria-modal="true" aria-labelledby="exp-title" hidden>
+  <div class="crop-inner gen-inner dest-inner">
+    <p class="gen-title" id="exp-title">どの形で書き出しますか？</p>
+    <div class="gen-levels" id="exp-choice">
+      <button type="button" id="exp-file">📄 問題ファイル<small>このアプリで読み込めるファイル（.json）に保存します</small></button>
+      <button type="button" id="exp-digits">🔢 81桁の盤面データ<small>上の行から順に81個の数字（空きは0）。コピーしてほかのアプリでも使えます</small></button>
+    </div>
+    <div class="exp-out" id="exp-out" hidden>
+      <textarea id="exp-text" rows="3" readonly aria-label="81桁の盤面データ"></textarea>
+      <button type="button" class="btn" id="exp-copy">コピーする</button>
+      <p class="exp-msg" id="exp-msg"></p>
+    </div>
+    <button type="button" class="btn sub" id="exp-cancel">閉じる</button>
   </div>
 </div>
 <div class="crop" id="dest-box" role="dialog" aria-modal="true" aria-labelledby="dest-title" hidden>
@@ -1853,6 +1882,33 @@ p.note:empty { display: none; }
     editSaved.setAttribute("aria-expanded", String(open));
   });
 
+  // 81桁の盤面データを読み込む（問題を自分で作る画面）
+  const digitsIn = document.getElementById("digits-in"), digitsStatus = document.getElementById("digits-status"), digitsHelp = digitsStatus.textContent;
+  function loadDigits() {
+    const raw = digitsIn.value.replace(/\s/g, "");
+    digitsStatus.classList.remove("err");
+    if (!raw) { digitsStatus.textContent = digitsHelp; return; }
+    if (/[^0-9.]/.test(raw) || raw.length !== 81) {
+      digitsStatus.classList.add("err");
+      digitsStatus.textContent = /[^0-9.]/.test(raw) ? "数字（0〜9）と . 以外の文字が入っています。" : `数字が ${raw.length} 個あります。81 個にしてください。`;
+      return;
+    }
+    if (board.dataset.mode !== "register") return;
+    clearBoard();
+    let n = 0;
+    [...raw.replace(/\./g, "0")].forEach((v, i) => {
+      if (v === "0") return;
+      const c = cellAt(Math.floor(i / 9), i % 9);
+      c.dataset.value = v;
+      c.querySelector(".big").textContent = v;
+      c.classList.add("fixed");
+      n++;
+    });
+    markConflicts();
+    digitsStatus.textContent = `${n} マスを読み込みました。間違いがなければ「問題登録完了」を押してください。`;
+  }
+  document.getElementById("digits-go").addEventListener("click", loadDigits);
+  digitsIn.addEventListener("keydown", (e) => { if (e.key === "Enter") loadDigits(); });
   // 写真から問題を読み取る（Claude が写真を読む。使えない環境ではボタンを出さない）
   const photoBox = document.getElementById("photo-box");
   const photoInput = document.getElementById("photo-input");
@@ -1861,6 +1917,7 @@ p.note:empty { display: none; }
   const photoHint = photoStatus.textContent;
   let sampleFn = null;
   function updatePhoto() {
+    document.getElementById("digits-box").hidden = board.dataset.mode !== "register";
     photoBox.hidden = board.dataset.mode !== "register";
     renderPad();
   }
@@ -3802,11 +3859,37 @@ p.note:empty { display: none; }
   }
   let hintEngine = null;
   const bitCount = (m) => { let n = 0; for (; m; m &= m - 1) n++; return n; };
-  exportCur.addEventListener("click", async () => {
-    let givens = "";
-    for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) givens += cellAt(r, c).dataset.value || "0";
+  // 問題を書き出す: 問題ファイル（.json）か、81桁の盤面データ（コピー用）を選ぶ
+  const expBox = document.getElementById("exp-box"), expOut = document.getElementById("exp-out"), expText = document.getElementById("exp-text"), expMsg = document.getElementById("exp-msg");
+  const expGivens = () => { let g = ""; for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) g += cellAt(r, c).dataset.value || "0"; return g; };
+  const closeExp = () => { expBox.hidden = true; exportCur.focus({ preventScroll: true }); };
+  exportCur.addEventListener("click", () => {
+    document.getElementById("exp-choice").hidden = false;
+    document.getElementById("exp-title").textContent = "どの形で書き出しますか？";
+    expOut.hidden = true;
+    expBox.hidden = false;
+    document.getElementById("exp-file").focus({ preventScroll: true });
+  });
+  document.getElementById("exp-cancel").addEventListener("click", closeExp);
+  expBox.addEventListener("click", (e) => { if (e.target === expBox) closeExp(); });
+  expBox.addEventListener("keydown", (e) => { if (e.key === "Escape") closeExp(); });
+  document.getElementById("exp-file").addEventListener("click", async () => {
+    expBox.hidden = true;
     msgTarget = workMsg;
-    try { await exportProblem({ name: currentName, givens }); } finally { msgTarget = null; }
+    try { await exportProblem({ name: currentName, givens: expGivens() }); } finally { msgTarget = null; }
+  });
+  document.getElementById("exp-digits").addEventListener("click", () => {
+    document.getElementById("exp-choice").hidden = true;
+    document.getElementById("exp-title").textContent = "81桁の盤面データ";
+    expText.value = expGivens();
+    expMsg.textContent = "「コピーする」を押すか、文字を選んでコピーしてください。";
+    expOut.hidden = false;
+    expText.focus({ preventScroll: true });
+    expText.select();
+  });
+  document.getElementById("exp-copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.writeText(expText.value); expMsg.textContent = "コピーしました。"; }
+    catch (e) { expText.focus(); expText.select(); try { document.execCommand("copy"); expMsg.textContent = "コピーしました。"; } catch (e2) { expMsg.textContent = "コピーできませんでした。文字を選んでコピーしてください。"; } }
   });
   const safeName = (s) => s.replace(/[\\/:*?"<>|]/g, "_");
   function exportProblem(p) {
