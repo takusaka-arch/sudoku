@@ -236,7 +236,10 @@ button#done:hover, button#edit:hover, button#reset:hover { opacity: 0.85; }
 button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
 .confirm {
   display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
-  padding: 12px 14px; background: var(--bad-bg); border-left: 4px solid var(--error);
+  padding: 14px 16px; background: var(--bad-bg); border: 2px solid var(--error); border-left-width: 6px; border-radius: 8px;
+  /* 確認は盤の上にポップアップで出す（位置は JS で盤の真ん中に合わせる） */
+  position: fixed; z-index: 60; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(440px, calc(100vw - 32px)); box-sizing: border-box; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
 .confirm[hidden] { display: none; }
 /* 正解を表示：確定していないマスに、正解を緑の数字で重ねる（自分の確定候補は青のまま、違うものは赤い背景） */
@@ -260,7 +263,7 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .hint-menu .snap-item .snap-go { flex: 1; }
 .hint-menu .snap-item .snap-del { display: block; flex: none; font-size: 0.8rem; color: var(--muted); }
 .hint-menu .snap-empty { margin: 0; padding: 6px; font-size: 0.85rem; color: var(--muted); }
-.confirm p { margin: 0; flex: 1 1 160px; font-weight: 700; }
+.confirm p { margin: 0; flex: 1 1 100%; font-weight: 700; line-height: 1.5; }
 .confirm button {
   font: 700 0.9rem var(--font-ui); padding: 5px 12px; border-radius: 4px; cursor: pointer;
   border: 2px solid var(--error); background: var(--paper); color: var(--error);
@@ -665,7 +668,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.199</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.200</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -847,6 +850,7 @@ p.note:empty { display: none; }
     <p id="auto-confirm-msg">自動で消した候補を戻しますか？</p>
     <button type="button" id="auto-yes">戻す</button>
     <button type="button" id="auto-no">戻さない</button>
+    <button type="button" id="auto-cancel">キャンセル</button>
   </div>
   <div class="confirm" id="ans-confirm" role="alertdialog" aria-labelledby="ans-confirm-msg" hidden>
     <p id="ans-confirm-msg">本当に全部の正解を表示しますか？</p>
@@ -1294,9 +1298,9 @@ p.note:empty { display: none; }
       cell.classList.remove("tent", "tent-bad");
       cell.querySelector(".big").textContent = "";
       // 確定したときに自動で消した候補があれば、戻すかどうかを確認する
-      const auto = (cell._auto || []).filter((e) => e.s.classList.contains("off"));
+      const all = cell._auto || [], auto = all.filter((e) => e.s.classList.contains("off"));
       cell._auto = null;
-      if (auto.length) askAutoRestore(cell, auto);
+      if (auto.length) askAutoRestore(cell, auto, all);
     } else if (target.classList.contains("pick")) {
       target.classList.add("sure");
       cell.querySelector(".big").textContent = target.dataset.n;
@@ -2571,16 +2575,31 @@ p.note:empty { display: none; }
     }
     return res;
   };
-  act = recorded(act);
+  // 盤を操作したら、出ている「自動で消した候補を戻しますか？」は「戻さない」として閉じる
+  const act0 = act;
+  act = recorded(function (...a) {
+    if (autoPending) { autoConfirm.hidden = true; autoPending = null; }
+    return act0.apply(this, a);
+  });
   // 確定候補をやめたとき: 確定したときに自動で消した候補を戻すかどうかを聞く
   const autoConfirm = document.getElementById("auto-confirm");
   let autoPending = null;
-  function askAutoRestore(cell, list) {
-    autoPending = { cell, list };
+  function askAutoRestore(cell, list, all) {
+    autoPending = { cell, list, all };
     document.getElementById("auto-confirm-msg").textContent = `確定をやめた「${list[0].s.dataset.n}」について、自動で消した候補（${list.length}個）を戻しますか？`;
     autoConfirm.hidden = false;
   }
   document.getElementById("auto-no").addEventListener("click", () => { autoConfirm.hidden = true; autoPending = null; });
+  // キャンセル: 確定をやめる操作そのものを取り消し、確定候補に戻す
+  document.getElementById("auto-cancel").addEventListener("click", () => {
+    autoConfirm.hidden = true;
+    const p = autoPending;
+    autoPending = null;
+    if (!p || !undoStack.length) return;
+    restore(undoStack.pop());
+    undoBtn.disabled = undoStack.length === 0;
+    p.cell._auto = p.all;
+  });
   document.getElementById("auto-yes").addEventListener("click", recorded(() => {
     autoConfirm.hidden = true;
     const p = autoPending;
@@ -2968,6 +2987,25 @@ p.note:empty { display: none; }
     viewMenu.appendChild(b);
   });
   const ansConfirm = document.getElementById("ans-confirm");
+  // 確認（リセット・正解を表示・自動で消した候補）は、盤の真ん中にポップアップで出す
+  function placeConfirm(el) {
+    const r = board.getBoundingClientRect(), w = el.offsetWidth, h = el.offsetHeight;
+    const vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    const x = Math.min(Math.max(r.left + r.width / 2, w / 2 + 8), vw - w / 2 - 8);
+    const y = Math.min(Math.max(r.top + r.height / 2, h / 2 + 8), vh - h / 2 - 8);
+    el.style.left = x + "px";
+    el.style.top = y + "px";
+  }
+  document.querySelectorAll(".confirm").forEach((el) => {
+    new MutationObserver(() => {
+      if (el.hidden) return;
+      placeConfirm(el);
+      [...el.querySelectorAll("button")].pop()?.focus({ preventScroll: true });
+    }).observe(el, { attributes: true, attributeFilter: ["hidden"] });
+  });
+  const replaceConfirms = () => document.querySelectorAll(".confirm:not([hidden])").forEach(placeConfirm);
+  window.addEventListener("resize", replaceConfirms);
+  window.addEventListener("scroll", replaceConfirms, { passive: true });
   document.getElementById("ans-no").addEventListener("click", () => { ansConfirm.hidden = true; viewBtn.focus(); });
   document.getElementById("ans-yes").addEventListener("click", () => {
     ansConfirm.hidden = true;
