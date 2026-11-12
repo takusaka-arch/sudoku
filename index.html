@@ -676,7 +676,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.203</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.204</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1644,8 +1644,8 @@ p.note:empty { display: none; }
   }
   // ヒントを使った回数を数える。進まないヒント（消せる候補がない）と、盤が同じまま同じヒントを続けて押したときは数えない
   let hintKindNow = "", lastHint = "";
-  function countHint(progress = true, pts) {
-    const sig = hintKindNow + "|" + [...board.querySelectorAll(".cell")].map((o) =>
+  function countHint(progress = true, pts, key = "") {
+    const sig = hintKindNow + key + "|" + [...board.querySelectorAll(".cell")].map((o) =>
       (o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "")) + [...o.querySelectorAll(".cand.off")].map((c) => c.dataset.n).join("")).join(",");
     if (!progress || sig === lastHint) return;
     lastHint = sig;
@@ -2908,7 +2908,7 @@ p.note:empty { display: none; }
   // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
   const hintKinds = [
     // lv: ヒントのレベル（右の★の数・ポイント）。1 = 次に注目するマス、2 中級、3 上級、4 達人、5 超上級、6 背理法
-    { lv: 1, label: "注目するマス", desc: "次に考えるとよいマスに色を付けます", run: () => runHint(false) },
+    { lv: 1, label: "注目するマス", desc: "次に考えるとよいマスに色を付けます。盤を変えずにもう一度選ぶと「次に注目するマス」になり、別のマスを示します", run: () => runHint(false) },
     { lv: 2, label: "ポインティング", desc: "ブロックの中で1つの行（列）にしか入らない数字と、それでブロックの外から消せる候補を示します", run: () => showPointing() },
     { lv: 2, label: "2つの数字のペア", desc: "隠れペア（2つの数字が同じ2マスにしか入らない）と、ネイキッドペア（候補が同じ2つだけのマスが2つある）を、組ごとに色分けします", run: () => showPairs(2) },
     { lv: 3, label: "3つの数字の組", desc: "隠れた3つの組と、ネイキッド3つの組（3マスの候補を合わせると3つの数字だけ）を、消せる候補と一緒に示します", run: () => showSubsets(3) },
@@ -2947,6 +2947,7 @@ p.note:empty { display: none; }
     b.setAttribute("role", "menuitem");
     b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"[i]}</span><span class="hm-label"></span>`;
     b.querySelector(".hm-label").textContent = k.label;
+    b.dataset.kind = k.label;
     if (k.lv) {
       const st = document.createElement("span");
       st.className = "hm-lv";
@@ -2990,6 +2991,9 @@ p.note:empty { display: none; }
     if (!hintMenu.hidden) return closeHintMenu();
     closeViewMenu();
     closeSnapUI();
+    // 注目するマスを示した後、盤が同じなら「次に注目するマス」にする
+    const fl = hintMenu.querySelector(".hm-go[data-kind=\"注目するマス\"] .hm-label");
+    if (fl) fl.textContent = focusState.seen.size && focusState.sig === focusSig() ? "次に注目するマス" : "注目するマス";
     hintMenu.hidden = false;
     hintBtn.setAttribute("aria-expanded", "true");
     placeHintMenu();
@@ -3762,8 +3766,15 @@ p.note:empty { display: none; }
       || (Math.floor(a.dataset.row / 3) === Math.floor(b.dataset.row / 3) && Math.floor(a.dataset.col / 3) === Math.floor(b.dataset.col / 3));
     const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
       && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
+    // 「次に注目するマス」: 盤が同じあいだは、前に示した所を飛ばして次を探す
+    const sig = focusSig();
+    if (full || sig !== focusState.sig) { focusState.sig = sig; focusState.seen = new Set(); }
+    const seen = full ? new Set() : focusState.seen;
     const show = (cand, text) => {
-      countHint(true, full ? 2 : 1);
+      const key = cand.closest(".cell").dataset.row + "-" + cand.closest(".cell").dataset.col;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      countHint(true, full ? 2 : 1, full ? "" : key);
       if (full) cand.classList.add("hint");
       else cand.closest(".cell").classList.add("hint-cell");
       renderPad();
@@ -3774,7 +3785,7 @@ p.note:empty { display: none; }
     for (const o of cells) {
       if (val(o)) continue;
       const ok = ["1", "2", "3", "4", "5", "6", "7", "8", "9"].filter((d) => can(o, d));
-      if (ok.length === 1) return show(o.querySelector(`.cand[data-n="${ok[0]}"]`), `ヒント：薄い赤のマスに入れられる数字は「${ok[0]}」だけです。`);
+      if (ok.length === 1 && show(o.querySelector(`.cand[data-n="${ok[0]}"]`), `ヒント：薄い赤のマスに入れられる数字は「${ok[0]}」だけです。`) !== false) return;
     }
     // 次に、行・列・ブロックの中で、ある数字を入れられるマスが1つしかない所
     const units = [];
@@ -3788,14 +3799,17 @@ p.note:empty { display: none; }
         if (inUnit.some((o) => val(o) === d)) continue;
         const spots = inUnit.filter((o) => can(o, d));
         if (spots.length !== 1) continue;
-        return show(spots[0].querySelector(`.cand[data-n="${d}"]`), `ヒント：この${u.name}で「${d}」を入れられるのは、薄い赤のマスだけです。`);
+        if (show(spots[0].querySelector(`.cand[data-n="${d}"]`), `ヒント：この${u.name}で「${d}」を入れられるのは、薄い赤のマスだけです。`) !== false) return;
       }
     }
     // その次に、行・列・ブロックの中で2つの数字が同じ2マスにしか入らない組（ペア）を薄い紫で示す
     // （そのペアでほかの候補を消せる場合だけ）
     const digits = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
     const showPair = (two, a, b, text) => {
-      countHint();
+      const key = "p" + two.map((o) => o.dataset.row + o.dataset.col).join("") + a + b;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      countHint(true, undefined, key);
       for (const o of two) {
         if (full) for (const d of [a, b]) o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
         else o.classList.add("pair-cell");
@@ -3814,12 +3828,12 @@ p.note:empty { display: none; }
         // どちらの数字も入れられるのが同じ2マスだけ
         if (spots[a].length === 2 && spots[b].length === 2 && spots[a].every((o) => spots[b].includes(o))
           && spots[a].some((o) => digits.some((d) => d !== a && d !== b && can(o, d)))) {
-          return showPair(spots[a], a, b, `ヒント：この${u.name}で「${a}」と「${b}」は、薄い紫の2マスにしか入りません。この2マスのほかの候補は消せます。`);
+          if (showPair(spots[a], a, b, `ヒント：この${u.name}で「${a}」と「${b}」は、薄い紫の2マスにしか入りません。この2マスのほかの候補は消せます。`) !== false) return;
         }
         // 入れられる数字が「a と b」だけのマスが2つある
         const two = inUnit.filter((o) => !val(o) && digits.filter((d) => can(o, d)).join("") === a + b);
         if (two.length === 2 && inUnit.some((o) => !two.includes(o) && (can(o, a) || can(o, b)))) {
-          return showPair(two, a, b, `ヒント：この${u.name}の薄い紫の2マスには「${a}」と「${b}」しか入りません。この${u.name}のほかのマスの「${a}」「${b}」は消せます。`);
+          if (showPair(two, a, b, `ヒント：この${u.name}の薄い紫の2マスには「${a}」と「${b}」しか入りません。この${u.name}のほかのマスの「${a}」「${b}」は消せます。`) !== false) return;
         }
       }
     }
@@ -3871,7 +3885,19 @@ p.note:empty { display: none; }
       }
     }
     workMsg.classList.remove("err");
+    if (!full && seen.size) {
+      // 全部見せ終わった: 次に押したときは最初から
+      focusState.seen = new Set();
+      workMsg.textContent = "ヒント：ほかに注目するマスはありません。もう一度押すと、最初のマスから示します。";
+      return;
+    }
     workMsg.textContent = "ヒント：見つかりませんでした。消せる候補を消してから、もう一度押してみてください。";
+  }
+  // 注目するマスを示した盤の状態と、示した所（盤が変わったら最初から）
+  const focusState = { sig: "", seen: new Set() };
+  function focusSig() {
+    return [...board.querySelectorAll(".cell")].map((o) =>
+      (o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "")) + [...o.querySelectorAll(".cand.off")].map((c) => c.dataset.n).join("")).join(",");
   }
   let hintEngine = null;
   const bitCount = (m) => { let n = 0; for (; m; m &= m - 1) n++; return n; };
