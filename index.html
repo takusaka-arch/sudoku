@@ -502,6 +502,9 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .exp-out[hidden] { display: none; }
 .exp-out textarea { width: 100%; box-sizing: border-box; font: 1rem/1.5 var(--font-num); letter-spacing: 0.05em; word-break: break-all; padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); resize: none; }
 .exp-msg { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.share-img { display: block; justify-self: center; max-width: 100%; max-height: 34vh; border: 1px solid var(--line-cell); border-radius: 6px; }
+#share-text { font-size: 0.85rem; letter-spacing: 0; }
+.share-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
 .digits-row { display: flex; gap: 8px; align-items: center; }
 .photo .digits-row input { position: static; width: auto; height: auto; opacity: 1; flex: 1; min-width: 0; font: 0.95rem var(--font-num); padding: 6px 8px; border: 1.5px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); }
 .gd-policy { font-size: 0.75rem; color: var(--muted); }
@@ -638,7 +641,7 @@ p.msg:empty { display: none; }
   /* 1行目：戻る・検証・ヒント・表示方法変更／2行目：この状態を保存・保存した状態に戻す・再生／3行目：問題の管理 */
   .bar #reg-cancel { order: 35; } .bar #pause { order: 10; } .bar .b0 { order: 11; } .bar #undo { order: 12; } .bar #check { order: 13; } .bar #hint { order: 14; } .bar #view { order: 15; }
   .bar .b1 { order: 20; }
-  .bar #save-progress { order: 21; } .bar #snap-open { order: 22; } .bar #replay { order: 23; } .bar #save-solved { order: 24; }
+  .bar #save-progress { order: 21; } .bar #snap-open { order: 22; } .bar #replay { order: 23; } .bar #save-solved { order: 24; } .bar #share-solved { order: 25; }
   .bar .b2 { order: 30; }
   .bar #reset { order: 31; } .bar #export-cur { order: 32; } .bar #edit { order: 33; } .bar #back { order: 34; }
   .bar-break { flex-basis: 100%; height: 0; }
@@ -680,7 +683,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.213</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.214</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -853,6 +856,7 @@ p.note:empty { display: none; }
         <button type="button" class="btn sub" id="snap-open" aria-haspopup="menu" aria-expanded="false" hidden>保存した状態に戻す ▾</button>
         <button type="button" class="btn sub" id="replay" hidden>再生</button>
         <button type="button" class="btn sub" id="save-solved" hidden>完成形を保存</button>
+        <button type="button" class="btn sub" id="share-solved" hidden>問題図を送る</button>
       </div>
     </div>
     <span class="bar-break b2" aria-hidden="true"></span>
@@ -958,6 +962,23 @@ p.note:empty { display: none; }
     <button type="button" class="btn sub" id="style-close">閉じる</button>
   </div>
 </div>
+<div class="crop" id="share-box" role="dialog" aria-modal="true" aria-labelledby="share-title" hidden>
+  <div class="crop-inner gen-inner dest-inner">
+    <p class="gen-title" id="share-title">問題図を送る</p>
+    <img class="share-img" id="share-img" alt="問題図">
+    <div class="exp-out">
+      <textarea id="share-text" rows="5" readonly aria-label="送る文"></textarea>
+      <p class="exp-msg" id="share-msg">画像をコピーしてLINEのトークに貼り付け、続けて文をコピーして貼り付けてください。</p>
+      <div class="share-btns">
+        <button type="button" class="btn" id="share-img-copy">画像をコピー</button>
+        <button type="button" class="btn" id="share-text-copy">文をコピー</button>
+        <button type="button" class="btn sub" id="share-img-save">画像を保存</button>
+        <button type="button" class="btn sub" id="share-native" hidden>共有メニューを開く</button>
+      </div>
+    </div>
+    <button type="button" class="btn sub" id="share-cancel">閉じる</button>
+  </div>
+</div>
 <div class="crop" id="exp-box" role="dialog" aria-modal="true" aria-labelledby="exp-title" hidden>
   <div class="crop-inner gen-inner dest-inner">
     <p class="gen-title" id="exp-title">どの形で書き出しますか？</p>
@@ -1005,6 +1026,7 @@ p.note:empty { display: none; }
     <p class="clear-time" id="clear-hints"></p>
     <button type="button" class="btn" id="clear-replay">再生</button>
     <button type="button" class="btn sub" id="clear-save">完成形を保存</button>
+    <button type="button" class="btn sub" id="clear-share">問題図を送る（LINEなど）</button>
     <button type="button" class="btn sub" id="clear-ok">閉じる</button>
   </div>
 </div>
@@ -1773,7 +1795,7 @@ p.note:empty { display: none; }
     edit.hidden = true;
     reset.hidden = true;
     replayBtn.hidden = true;
-    saveSolvedBtn.hidden = true;
+    saveSolvedBtn.hidden = true; document.getElementById("share-solved").hidden = true;
     stopReplay();
     exportCur.hidden = false;
     saveProgress.hidden = true;
@@ -1800,7 +1822,7 @@ p.note:empty { display: none; }
     pause.textContent = "一時停止";
     reset.hidden = false;
     replayBtn.hidden = false;
-    saveSolvedBtn.hidden = true;
+    saveSolvedBtn.hidden = true; document.getElementById("share-solved").hidden = true;
     stopReplay();
     exportCur.hidden = true;
     saveProgress.hidden = false;
@@ -2401,7 +2423,7 @@ p.note:empty { display: none; }
     edit.hidden = true;
     reset.hidden = true;
     replayBtn.hidden = true;
-    saveSolvedBtn.hidden = true;
+    saveSolvedBtn.hidden = true; document.getElementById("share-solved").hidden = true;
     stopReplay();
     confirmBox.hidden = true;
     done.hidden = false;
@@ -2865,7 +2887,7 @@ p.note:empty { display: none; }
     document.getElementById("clear-time").textContent = `かかった時間 ${timerEl.textContent}`;
     document.getElementById("clear-hints").textContent = `使ったヒント ${hintsUsed}回・${hintPts}ポイント`;
     replayBtn.hidden = false;
-    saveSolvedBtn.hidden = false;
+    saveSolvedBtn.hidden = false; document.getElementById("share-solved").hidden = false;
     clearBox.hidden = false;
     document.getElementById("clear-replay").focus();
   }
@@ -2882,6 +2904,92 @@ p.note:empty { display: none; }
   }
   saveSolvedBtn.addEventListener("click", saveSolved);
   document.getElementById("clear-save").addEventListener("click", saveSolved);
+  // 問題図を送る: 最初の数字だけの盤の画像と、かかった時間・81桁の盤面データの文を、共有メニュー（スマホ）かコピー（PC）で渡す
+  const APP_URL = "https://takusaka-arch.github.io/sudoku/";
+  const shareBox = document.getElementById("share-box");
+  let shareData = null;
+  function jtime(ms) {
+    const t = Math.floor(ms / 1000), h = Math.floor(t / 3600), m = Math.floor(t / 60) % 60, sec = t % 60;
+    return (h ? h + "時間" : "") + (h || m ? m + "分" : "") + sec + "秒";
+  }
+  function makeShare() {
+    const o = progressObj(), g = o.givens, time = jtime(o.elapsed);
+    const W = 720, P = 30, B = W - P * 2, cs = B / 9, top = 86;
+    const cv = document.createElement("canvas");
+    cv.width = W; cv.height = top + B + 214;
+    const x = cv.getContext("2d");
+    const sans = '"Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif';
+    x.fillStyle = "#fff"; x.fillRect(0, 0, W, cv.height);
+    x.fillStyle = "#1c2433"; x.textAlign = "center"; x.textBaseline = "middle";
+    x.font = "700 32px " + sans;
+    x.fillText(`数独「${currentName || "問題"}」`, W / 2, 46, B);
+    x.font = "700 46px " + sans;
+    for (let i = 0; i < 81; i++) {
+      const d = g[i];
+      if (d !== "0") x.fillText(d, P + (i % 9 + 0.5) * cs, top + (Math.floor(i / 9) + 0.5) * cs + 2);
+    }
+    for (let k = 0; k <= 9; k++) {
+      x.strokeStyle = "#1c2433"; x.lineWidth = k % 3 ? 1 : 3.5;
+      x.beginPath(); x.moveTo(P + k * cs, top); x.lineTo(P + k * cs, top + B); x.stroke();
+      x.beginPath(); x.moveTo(P, top + k * cs); x.lineTo(P + B, top + k * cs); x.stroke();
+    }
+    let y = top + B + 44;
+    x.font = "700 30px " + sans;
+    x.fillText(`かかった時間 ${time}・ヒント ${hintsUsed}回`, W / 2, y, B);
+    x.font = '500 21px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace';
+    x.fillStyle = "#4a5568";
+    for (let r = 0; r < 3; r++) x.fillText(g.slice(r * 27, r * 27 + 27), W / 2, y + 48 + r * 30, B);
+    x.font = "500 18px " + sans; x.fillStyle = "#7a869a";
+    x.fillText(`数独回答支援アプリ  ${APP_URL}`, W / 2, cv.height - 24, B);
+    const url = cv.toDataURL("image/png"), bin = atob(url.split(",")[1]), u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    const blob = new Blob([u8], { type: "image/png" });
+    const text = `数独「${currentName || "問題"}」を ${time} で解きました！（ヒント${hintsUsed}回）\n問題（81桁の盤面データ）：\n${g}\n数独回答支援アプリ ${APP_URL}`;
+    shareData = { url, blob, text, file: new File([blob], `数独_${safeName(currentName || "問題")}.png`, { type: "image/png" }) };
+    return shareData;
+  }
+  const canShareFile = (d) => { try { return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [d.file], text: d.text })); } catch (e) { return false; } };
+  async function nativeShare(d) {
+    try { await navigator.share({ files: [d.file], text: d.text }); return true; }
+    catch (e) { return e && e.name === "AbortError"; }
+  }
+  function openShareBox(d) {
+    document.getElementById("share-img").src = d.url;
+    document.getElementById("share-text").value = d.text;
+    document.getElementById("share-native").hidden = !canShareFile(d);
+    shareBox.hidden = false;
+    document.getElementById("share-img-copy").focus({ preventScroll: true });
+  }
+  async function shareSolved() {
+    clearBox.hidden = true;
+    const d = makeShare();
+    // スマホは共有メニューからLINEを選ぶ。PCや共有メニューが使えないときはコピー用の画面を出す
+    if (matchMedia("(pointer: coarse)").matches && canShareFile(d) && await nativeShare(d)) return;
+    openShareBox(d);
+  }
+  document.getElementById("share-solved").addEventListener("click", shareSolved);
+  document.getElementById("clear-share").addEventListener("click", shareSolved);
+  const shareMsg = document.getElementById("share-msg");
+  const closeShare = () => { shareBox.hidden = true; };
+  document.getElementById("share-cancel").addEventListener("click", closeShare);
+  shareBox.addEventListener("click", (e) => { if (e.target === shareBox) closeShare(); });
+  shareBox.addEventListener("keydown", (e) => { if (e.key === "Escape") closeShare(); });
+  document.getElementById("share-native").addEventListener("click", () => { if (shareData) nativeShare(shareData); });
+  document.getElementById("share-img-copy").addEventListener("click", async () => {
+    try { await navigator.clipboard.write([new ClipboardItem({ "image/png": shareData.blob })]); shareMsg.textContent = "画像をコピーしました。LINEのトークに貼り付けてください。"; }
+    catch (e) { shareMsg.textContent = "画像をコピーできませんでした。「画像を保存」してから送ってください。"; }
+  });
+  document.getElementById("share-text-copy").addEventListener("click", async () => {
+    const ta = document.getElementById("share-text");
+    try { await navigator.clipboard.writeText(ta.value); shareMsg.textContent = "文をコピーしました。"; }
+    catch (e) { ta.focus(); ta.select(); try { document.execCommand("copy"); shareMsg.textContent = "文をコピーしました。"; } catch (e2) { shareMsg.textContent = "コピーできませんでした。文字を選んでコピーしてください。"; } }
+  });
+  document.getElementById("share-img-save").addEventListener("click", () => {
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(shareData.blob); a.download = shareData.file.name;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  });
   // 再生: 確定候補を、最後に確定した順に1マスずつ出していく
   const replayBtn = document.getElementById("replay");
   let replayTimer = null;
@@ -5824,7 +5932,7 @@ p.note:empty { display: none; }
     "save-progress": "今の状態を保存します。あとで「保存した状態に戻す」で戻れます",
     "snap-open": "保存した状態を選んで、その時点に戻ります",
     "replay": "確定候補を入れた順に、盤の上で再生します", "clear-replay": "確定候補を入れた順に、盤の上で再生します",
-    "save-solved": "完成した盤を保存します", "clear-save": "完成した盤を保存します",
+    "save-solved": "完成した盤を保存します", "clear-save": "完成した盤を保存します", "share-solved": "最初の数字だけの問題図と、かかった時間・81桁の盤面データを送ります", "clear-share": "最初の数字だけの問題図と、かかった時間・81桁の盤面データを送ります",
     "edit": "問題の数字を直します", "export-cur": "この問題をファイルに書き出します",
     "reset": "回答を消して最初からやり直します（問題の数字は残ります）", "back": "問題一覧に戻ります",
     "pad-revive": "行・列・ブロックに無い数字のうち、消した候補を元に戻します",
