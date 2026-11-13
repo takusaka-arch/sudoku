@@ -495,6 +495,8 @@ h2 { margin: 0; font-size: 1rem; font-weight: 700; }
 .dest-inner .gen-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
 .dest-inner #dest-cancel, .dest-inner #exp-cancel { justify-self: center; }
 .exp-out { display: grid; gap: 8px; }
+.gd-note { margin: 4px 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--muted); }
+#set-hintlimit { font: inherit; margin-left: 6px; padding: 2px 4px; }
 .exp-out[hidden] { display: none; }
 .exp-out textarea { width: 100%; box-sizing: border-box; font: 1rem/1.5 var(--font-num); letter-spacing: 0.05em; word-break: break-all; padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); resize: none; }
 .exp-msg { margin: 0; font-size: 0.85rem; color: var(--muted); }
@@ -676,7 +678,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.205</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.206</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -731,6 +733,26 @@ p.note:empty { display: none; }
         <label class="gd-opt"><input type="radio" name="set-style" value="write"> <span class="style-txt" id="style-write">書き込み方式（マスは空白から始め、候補（青）にした数字だけを表示する）</span></label>
       </fieldset>
       <label class="gd-opt"><input type="checkbox" id="set-autoerase"> 候補を確定させたら、属する行・列・ブロックから同じ数字の候補を自動で消す</label>
+    </div>
+    <div class="gdrive p-settings" id="play-set">
+      <p class="gd-title">回答中のタイマーとヒント</p>
+      <fieldset class="gd-dest">
+        <legend>保存した状態に戻したときのタイマー</legend>
+        <label class="gd-opt"><input type="radio" name="set-snaptimer" value="keep"> 今のタイマーのまま続ける</label>
+        <label class="gd-opt"><input type="radio" name="set-snaptimer" value="back"> 保存した時点の時間に戻す</label>
+      </fieldset>
+      <label class="gd-opt">ヒントを控える
+        <select id="set-hintlimit">
+          <option value="0">控えない</option>
+          <option value="1">レベル1（★）まで</option>
+          <option value="2">レベル2（★★）まで</option>
+          <option value="3">レベル3（★★★）まで</option>
+          <option value="4">レベル4（★4つ）まで</option>
+          <option value="5">レベル5（★5つ）まで</option>
+          <option value="6">レベル6（★6つ）まで</option>
+        </select>
+      </label>
+      <p class="gd-note">控えるレベルのヒント（「答えと理由」は理由のレベル）を選ぶと「もう少しがんばりましょう」と出ます。それでも見たいときは「それでもヒントを見る」を押します。</p>
     </div>
     <div class="gdrive p-settings" id="app-update" hidden>
       <p class="gd-title">アプリの更新<span class="gd-account" id="app-ver-now"></span></p>
@@ -861,6 +883,11 @@ p.note:empty { display: none; }
     <p id="confirm-msg">リセットしますか？選んだ候補と確定候補がすべて消えます。</p>
     <button type="button" id="reset-yes">リセットする</button>
     <button type="button" id="reset-no">キャンセル</button>
+  </div>
+  <div class="confirm" id="hint-gate" role="alertdialog" aria-labelledby="hint-gate-msg" hidden>
+    <p id="hint-gate-msg">もう少しがんばりましょう。</p>
+    <button type="button" id="gate-show">それでもヒントを見る</button>
+    <button type="button" id="gate-no">がんばる</button>
   </div>
   <div class="confirm" id="auto-confirm" role="alertdialog" aria-labelledby="auto-confirm-msg" hidden>
     <p id="auto-confirm-msg">自動で消した候補を戻しますか？</p>
@@ -1320,6 +1347,10 @@ p.note:empty { display: none; }
 
   // 回答モード: 選んだ候補をダブルクリックで確定候補にする（大きく表示）、もう一度で元に戻す
   const AUTOERASE_KEY = "sudoku-autoerase";
+  // 保存した状態に戻したときのタイマー（keep = 今のタイマーのまま続ける、back = 保存した時点に戻す）と、ヒントを控えるレベル
+  const SNAPTIMER_KEY = "sudoku-snaptimer", HINTLIMIT_KEY = "sudoku-hintlimit";
+  const snapTimerBack = () => { try { return localStorage.getItem(SNAPTIMER_KEY) === "back"; } catch (e) { return false; } };
+  const hintLimit = () => { try { return Math.max(0, Math.min(6, +localStorage.getItem(HINTLIMIT_KEY) || 0)); } catch (e) { return 0; } };
   const autoErase = () => { try { return localStorage.getItem(AUTOERASE_KEY) === "1"; } catch (e) { return false; } };
   function toggleSure(cell, target) {
     if (board.dataset.mode !== "solve" || cell.classList.contains("fixed")) return;
@@ -1717,6 +1748,7 @@ p.note:empty { display: none; }
     board.removeAttribute("data-view-answer");
     document.getElementById("ans-confirm").hidden = true;
     document.getElementById("auto-confirm").hidden = true;
+    document.getElementById("hint-gate").hidden = true;
     solution = solveGivens([...board.querySelectorAll(".cell")].sort((a, b) => (a.dataset.row * 9 + +a.dataset.col) - (b.dataset.row * 9 + +b.dataset.col)).map((c) => (c.classList.contains("given") && c.dataset.value) || "0").join(""));
     document.getElementById("trial").hidden = true;
     clearUndo();
@@ -2928,6 +2960,27 @@ p.note:empty { display: none; }
     { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法が必要なら答えだけ示します）", run: () => runHint(true) },
   ];
   const hintMenu = document.getElementById("hint-menu");
+  // ヒントを控える設定: 控えるレベル以下のヒントは「もう少しがんばりましょう」を出し、「それでもヒントを見る」で表示する
+  // 見せてよければ true を返す。控えるときは go を覚えておき、「それでもヒントを見る」で go を呼ぶ
+  const hintGateBox = document.getElementById("hint-gate");
+  let hintGateGo = null, hintForce = false;
+  function hintGate(lv, go) {
+    const lim = hintLimit();
+    if (hintForce || !lim || lv > lim) return true;
+    hintGateGo = go;
+    document.getElementById("hint-gate-msg").textContent = `もう少しがんばりましょう。（レベル${lim}までのヒントは控える設定です）`;
+    hintGateBox.hidden = false;
+    return false;
+  }
+  document.getElementById("gate-no").addEventListener("click", () => { hintGateBox.hidden = true; hintGateGo = null; });
+  document.getElementById("gate-show").addEventListener("click", () => {
+    hintGateBox.hidden = true;
+    const go = hintGateGo;
+    hintGateGo = null;
+    if (!go || board.dataset.mode !== "solve") return;
+    hintForce = true;
+    try { go(); } finally { hintForce = false; }
+  });
   // 1行に「番号とタイトル」と「？」。「？」を押すと、その下に説明が開く（もう一度で閉じる。開くのは1つだけ）
   let hintNo = 0;
   hintKinds.forEach((k) => {
@@ -2977,7 +3030,7 @@ p.note:empty { display: none; }
       closeHintMenu();
       clearHints();
       hintKindNow = k.label;
-      k.run();
+      if (!k.lv || hintGate(k.lv, () => k.run())) k.run();
     });
     hintMenu.appendChild(item);
   });
@@ -3773,6 +3826,7 @@ p.note:empty { display: none; }
     const show = (cand, text) => {
       const key = cand.closest(".cell").dataset.row + "-" + cand.closest(".cell").dataset.col;
       if (seen.has(key)) return false;
+      if (full && !hintGate(1, () => runHint(true))) return true;
       seen.add(key);
       countHint(true, full ? 2 : 1, full ? "" : key);
       if (full) cand.classList.add("hint");
@@ -3857,8 +3911,10 @@ p.note:empty { display: none; }
         o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
       };
       if (r.i !== undefined && r.log.length) {
-        const TL = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
-        countHint(true, 2 * Math.max(1, ...r.log.map((e) => TL[e.tech] || 4)));
+        const TL0 = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
+        const rlv = Math.max(1, ...r.log.map((e) => TL0[e.tech] || 4));
+        if (!hintGate(rlv, () => runHint(true))) return;
+        countHint(true, 2 * rlv);
         for (const e of r.log) for (let d = 1; d <= 9; d++) if (e.m & (1 << d)) at(e.i).querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
         mark(r.i, r.d);
         renderPad();
@@ -3875,6 +3931,7 @@ p.note:empty { display: none; }
         let best = -1;
         for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || bitCount(cand[i]) < bitCount(cand[best]))) best = i;
         if (best >= 0) {
+          if (!hintGate(6, () => runHint(true))) return;
           countHint(true, 12);
           mark(best, solution.sol[best]);
           renderPad();
@@ -4033,7 +4090,7 @@ p.note:empty { display: none; }
     const list = snapsFor();
     let name = base, k = 2;
     while (list.some((x) => x.name === name)) name = `${base} (${k++})`;
-    list.push({ name, at: Date.now(), snap: snapshot() });
+    list.push({ name, at: Date.now(), snap: snapshot(), elapsed: elapsed + (startedAt ? Date.now() - startedAt : 0) });
     closeSnapUI();
     workMsg.classList.remove("err");
     if (!storeSnaps(list)) { workMsg.classList.add("err"); workMsg.textContent = "保存できませんでした。ブラウザの保存領域がいっぱいかもしれません。"; return; }
@@ -4074,6 +4131,12 @@ p.note:empty { display: none; }
         undoStack.push(snapshot());
         undoBtn.disabled = false;
         restore(x.snap);
+        // 設定が「保存した時点の時間に戻す」のときだけ、タイマーを保存した時点に戻す（動いていれば動いたまま）
+        if (snapTimerBack() && x.elapsed != null) {
+          elapsed = Math.max(0, Number(x.elapsed) || 0);
+          if (startedAt) startedAt = Date.now();
+          drawTimer();
+        }
         workMsg.classList.remove("err");
         workMsg.textContent = `「${x.name}」の時点に戻しました。（「戻る」で戻す前に戻れます）`;
       });
@@ -4176,6 +4239,10 @@ p.note:empty { display: none; }
       return;
     }
     say("");
+    // 設定が「今のタイマーのまま続ける」で、今解いている問題と同じなら、タイマーとヒントの数はそのまま続ける
+    const keepNow = !solved && !snapTimerBack() && (board.dataset.mode === "solve" || board.dataset.mode === "paused")
+      && [...board.querySelectorAll(".cell")].map((c) => (c.classList.contains("given") && c.dataset.value) || "0").join("") === obj.givens;
+    const nowMs = elapsed + (startedAt ? Date.now() - startedAt : 0), nowHints = hintsUsed, nowPts = hintPts;
     openProblem({ name: String(obj.name || "").trim().slice(0, 40) || fileName.replace(/\.json$/i, ""), givens: obj.givens });
     obj.picks.forEach((p, i) => {
       const cell = cellAt(Math.floor(i / 9), i % 9);
@@ -4196,16 +4263,16 @@ p.note:empty { display: none; }
       sureSeq = Math.max(0, ...sureOrder.map((o) => (o ? o.seq : 0)));
     }
     // 経過時間を戻して回答モードに入り、すぐ一時停止にする（完成の記録はそのまま完成の画面になる）
-    elapsed = Math.max(0, Number(obj.elapsed) || 0);
-    hintsUsed = Math.max(0, Math.floor(Number(obj.hints) || 0));
-    hintPts = Math.max(0, Math.floor(Number(obj.hintPts) || 0));
+    elapsed = keepNow ? nowMs : Math.max(0, Number(obj.elapsed) || 0);
+    hintsUsed = keepNow ? nowHints : Math.max(0, Math.floor(Number(obj.hints) || 0));
+    hintPts = keepNow ? nowPts : Math.max(0, Math.floor(Number(obj.hintPts) || 0));
     drawHints();
     viewingSolved = !!solved;
     showSolve();
     viewingSolved = false;
     if (solved) return;
     timerStop();
-    elapsed = Math.max(0, Number(obj.elapsed) || 0);
+    elapsed = keepNow ? nowMs : Math.max(0, Number(obj.elapsed) || 0);
     drawTimer();
     pause.click();
     prompt.textContent = `一時停止中：${currentName}（保存した続きから）`;
@@ -5593,6 +5660,19 @@ p.note:empty { display: none; }
       closeStyleBox();
     });
     document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !styleBox.hidden) closeStyleBox(); });
+    const setLimit = document.getElementById("set-hintlimit");
+    const drawPlaySet = () => {
+      document.querySelector(`input[name="set-snaptimer"][value="${snapTimerBack() ? "back" : "keep"}"]`).checked = true;
+      setLimit.value = String(hintLimit());
+    };
+    drawPlaySet();
+    document.getElementById("go-settings").addEventListener("click", drawPlaySet);
+    document.getElementById("play-set").addEventListener("change", (e) => {
+      try {
+        if (e.target.name === "set-snaptimer") localStorage.setItem(SNAPTIMER_KEY, e.target.value);
+        if (e.target === setLimit) localStorage.setItem(HINTLIMIT_KEY, setLimit.value);
+      } catch (err) {}
+    });
     const setAuto = document.getElementById("set-autoerase");
     setAuto.checked = autoErase();
     document.getElementById("go-settings").addEventListener("click", () => { setAuto.checked = autoErase(); });
