@@ -683,7 +683,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.215</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.216</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1680,19 +1680,25 @@ p.note:empty { display: none; }
   const TARGET_SEC = { 1: 5, 2: 60, 3: 120, 4: 210, 5: 300, 6: 600 };
   function drawTarget() {
     targetEl.hidden = true;
-    if (!solution) return;
+    const t = targetText();
+    if (!t) return;
+    targetEl.textContent = "目標：" + t;
+    targetEl.hidden = false;
+  }
+  // 目標（標準回答）時間の文字列。求められないときは ""
+  function targetText() {
+    if (!solution) return "";
     const g = [...board.querySelectorAll(".cell")].sort((a, b) => (a.dataset.row * 9 + +a.dataset.col) - (b.dataset.row * 9 + +b.dataset.col)).map((c) => +((c.classList.contains("given") && c.dataset.value) || 0));
     try {
       if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} });
       hintEngine.grade(g, null, solution.sol || true);
       const rec = hintEngine.grade.steps || [];
       let sec = rec.reduce((t, k) => t + (TARGET_SEC[k] || 0), 0);
-      if (!sec) return;
+      if (!sec) return "";
       sec = sec < 600 ? Math.round(sec / 30) * 30 : Math.round(sec / 60) * 60;
       const h = Math.floor(sec / 3600), m = Math.floor(sec / 60) % 60, ss = sec % 60;
-      targetEl.textContent = "目標：" + (h ? h + "時間" + (m ? m + "分" : "") : m + "分" + (ss ? ss + "秒" : ""));
-      targetEl.hidden = false;
-    } catch (e) {}
+      return h ? h + "時間" + (m ? m + "分" : "") : m + "分" + (ss ? ss + "秒" : "");
+    } catch (e) { return ""; }
   }
   function drawLeft() {
     const n = [...board.querySelectorAll(".cell")].filter((c) => !c.dataset.value && !c.classList.contains("tent")).length;
@@ -2916,10 +2922,10 @@ p.note:empty { display: none; }
   function makeShare() {
     const o = progressObj(), g = o.givens, time = jtime(o.elapsed);
     // 完成したときは時間とヒント数、まだのときは「解いてみてください」を載せる
-    const done = board.dataset.mode === "complete";
+    const done = board.dataset.mode === "complete", std = targetText();
     const W = 720, P = 30, B = W - P * 2, cs = B / 9, top = 86;
     const cv = document.createElement("canvas");
-    cv.width = W; cv.height = top + B + 214;
+    cv.width = W; cv.height = top + B + 214 + (std ? 40 : 0);
     const x = cv.getContext("2d");
     const sans = '"Hiragino Sans", "Noto Sans JP", "Yu Gothic", "Meiryo", sans-serif';
     x.fillStyle = "#fff"; x.fillRect(0, 0, W, cv.height);
@@ -2939,6 +2945,7 @@ p.note:empty { display: none; }
     let y = top + B + 44;
     x.font = "700 30px " + sans;
     x.fillText(done ? `かかった時間 ${time}・ヒント ${hintsUsed}回` : "この問題を解いてみてください！", W / 2, y, B);
+    if (std) { y += 42; x.font = "500 25px " + sans; x.fillStyle = "#2f6fb5"; x.fillText(`標準回答時間 ${std}`, W / 2, y, B); x.fillStyle = "#1c2433"; }
     x.font = '500 21px "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace';
     x.fillStyle = "#4a5568";
     for (let r = 0; r < 3; r++) x.fillText(g.slice(r * 27, r * 27 + 27), W / 2, y + 48 + r * 30, B);
@@ -2947,7 +2954,7 @@ p.note:empty { display: none; }
     const url = cv.toDataURL("image/png"), bin = atob(url.split(",")[1]), u8 = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const blob = new Blob([u8], { type: "image/png" });
-    const text = `${done ? `数独「${currentName || "問題"}」を ${time} で解きました！（ヒント${hintsUsed}回）` : `数独「${currentName || "問題"}」の問題です。解いてみてください！`}\n問題（81桁の盤面データ）：\n${g}\n数独回答支援アプリ ${APP_URL}`;
+    const text = `${done ? `数独「${currentName || "問題"}」を ${time} で解きました！（ヒント${hintsUsed}回）` : `数独「${currentName || "問題"}」の問題です。解いてみてください！`}${std ? `\n標準回答時間：${std}` : ""}\n問題（81桁の盤面データ）：\n${g}\n数独回答支援アプリ ${APP_URL}`;
     shareData = { url, blob, text, file: new File([blob], `数独_${safeName(currentName || "問題")}.png`, { type: "image/png" }) };
     return shareData;
   }
