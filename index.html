@@ -678,7 +678,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.206</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.207</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -3030,7 +3030,8 @@ p.note:empty { display: none; }
       closeHintMenu();
       clearHints();
       hintKindNow = k.label;
-      if (!k.lv || hintGate(k.lv, () => k.run())) k.run();
+      // 注目するマスは、示すマスに要る解き方のレベルで判断する（runHint の中）
+      if (!k.lv || k.label === "注目するマス" || hintGate(k.lv, () => k.run())) k.run();
     });
     hintMenu.appendChild(item);
   });
@@ -3826,7 +3827,7 @@ p.note:empty { display: none; }
     const show = (cand, text) => {
       const key = cand.closest(".cell").dataset.row + "-" + cand.closest(".cell").dataset.col;
       if (seen.has(key)) return false;
-      if (full && !hintGate(1, () => runHint(true))) return true;
+      if (!hintGate(1, () => runHint(full))) return true;
       seen.add(key);
       countHint(true, full ? 2 : 1, full ? "" : key);
       if (full) cand.classList.add("hint");
@@ -3862,6 +3863,7 @@ p.note:empty { display: none; }
     const showPair = (two, a, b, text) => {
       const key = "p" + two.map((o) => o.dataset.row + o.dataset.col).join("") + a + b;
       if (seen.has(key)) return false;
+      if (!hintGate(2, () => runHint(full))) return true;
       seen.add(key);
       countHint(true, undefined, key);
       for (const o of two) {
@@ -3891,8 +3893,9 @@ p.note:empty { display: none; }
         }
       }
     }
-    // 「答えと理由」: ここまでで見つからなければ、上級の解き方を順に使って候補を消し、答えの決まるマスを探す
-    if (full) {
+    // ここまでで見つからなければ、上級の解き方を順に使って候補を消し、答えの決まるマスを探す
+    // 「答えと理由」は答えと理由まで、「注目するマス」はそのマスだけを示す
+    {
       const at = (i) => cells.find((o) => +o.dataset.row * 9 + +o.dataset.col === i);
       const v = [], cand = [];
       for (let i = 0; i < 81; i++) {
@@ -3913,7 +3916,18 @@ p.note:empty { display: none; }
       if (r.i !== undefined && r.log.length) {
         const TL0 = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
         const rlv = Math.max(1, ...r.log.map((e) => TL0[e.tech] || 4));
-        if (!hintGate(rlv, () => runHint(true))) return;
+        const ekey = "e" + r.i;
+        if (!full && seen.has(ekey)) return focusDone();
+        if (!hintGate(rlv, () => runHint(full))) return;
+        if (!full) {
+          seen.add(ekey);
+          countHint(true, 1, ekey);
+          at(r.i).classList.add("hint-cell");
+          renderPad();
+          workMsg.classList.remove("err");
+          workMsg.textContent = `ヒント：薄い赤のマスに注目してください。（${"★".repeat(rlv)} の解き方を使います。「答えと理由」で、数字と理由を表示します）`;
+          return;
+        }
         countHint(true, 2 * rlv);
         for (const e of r.log) for (let d = 1; d <= 9; d++) if (e.m & (1 << d)) at(e.i).querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
         mark(r.i, r.d);
@@ -3931,7 +3945,18 @@ p.note:empty { display: none; }
         let best = -1;
         for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || bitCount(cand[i]) < bitCount(cand[best]))) best = i;
         if (best >= 0) {
-          if (!hintGate(6, () => runHint(true))) return;
+          const skey = "s" + best;
+          if (!full && seen.has(skey)) return focusDone();
+          if (!hintGate(6, () => runHint(full))) return;
+          if (!full) {
+            seen.add(skey);
+            countHint(true, 1, skey);
+            at(best).classList.add("hint-cell");
+            renderPad();
+            workMsg.classList.remove("err");
+            workMsg.textContent = "ヒント：薄い赤のマスに注目してください。（ここから先は背理法が必要です）";
+            return;
+          }
           countHint(true, 12);
           mark(best, solution.sol[best]);
           renderPad();
@@ -3942,11 +3967,12 @@ p.note:empty { display: none; }
       }
     }
     workMsg.classList.remove("err");
-    if (!full && seen.size) {
+    if (!full && seen.size) return focusDone();
+    function focusDone() {
       // 全部見せ終わった: 次に押したときは最初から
       focusState.seen = new Set();
+      workMsg.classList.remove("err");
       workMsg.textContent = "ヒント：ほかに注目するマスはありません。もう一度押すと、最初のマスから示します。";
-      return;
     }
     workMsg.textContent = "ヒント：見つかりませんでした。消せる候補を消してから、もう一度押してみてください。";
   }
