@@ -6,6 +6,14 @@
 <meta name="theme-color" content="#1d2427">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="数独回答支援">
+<meta name="description" content="数独を解くのを手伝うアプリです。送られてきた問題は、タップするとそのまま解き始められます。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="数独回答支援アプリ">
+<meta property="og:title" content="数独回答支援アプリ">
+<meta property="og:description" content="タップすると数独の問題が開き、そのまま解き始められます。">
+<meta property="og:url" content="https://takusaka-arch.github.io/sudoku/">
+<meta property="og:image" content="https://takusaka-arch.github.io/sudoku/icons/icon-512.png">
+<meta name="twitter:card" content="summary">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="icons/icon-192.png">
@@ -683,7 +691,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.217</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.218</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -2954,10 +2962,12 @@ p.note:empty { display: none; }
     const url = cv.toDataURL("image/png"), bin = atob(url.split(",")[1]), u8 = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     const blob = new Blob([u8], { type: "image/png" });
-    const text = `${done ? `数独「${currentName || "問題"}」を ${time} で解きました！（ヒント${hintsUsed}回）` : `数独「${currentName || "問題"}」の問題です。解いてみてください！`}${std ? `\n標準回答時間：${std}` : ""}\n問題（81桁の盤面データ）：\n${g}\n数独回答支援アプリ`;
+    const text = `${done ? `数独「${currentName || "問題"}」を ${time} で解きました！（ヒント${hintsUsed}回）` : `数独「${currentName || "問題"}」の問題です。解いてみてください！`}${std ? `\n標準回答時間：${std}` : ""}\n問題（81桁の盤面データ）：\n${g}\n数独回答支援アプリで開く：\n${shareUrl(g)}`;
     shareData = { url, blob, text, file: new File([blob], `数独_${safeName(currentName || "問題")}.png`, { type: "image/png" }) };
     return shareData;
   }
+  // 押すとアプリでこの問題が開くURL（LINEの中ではなく普段のブラウザで開くよう openExternalBrowser を付ける）
+  const shareUrl = (g) => `${APP_URL}?p=${g}&n=${encodeURIComponent(currentName || "問題")}&openExternalBrowser=1`;
   const canShareFile = (d) => { try { return !!(navigator.share && navigator.canShare && navigator.canShare({ files: [d.file], text: d.text })); } catch (e) { return false; } };
   async function nativeShare(d) {
     try { await navigator.share({ files: [d.file], text: d.text }); return true; }
@@ -5767,7 +5777,18 @@ p.note:empty { display: none; }
   // 起動するときの設定: 一時停止中の問題を回答画面で開く（resume・はじめから）か、ホームメニューを出す（home）か
   const RESUME_KEY = "sudoku-start-resume";
   const startResume = () => { try { return localStorage.getItem(RESUME_KEY) !== "home"; } catch (e) { return true; } };
-  if (startResume()) resumeSaved();
+  // URLに問題（?p=81桁&n=問題名）が付いていれば、その問題を一覧に加えて開く（LINEなどで送られたリンクから）
+  const urlProblem = (() => {
+    try {
+      const q = new URLSearchParams(location.search), g = (q.get("p") || "").replace(/\./g, "0");
+      if (!/^[0-9]{81}$/.test(g)) return null;
+      return { name: (q.get("n") || "").trim().slice(0, 40) || "届いた問題", givens: g };
+    } catch (e) { return null; }
+  })();
+  if (urlProblem) {
+    try { history.replaceState(null, "", location.pathname + location.hash); } catch (e) {}
+    importProblemData(urlProblem, urlProblem.name);
+  } else if (startResume()) resumeSaved();
   // ===== アプリの更新（GitHub版） =====
   // 古い保存分（キャッシュ）が残って新しい版が出ないときのために、
   // 起動時と画面に戻ったときに新しい版を確かめ、あればお知らせを出す。設定からも手動で更新できる
