@@ -11,18 +11,13 @@
   // 残りのマス数（問題の数字も確定候補も入っていないマス）
   const leftEl = document.getElementById("left-cells");
   // 目標完成時間 = 解き終わるまでの1手ごとに、使うヒントのレベルの秒数を足したもの
-  // 秒数（TARGET_SEC・CONTRA_FOLLOW_SEC）は 01a-levels.js で決める
+  // 秒数（TARGET_SEC）は 01a-levels.js で決める
   const targetEl = document.getElementById("target-time");
   // 1手ずつのレベルの並びから、目標の秒数を出す。
-  // 背理法は、仮定するマスを TARGET_SEC[背理法のレベル]、その仮定に続けて決まるマス（すぐあとに続く背理法の手）を CONTRA_FOLLOW_SEC にする。
-  // 別のマスで仮定し直すとき（あいだに別の手が入ったとき）は、また TARGET_SEC から数える
+  // 背理法は仮定する手だけをレベル6とし、仮定後は実際に使った解法のレベルを記録する。
+  // 別の仮定は、直前の手にかかわらず改めてレベル6の時間を加算する。
   function targetSeconds(levels) {
-    let sec = 0, prev = 0;
-    for (const k of levels) {
-      sec += k === TECH_LV["背理法"] && prev === k ? CONTRA_FOLLOW_SEC : (TARGET_SEC[k] || 0);
-      prev = k;
-    }
-    return sec;
+    return levels.reduce((sec, k) => sec + (TARGET_SEC[k] || 0), 0);
   }
   function drawTarget() {
     targetEl.hidden = true;
