@@ -723,7 +723,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.223</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.224</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1561,9 +1561,9 @@ p.note:empty { display: none; }
     const n = big ? cell.dataset.value || cell.querySelector(".big").textContent : target.dataset.n;
     const t = big ? cell.querySelector(".big") : target;
     const items = cell.classList.contains("given") ? [[`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
-      : cell.classList.contains("tent") ? [[`確定候補 ${n} を元に戻す`, 2], [`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
+      : cell.classList.contains("tent") ? [[`${n} を確定候補から外す`, 2], [`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
       : target.classList.contains("off") ? [[`消した ${n} を戻す`, 3]]
-      : [[target.classList.contains("pick") ? `候補 ${n} を外す` : `${n} を候補（青）にする`, 1], [`${n} を確定候補にする`, 2], [`${n} を消す`, 3]];
+      : [[target.classList.contains("pick") ? `候補 ${n} を外す` : `${n} を候補（青）にする`, 1], [`${n} を確定候補にする`, 2], [`${n} を候補から消す`, 3]];
     if (!big && !assume && !target.classList.contains("off")) items.push([`${n} と仮定する`, "asm"]);
     if (!big) items.push(["このマスの消した候補を復活", "rev"]);
     ctx.textContent = "";
@@ -5006,14 +5006,14 @@ p.note:empty { display: none; }
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
     { part: 1, title: `2. まずは数字を${MENU}`, text: `解くときは、小さな数字を${MENU}します。メニューが出るので、行いたい操作を選んでください。`, pressDemo: true },
-    { part: 1, title: "3. 候補を選ぶ・確定候補にする", text: `メニューの「候補（青）にする」で青くなります（候補の印）。\n「確定候補にする」で大きな青い数字になります（確定候補）。もう一度選ぶと戻ります。`,
+    { part: 1, title: "3. 候補を選ぶ・確定候補にする", text: `メニューの「候補（青）にする」で青くなります（候補の印）。\n「確定候補にする」で大きな青い数字になります（確定候補）。大きな数字を${MENU}して「確定候補から外す」を選ぶと戻ります。`,
       cells: [0], target: [0, "7"], menu: true, ask: `「5」を${MENU}して候補（青）にしてから、「7」を${MENU}して確定候補にしてください。`,
       goal: (d) => d.cand(0, "5").classList.contains("pick") && d.cell(0).classList.contains("tent"), ok: "できました！ 青い数字が候補、大きな青い数字が確定候補です。" },
-    { part: 1, title: "4. 候補を消す", text: `メニューの「消す」を選ぶと、その数字が消えます。\n同じ行・列・ブロックに同じ数字が確定していれば、まとめて消えます。もう一度選ぶと戻ります。`,
-      cells: ["5", 0, 0], target: [1, "5"], menu: true, ask: `左に「5」が確定しています。真ん中のマスの「5」を${MENU}して、「5 を消す」を選んでください。`,
+    { part: 1, title: "4. 候補を消す", text: `メニューの「候補から消す」を選ぶと、その数字が消えます。\n同じ行・列・ブロックに同じ数字が確定していれば、まとめて消えます。もう一度選ぶと戻ります。`,
+      cells: ["5", 0, 0], target: [1, "5"], menu: true, ask: `左に「5」が確定しています。真ん中のマスの「5」を${MENU}して、「5 を候補から消す」を選んでください。`,
       goal: (d) => d.cand(1, "5").classList.contains("off") && d.cand(2, "5").classList.contains("off"), ok: "できました！ この行の「5」がまとめて消えました。" },
     { part: 1, title: "5. 「戻る」で取り消す", text: "まちがえたときは「戻る」ボタンを押すと、1つ前の操作に戻ります。何回でも戻れます。\n\n間違って消した候補は、マスを選んで「候補を復活」（またはメニューの「このマスの消した候補を復活」）でも戻せます。",
-      cells: [0], target: [0, "4"], menu: true, undo: true, ask: `「4」を${MENU}して「4 を消す」を選んでから、下の「戻る」を押して元に戻してください。`,
+      cells: [0], target: [0, "4"], menu: true, undo: true, ask: `「4」を${MENU}して「4 を候補から消す」を選んでから、下の「戻る」を押して元に戻してください。`,
       goal: (d) => d.undone && !d.cand(0, "4").classList.contains("off"), ok: "できました！ 「戻る」で1つ前に戻りました。" },
     { part: 1, title: "6. 自動保存と、解き始め", text: "解いている途中の状態は、この端末に自動で保存されます。アプリを閉じても、次に開くと続きから始まります。\n「一時停止」でタイマーを止められます。\n\nこれで解き始められます。速く解く操作や、ヒント・保存などは中級編で説明します（アプリ名の右の「？」ボタンからいつでも見られます）。", fork: true },
     { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
@@ -5146,7 +5146,7 @@ p.note:empty { display: none; }
       const m = document.createElement("div");
       m.className = "tut-pm";
       m.setAttribute("aria-label", "メニューの見本");
-      m.innerHTML = `<p>1行1列</p><span class="on">5 を候補（青）にする</span><span>5 を確定候補にする</span><span>5 を消す</span>`;
+      m.innerHTML = `<p>1行1列</p><span class="on">5 を候補（青）にする</span><span>5 を確定候補にする</span><span>5 を候補から消す</span>`;
       wrap.append(r3, m);
       const more = document.createElement("div");
       more.className = "tut-more";
@@ -5249,9 +5249,9 @@ p.note:empty { display: none; }
     const n = big ? cell.dataset.value || cell.querySelector(".big").textContent : el.dataset.n;
     const t = big ? cell.querySelector(".big") : el;
     const items = cell.classList.contains("fixed") ? [[`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
-      : cell.classList.contains("tent") ? [[`確定候補 ${n} を元に戻す`, 2], [`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
+      : cell.classList.contains("tent") ? [[`${n} を確定候補から外す`, 2], [`行・列・ブロックの ${n} の候補を消す・戻す`, 3]]
       : el.classList.contains("off") ? [[`消した ${n} を戻す`, 3]]
-      : [[el.classList.contains("pick") ? `候補 ${n} を外す` : `${n} を候補（青）にする`, 1], [`${n} を確定候補にする`, 2], [`${n} を消す`, 3]];
+      : [[el.classList.contains("pick") ? `候補 ${n} を外す` : `${n} を候補（青）にする`, 1], [`${n} を確定候補にする`, 2], [`${n} を候補から消す`, 3]];
     tutMenu.textContent = "";
     for (const [label, k] of items) {
       const b = document.createElement("button");
