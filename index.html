@@ -712,28 +712,29 @@ p.msg:empty { display: none; }
 }
 .prompt .prompt-sub { display: block; margin-top: 2px; font-size: 0.8rem; font-weight: 400; color: var(--muted); }
 p.note:empty { display: none; }
-/* 折りたたみスマホを開いたとき（タッチ操作で、幅600px以上・ほぼ正方形の画面）：
-   左半分に盤とハイライトの数字、右半分にアプリ名・ボタン・説明を並べる */
-@media (pointer: coarse) and (min-width: 600px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3) {
-  main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-content: stretch; gap: 20px; }
-  main .board { width: 100%; container-type: inline-size; }
-  .board .cand { font-size: clamp(7px, 2.2cqw, 13px); }
-  .board .big { font-size: clamp(18px, 6.6cqw, 40px); }
-  /* 左：盤・ハイライト・タイマー・状態表示と一時停止。右：アプリ名・マスの操作パネル・ボタン・説明（長ければ右だけスクロール） */
-  .fold-left { display: grid; gap: 12px; align-content: start; min-width: 0; }
-  .fold-left .timer-row { justify-self: start; }
-  .fold-status { display: flex; align-items: center; gap: 8px; }
-  .fold-status .prompt { flex: 1 1 0; min-width: 0; }
-  .fold-status .prompt:empty { display: none; }
-  body.fold .side { position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; align-content: start; }
-  body.fold .side > .pad { width: 100%; }
-  /* ホームや設定では（解く画面の部品が隠れているときは）左の状態表示とタイマーも出さない */
-  body.fold:has(#work[hidden]) .fold-left :is(.fold-status, .timer-row) { display: none; }
-  .side { grid-template-columns: minmax(0, 1fr); }
-  .head { flex-wrap: wrap; row-gap: 6px; }
-  .head h1 { font-size: min(1.2rem, 2.1vw); column-gap: 4px; }
-  .head button { flex-shrink: 0; }
-}
+/* ===== 折りたたみスマホを開いたとき（body.fold） =====
+   「開いた画面か」の判定は JS の FOLD_QUERY の1か所だけで行い、CSS は body.fold を見るだけにする。
+   左（.fold-left）：盤・ハイライトの数字・タイマー・状態表示と一時停止
+   右（.side）    ：アプリ名・マスの操作パネル・ボタン・説明（長ければ右だけスクロール） */
+body.fold main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-content: stretch; gap: 20px; }
+/* 盤は左半分いっぱい。中の数字は盤の幅に合わせて縮める */
+body.fold main .board { width: 100%; container-type: inline-size; }
+body.fold .board .cand { font-size: clamp(7px, 2.2cqw, 13px); }
+body.fold .board .big { font-size: clamp(18px, 6.6cqw, 40px); }
+/* 左の列 */
+body.fold .fold-left { display: grid; gap: 12px; align-content: start; min-width: 0; }
+body.fold .fold-left .timer-row { justify-self: start; }
+body.fold .fold-status { display: flex; align-items: center; gap: 8px; }
+body.fold .fold-status .prompt { flex: 1 1 0; min-width: 0; }
+body.fold .fold-status .prompt:empty { display: none; }
+/* ホーム・問題を作る・設定など（解く画面の部品が隠れているとき）は、左の状態表示とタイマーも出さない */
+body.fold:has(#work[hidden]) .fold-left :is(.fold-status, .timer-row) { display: none; }
+/* 右の列：半分の幅に収め、長いときは右だけスクロール */
+body.fold .side { grid-template-columns: minmax(0, 1fr); position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; align-content: start; }
+body.fold .side > .pad { width: 100%; }
+body.fold .head { flex-wrap: wrap; row-gap: 6px; }
+body.fold .head h1 { font-size: min(1.2rem, 2.1vw); column-gap: 4px; }
+body.fold .head button { flex-shrink: 0; }
 </style>
 
 <main>
@@ -754,7 +755,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.236</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.237</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1359,6 +1360,10 @@ p.note:empty { display: none; }
   // スマホではマスのタップでマスを選び、数字は下のパッドで操作する
   const phoneMQ = window.matchMedia("(max-width: 760px)");
   const isPhone = () => phoneMQ.matches;
+  // 折りたたみスマホを開いた画面の判定（ここだけで決める。並べ替えは「折りたたみスマホを開いたとき」の処理）
+  const FOLD_QUERY = "(pointer: coarse) and (min-width: 600px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3)";
+  const foldMQ = matchMedia(FOLD_QUERY);
+  const isFold = () => document.body.classList.contains("fold");
   board.addEventListener("click", (e) => {
     const cell = e.target.closest(".cell");
     // スマホでは、選んでいないマスをタップしたときはマスを選ぶだけにする（数字は変えない）
@@ -1580,6 +1585,7 @@ p.note:empty { display: none; }
     countTap(cand, sel);
   });
   phoneMQ.addEventListener?.("change", renderPad);
+  phoneMQ.addEventListener?.("change", refreshSolveNote);
 
   // 右クリック（スマホは長押し）: ダブル・トリプルが難しいときに、動作をメニューから選ぶ
   const ctx = document.getElementById("ctx");
@@ -1901,13 +1907,18 @@ p.note:empty { display: none; }
     confirmBox.hidden = true;
     updatePhoto();
   }
+  // 回答中の説明文（操作の名前に下線を引き、説明と見分けやすくする）。
+  // 端末・画面の向き（スマホ／折りたたみ／パソコン）で中身が変わるので、向きが変わったときにも作り直す
+  function solveNoteHtml() {
+    const [t1, t2, t3] = matchMedia("(hover: hover) and (pointer: fine)").matches ? ["1回クリック", "ダブルクリック", "トリプルクリック"] : ["1回タップ", "ダブルタップ", "トリプルタップ"];
+    return (isPhone() ? "<u>盤のマスを1回タップ</u>：そのマスを選んで操作できるようにする。" + (isFold() ? "右上" : "盤の下") + "に、マスの中の操作メニューが出る<br>" : "") + `<u>小さな数字を ${t1}</u>：候補（青）の選択・解除<br><u>${t2}</u>：確定候補にする（大きな数字を${t2}で戻す）<br><u>${t3}</u>：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す<br><u>問題の数字・確定候補を${t1}</u>：同じ数字の問題の数字・確定候補に色を付ける・消す<br><u>問題の数字・確定候補を${t3}</u>：その行・列・ブロックの同じ数字を消す・戻す<br><u>${t1 === "1回クリック" ? "右クリック" : "長押し"}</u>：メニューから選ぶ` + (board.hasAttribute("data-style-write") ? (t1 === "1回クリック" ? "<br><u>書き込み方式</u>：空白のマスにマウスを乗せると、選べる数字が薄く出ます" : "<br><u>書き込み方式</u>：空白のマスをタップして、下の数字から選びます") : "");
+  }
+  function refreshSolveNote() { if (board.dataset.mode === "solve") note.innerHTML = solveNoteHtml(); }
   function showSolve() {
     board.dataset.mode = "solve";
     setPauseLock(false);
     prompt.textContent = `回答モード：${currentName}（問題 ${currentCount} マス）`;
-    const [t1, t2, t3] = matchMedia("(hover: hover) and (pointer: fine)").matches ? ["1回クリック", "ダブルクリック", "トリプルクリック"] : ["1回タップ", "ダブルタップ", "トリプルタップ"];
-    // 操作の名前（項目）に下線を引き、説明と見分けやすくする
-    note.innerHTML = (isPhone() ? "<u>盤のマスを1回タップ</u>：そのマスを選んで操作できるようにする。" + (document.body.classList.contains("fold") ? "右上" : "盤の下") + "に、マスの中の操作メニューが出る<br>" : "") + `<u>小さな数字を ${t1}</u>：候補（青）の選択・解除<br><u>${t2}</u>：確定候補にする（大きな数字を${t2}で戻す）<br><u>${t3}</u>：その数字が確定している行・列・ブロックの中の同じ数字を消す・戻す<br><u>問題の数字・確定候補を${t1}</u>：同じ数字の問題の数字・確定候補に色を付ける・消す<br><u>問題の数字・確定候補を${t3}</u>：その行・列・ブロックの同じ数字を消す・戻す<br><u>${t1 === "1回クリック" ? "右クリック" : "長押し"}</u>：メニューから選ぶ` + (board.hasAttribute("data-style-write") ? (t1 === "1回クリック" ? "<br><u>書き込み方式</u>：空白のマスにマウスを乗せると、選べる数字が薄く出ます" : "<br><u>書き込み方式</u>：空白のマスをタップして、下の数字から選びます") : "");
+    note.innerHTML = solveNoteHtml();
     go.hidden = true;
     pause.hidden = false;
     pause.textContent = "一時停止";
@@ -6088,33 +6099,38 @@ p.note:empty { display: none; }
   } else if (startResume()) resumeSaved();
 
   // ===== 折りたたみスマホを開いたとき =====
-  // 左に盤・ハイライト・タイマー・状態表示と一時停止、右にアプリ名・マスの操作パネル・ボタン・説明を並べる。
-  // 閉じたら（画面の形が変わったら）元の場所に戻す
+  // 開いた画面（タッチ操作・幅600px以上・ほぼ正方形）では、部品を左右2列に並べ替えて body に fold を付ける。
+  // 閉じたら（画面の形が変わったら）元の場所に戻す。CSS は body.fold だけを見る
   (function () {
-    const mq = matchMedia("(pointer: coarse) and (min-width: 600px) and (min-aspect-ratio: 3/4) and (max-aspect-ratio: 4/3)");
-    const mainEl = document.querySelector("main"), bw = document.querySelector(".board-wrap"), headEl = document.querySelector(".head");
-    const tr = document.querySelector(".timer-row"), pr = document.getElementById("prompt"), pa = document.getElementById("pause"), pd = document.getElementById("pad");
-    const left = document.createElement("div"); left.className = "fold-left";
-    const st = document.createElement("div"); st.className = "fold-status";
-    const marks = new Map();
-    const apply = () => {
-      if (mq.matches) {
-        if (left.isConnected) return;
-        for (const el of [bw, tr, pr, pa, pd]) { const m = document.createComment("fold"); el.before(m); marks.set(el, m); }
-        mainEl.insertBefore(left, mainEl.firstChild);
-        st.append(pr, pa);
-        left.append(bw, tr, st);
-        headEl.after(pd);
-        document.body.classList.add("fold");
-      } else {
-        if (!left.isConnected) return;
-        for (const [el, m] of marks) m.replaceWith(el);
-        marks.clear();
-        left.remove();
-        document.body.classList.remove("fold");
-      }
+    // 左の列に移す部品（上から順）。状態表示と一時停止は横に並べるため .fold-status にまとめる
+    const LEFT = [document.querySelector(".board-wrap"), document.querySelector(".timer-row")];
+    const STATUS = [document.getElementById("prompt"), document.getElementById("pause")];
+    // 右の列（.side）で、アプリ名のすぐ下に移す部品（マスを選んだときの操作パネル）
+    const UNDER_HEAD = [document.getElementById("pad")];
+    const mainEl = document.querySelector("main"), headEl = document.querySelector(".head");
+    const left = Object.assign(document.createElement("div"), { className: "fold-left" });
+    const status = Object.assign(document.createElement("div"), { className: "fold-status" });
+    const marks = new Map(); // 部品 → 元の場所の目印
+    const enter = () => {
+      for (const el of [...LEFT, ...STATUS, ...UNDER_HEAD]) { const m = document.createComment("fold"); el.before(m); marks.set(el, m); }
+      status.append(...STATUS);
+      left.append(...LEFT, status);
+      mainEl.prepend(left);
+      headEl.after(...UNDER_HEAD);
     };
-    mq.addEventListener("change", apply);
+    const leave = () => {
+      for (const [el, m] of marks) m.replaceWith(el);
+      marks.clear();
+      left.remove();
+    };
+    const apply = () => {
+      const on = foldMQ.matches;
+      if (on === isFold()) return;
+      on ? enter() : leave();
+      document.body.classList.toggle("fold", on);
+      refreshSolveNote();
+    };
+    foldMQ.addEventListener("change", apply);
     apply();
   })();
   // ===== アプリの更新（GitHub版） =====
