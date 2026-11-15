@@ -755,7 +755,7 @@ body.fold .head button { flex-shrink: 0; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.241</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.242</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -3330,8 +3330,9 @@ body.fold .head button { flex-shrink: 0; }
     // lv: ヒントのレベル（右の★の数・ポイント）。1 = 次に注目するマス、2 中級、3 上級、4 達人、5 超上級、6 背理法
     { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
     { lv: 1, label: "注目するマス", desc: "次に考えるとよいマスに色を付けます。盤を変えずにもう一度選ぶと「次に注目するマス」になり、別のマスを示します", run: () => runHint(false) },
-    { lv: 2, label: "ポインティング", desc: "ブロックの中で1つの行（列）にしか入らない数字と、それでブロックの外から消せる候補を示します", run: () => showPointing() },
+    { lv: 2, label: "ポインティング", desc: "ブロックの中で1つの行（列）にしか入らない数字と、それでブロックの外から消せる候補を示します", run: () => showBoxLine("pointing") },
     { lv: 2, label: "2つの数字のペア", desc: "隠れペア（2つの数字が同じ2マスにしか入らない）と、ネイキッドペア（候補が同じ2つだけのマスが2つある）を、組ごとに色分けします", run: () => showPairs(2) },
+    { lv: 3, label: "クレーミング", desc: "行（列）の中で1つのブロックにしか入らない数字と、それでそのブロックの中から消せる候補を示します", run: () => showBoxLine("claiming") },
     { lv: 3, label: "3つの数字の組", desc: "隠れた3つの組と、ネイキッド3つの組（3マスの候補を合わせると3つの数字だけ）を、消せる候補と一緒に示します", run: () => showSubsets(3) },
     { lv: 3, label: "Xウイング", desc: "2つの行（列）で長方形の角にしか入らない数字と、それで消せる候補を示します", run: () => showXWing() },
     { lv: 4, label: "4つの数字の組", desc: "3つの組と同じ考え方を、4つの数字と4マスで使います", run: () => showSubsets(4) },
@@ -3569,7 +3570,7 @@ body.fold .head button { flex-shrink: 0; }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !viewMenu.hidden) { closeViewMenu(); viewBtn.focus(); }
   });
-  // ===== 09-hints-basic.js：ヒント：ペア・3つの組・ポインティング =====
+  // ===== 09-hints-basic.js：ヒント：ペア・3つの組・ポインティング・クレーミング =====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // ②③ 行・列・ブロックの中で、2つ（3つ）の数字が同じ2マス（3マス）にしか入らない組を、組ごとの色で示す
   // 青い候補かどうかは関係なく、入れられる数字（消した候補・確定済みの数字を除く）で調べる
@@ -3658,8 +3659,22 @@ body.fold .head button { flex-shrink: 0; }
     }
     workMsg.textContent = `ヒント：同じ色の${kk}つの数字（${found.length}組）は、その行・列・ブロックで、色の付いた${kk}マスにしか入りません。その${kk}マスのほかの候補は消せます。`;
   }
-  // ポインティング: ブロックの中で、ある数字が1つの行（列）にしか入らないとき、その行（列）のブロックの外の同じ数字は消せる
-  function showPointing() {
+  // ブロックと行・列の関係を使うヒント（2種類）。見つけ方だけが違い、表示のしかたは同じ
+  // ・ポインティング（レベル2）: ブロックの中で、ある数字が1つの行（列）にしか入らない
+  //     → その行（列）の、ブロックの外の同じ数字は消せる
+  // ・クレーミング（レベル3）: 行（列）の中で、ある数字が1つのブロックにしか入らない
+  //     → そのブロックの、その行（列）以外の同じ数字は消せる
+  const BOX_LINE = {
+    pointing: {
+      name: "ポインティング",
+      why: "同じ色の数字は、そのブロックの中では1つの行（列）にしか入りません。なので、その行（列）のブロックの外にある同じ数字（赤い枠）は消せます。",
+    },
+    claiming: {
+      name: "クレーミング",
+      why: "同じ色の数字は、その行（列）の中では1つのブロックにしか入りません。なので、そのブロックの中の、その行（列）以外にある同じ数字（赤い枠）は消せます。",
+    },
+  };
+  function showBoxLine(kind) {
     if (board.dataset.mode !== "solve") return;
     markConflicts();
     const cells = [...board.querySelectorAll(".cell")];
@@ -3669,23 +3684,39 @@ body.fold .head button { flex-shrink: 0; }
     const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
       && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
     const box = (o) => Math.floor(o.dataset.row / 3) * 3 + Math.floor(o.dataset.col / 3);
+    const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    // found: [{ d: 数字, spots: 色を付けるマス, gone: 消せる候補のマス }]
     const found = [];
-    for (let b = 0; b < 9; b++) {
-      const inBox = cells.filter((o) => box(o) === b);
-      for (const d of ["1", "2", "3", "4", "5", "6", "7", "8", "9"]) {
-        if (inBox.some((o) => val(o) === d)) continue;
-        const spots = inBox.filter((o) => can(o, d));
-        if (spots.length < 2) continue;
-        for (const key of ["row", "col"]) {
-          if (!spots.every((o) => o.dataset[key] === spots[0].dataset[key])) continue;
-          const gone = cells.filter((o) => box(o) !== b && o.dataset[key] === spots[0].dataset[key] && can(o, d));
+    if (kind === "pointing") {
+      for (let b = 0; b < 9; b++) {
+        const inBox = cells.filter((o) => box(o) === b);
+        for (const d of DIGITS) {
+          if (inBox.some((o) => val(o) === d)) continue;
+          const spots = inBox.filter((o) => can(o, d));
+          if (spots.length < 2) continue;
+          for (const key of ["row", "col"]) {
+            if (!spots.every((o) => o.dataset[key] === spots[0].dataset[key])) continue;
+            const gone = cells.filter((o) => box(o) !== b && o.dataset[key] === spots[0].dataset[key] && can(o, d));
+            if (gone.length) found.push({ d, spots, gone });
+          }
+        }
+      }
+    } else {
+      for (const key of ["row", "col"]) for (let n = 0; n < 9; n++) {
+        const line = cells.filter((o) => +o.dataset[key] === n);
+        for (const d of DIGITS) {
+          if (line.some((o) => val(o) === d)) continue;
+          const spots = line.filter((o) => can(o, d));
+          if (spots.length < 2 || !spots.every((o) => box(o) === box(spots[0]))) continue;
+          const gone = cells.filter((o) => box(o) === box(spots[0]) && +o.dataset[key] !== n && can(o, d));
           if (gone.length) found.push({ d, spots, gone });
         }
       }
     }
+    const { name, why } = BOX_LINE[kind];
     workMsg.classList.remove("err");
     if (!found.length) {
-      workMsg.textContent = "ヒント：今はポインティングで消せる候補はありません。";
+      workMsg.textContent = `ヒント：今は${name}で消せる候補はありません。`;
       return;
     }
     countHint();
@@ -3700,8 +3731,9 @@ body.fold .head button { flex-shrink: 0; }
       for (const o of x.gone) o.querySelector(`.cand[data-n="${x.d}"]`).classList.add("hint");
     });
     renderPad();
-    workMsg.textContent = `ヒント：ポインティング（${found.length}組）：同じ色の数字は、そのブロックの中では1つの行（列）にしか入りません。なので、その行（列）のブロックの外にある同じ数字（赤い枠）は消せます。`;
+    workMsg.textContent = `ヒント：${name}（${found.length}組）：${why}`;
   }
+
   // ===== 10-hints-advanced.js：上級のヒント（Xウイング・ソードフィッシュ・スカイスクレイパー・XY/XYZウイング・カラーリング・チェーン・唯一解の原則・背理法など） =====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // ===== 上級のヒント（3つ・4つの組、ソードフィッシュ、スカイスクレイパー、XY/XYZウイング、リモートペア、XYチェーン、背理法） =====
@@ -4322,7 +4354,7 @@ body.fold .head button { flex-shrink: 0; }
         o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
       };
       if (r.i !== undefined && r.log.length) {
-        const TL0 = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
+        const TL0 = { "2つの数字のペア": 2, "ポインティング": 2, "クレーミング": 3, "3つの数字の組": 3, "Xウイング": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
         const rlv = Math.max(1, ...r.log.map((e) => TL0[e.tech] || 4));
         const ekey = "e" + r.i;
         if (!full && seen.has(ekey)) return focusDone();
@@ -5623,6 +5655,8 @@ body.fold .head button { flex-shrink: 0; }
           }
         }
         if (ch) return true;
+        // クレーミング: 行（列）の中で、ある数字が1つのブロックにしか入らないとき、そのブロックのほかのマスから消す
+        tech = "クレーミング";
         for (let L = 0; L < 9; L++) for (const k of [0, 1]) {
           const line = units[L * 3 + k];
           for (let d = 1; d <= 9; d++) {
@@ -5863,8 +5897,8 @@ body.fold .head button { flex-shrink: 0; }
         return { log, stuck: true };
       }
       // grade.steps（timing のとき）: 1手ごとのヒントレベル。目標完成時間の計算に使う
-      // レベル1 = シングル、レベル2 = ポインティング・2つの数字のペア、レベル3 = 3つの数字の組・Xウイング、レベル4 = 4つの組・ソードフィッシュ・XY/XYZウイング・スカイスクレイパー、レベル5 = カラーリング・チェーン、レベル6 = 背理法
-      const LV = { "2つの数字のペア": 2, "ポインティング": 2, "3つの数字の組": 3, "Xウイング": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
+      // レベル1 = シングル、レベル2 = ポインティング・2つの数字のペア、レベル3 = クレーミング・3つの数字の組・Xウイング、レベル4 = 4つの組・ソードフィッシュ・XY/XYZウイング・スカイスクレイパー、レベル5 = カラーリング・チェーン、レベル6 = 背理法
+      const LV = { "2つの数字のペア": 2, "ポインティング": 2, "クレーミング": 3, "3つの数字の組": 3, "Xウイング": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
       const steps = [];
       grade.steps = steps;
       // 背理法: 候補が2つのマスに片方を仮に入れ、シングルだけで進めて矛盾が出たら、その候補を消す
@@ -5984,7 +6018,7 @@ body.fold .head button { flex-shrink: 0; }
   try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); } catch (e) {}
   const genLevels = [
     { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
-    { label: "中級", desc: "ポインティング、3つの数字の組、Xウイング、XYウイングなどが必要です" },
+    { label: "中級", desc: "ポインティング、クレーミング、3つの数字の組、Xウイング、XYウイングなどが必要です" },
     { label: "難問", desc: "4つの数字の組、XYZウイング、スカイスクレイパー、XYチェーンなどが必要です（背理法はいりません）" },
     { label: "最難関", desc: "問題の数字は21個以下。背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です。★4つ以上の解き方を4回以上使います" },
   ];

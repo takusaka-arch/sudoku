@@ -1,4 +1,4 @@
-  // ===== 09-hints-basic.js：ヒント：ペア・3つの組・ポインティング =====
+  // ===== 09-hints-basic.js：ヒント：ペア・3つの組・ポインティング・クレーミング =====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // ②③ 行・列・ブロックの中で、2つ（3つ）の数字が同じ2マス（3マス）にしか入らない組を、組ごとの色で示す
   // 青い候補かどうかは関係なく、入れられる数字（消した候補・確定済みの数字を除く）で調べる
@@ -87,8 +87,22 @@
     }
     workMsg.textContent = `ヒント：同じ色の${kk}つの数字（${found.length}組）は、その行・列・ブロックで、色の付いた${kk}マスにしか入りません。その${kk}マスのほかの候補は消せます。`;
   }
-  // ポインティング: ブロックの中で、ある数字が1つの行（列）にしか入らないとき、その行（列）のブロックの外の同じ数字は消せる
-  function showPointing() {
+  // ブロックと行・列の関係を使うヒント（2種類）。見つけ方だけが違い、表示のしかたは同じ
+  // ・ポインティング（レベル2）: ブロックの中で、ある数字が1つの行（列）にしか入らない
+  //     → その行（列）の、ブロックの外の同じ数字は消せる
+  // ・クレーミング（レベル3）: 行（列）の中で、ある数字が1つのブロックにしか入らない
+  //     → そのブロックの、その行（列）以外の同じ数字は消せる
+  const BOX_LINE = {
+    pointing: {
+      name: "ポインティング",
+      why: "同じ色の数字は、そのブロックの中では1つの行（列）にしか入りません。なので、その行（列）のブロックの外にある同じ数字（赤い枠）は消せます。",
+    },
+    claiming: {
+      name: "クレーミング",
+      why: "同じ色の数字は、その行（列）の中では1つのブロックにしか入りません。なので、そのブロックの中の、その行（列）以外にある同じ数字（赤い枠）は消せます。",
+    },
+  };
+  function showBoxLine(kind) {
     if (board.dataset.mode !== "solve") return;
     markConflicts();
     const cells = [...board.querySelectorAll(".cell")];
@@ -98,23 +112,39 @@
     const can = (o, n) => !val(o) && !o.querySelector(`.cand[data-n="${n}"]`).classList.contains("off")
       && !cells.some((x) => x !== o && val(x) === n && peers(x, o));
     const box = (o) => Math.floor(o.dataset.row / 3) * 3 + Math.floor(o.dataset.col / 3);
+    const DIGITS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
+    // found: [{ d: 数字, spots: 色を付けるマス, gone: 消せる候補のマス }]
     const found = [];
-    for (let b = 0; b < 9; b++) {
-      const inBox = cells.filter((o) => box(o) === b);
-      for (const d of ["1", "2", "3", "4", "5", "6", "7", "8", "9"]) {
-        if (inBox.some((o) => val(o) === d)) continue;
-        const spots = inBox.filter((o) => can(o, d));
-        if (spots.length < 2) continue;
-        for (const key of ["row", "col"]) {
-          if (!spots.every((o) => o.dataset[key] === spots[0].dataset[key])) continue;
-          const gone = cells.filter((o) => box(o) !== b && o.dataset[key] === spots[0].dataset[key] && can(o, d));
+    if (kind === "pointing") {
+      for (let b = 0; b < 9; b++) {
+        const inBox = cells.filter((o) => box(o) === b);
+        for (const d of DIGITS) {
+          if (inBox.some((o) => val(o) === d)) continue;
+          const spots = inBox.filter((o) => can(o, d));
+          if (spots.length < 2) continue;
+          for (const key of ["row", "col"]) {
+            if (!spots.every((o) => o.dataset[key] === spots[0].dataset[key])) continue;
+            const gone = cells.filter((o) => box(o) !== b && o.dataset[key] === spots[0].dataset[key] && can(o, d));
+            if (gone.length) found.push({ d, spots, gone });
+          }
+        }
+      }
+    } else {
+      for (const key of ["row", "col"]) for (let n = 0; n < 9; n++) {
+        const line = cells.filter((o) => +o.dataset[key] === n);
+        for (const d of DIGITS) {
+          if (line.some((o) => val(o) === d)) continue;
+          const spots = line.filter((o) => can(o, d));
+          if (spots.length < 2 || !spots.every((o) => box(o) === box(spots[0]))) continue;
+          const gone = cells.filter((o) => box(o) === box(spots[0]) && +o.dataset[key] !== n && can(o, d));
           if (gone.length) found.push({ d, spots, gone });
         }
       }
     }
+    const { name, why } = BOX_LINE[kind];
     workMsg.classList.remove("err");
     if (!found.length) {
-      workMsg.textContent = "ヒント：今はポインティングで消せる候補はありません。";
+      workMsg.textContent = `ヒント：今は${name}で消せる候補はありません。`;
       return;
     }
     countHint();
@@ -129,5 +159,6 @@
       for (const o of x.gone) o.querySelector(`.cand[data-n="${x.d}"]`).classList.add("hint");
     });
     renderPad();
-    workMsg.textContent = `ヒント：ポインティング（${found.length}組）：同じ色の数字は、そのブロックの中では1つの行（列）にしか入りません。なので、その行（列）のブロックの外にある同じ数字（赤い枠）は消せます。`;
+    workMsg.textContent = `ヒント：${name}（${found.length}組）：${why}`;
   }
+

@@ -5,7 +5,7 @@
   try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); } catch (e) {}
   const genLevels = [
     { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
-    { label: "中級", desc: "ポインティング、3つの数字の組、Xウイング、XYウイングなどが必要です" },
+    { label: "中級", desc: "ポインティング、クレーミング、3つの数字の組、Xウイング、XYウイングなどが必要です" },
     { label: "難問", desc: "4つの数字の組、XYZウイング、スカイスクレイパー、XYチェーンなどが必要です（背理法はいりません）" },
     { label: "最難関", desc: "問題の数字は21個以下。背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です。★4つ以上の解き方を4回以上使います" },
   ];
