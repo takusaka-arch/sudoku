@@ -452,6 +452,15 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .tut-pm p { margin: 2px 6px 4px; font-size: 0.8rem; color: var(--muted); }
 .tut-pm span { font: 500 0.95rem var(--font-ui); padding: 8px 10px; border-radius: 6px; }
 .tut-pm span.on { color: var(--answer); font-weight: 700; animation: tp-pick 3.6s ease-out infinite; }
+.tut-pm span.asm { color: var(--asm); font-weight: 700; }
+.tut-pm span.on2 { background: var(--hover); }
+.tut-asm { outline: 3px solid var(--asm); outline-offset: 3px; }
+.tut-asm .cell.as-root { box-shadow: inset 0 0 0 3px var(--asm); background: var(--asm-bg); }
+.tut-asm .cell .big { color: var(--asm); }
+.tut-pm.still { animation: none; }
+.tut-asm { flex-wrap: wrap; }
+.tut-asm .cand.as-c { box-shadow: inset 0 0 0 1.5px var(--asm); border-radius: 3px; }
+.tut-pick { width: 100%; }
 .tut-more { flex-basis: 100%; display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line-sub); font-size: 0.88rem; line-height: 1.6; }
 @keyframes tp-press { 0% { transform: scale(0.4); opacity: 0; } 8% { opacity: 1; } 22%, 88% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
 @keyframes tp-menu { 0%, 22% { opacity: 0.25; transform: translateY(6px); } 30%, 92% { opacity: 1; transform: none; } 100% { opacity: 0.25; transform: translateY(6px); } }
@@ -723,7 +732,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.229</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.230</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -5002,10 +5011,11 @@ p.note:empty { display: none; }
   const MENU = isMouse ? "右クリック" : "長押し";
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
-    { title: "1. 問題を登録する", text: `使い方を、実際に試しながら説明します。まずは初級編（6ステップ）です。\n\n最初の画面の「問題を作る・登録する」から、次のどれかで問題を入れます。\n・自分で作る：数字を手で入力する（写真から読み取ることもできます）\n・自動で作る：レベルを選ぶと新しい問題ができます\n・問題ファイルを読み込む\n\n手で入力するときは、小さな数字を${TAP}すると問題の数字になります。全部入れたら「問題登録完了」→「回答スタート」です。`, part: 1, jump: true,
+    { part: 0, title: "使い方ガイド", text: "使い方を、実際に試しながら説明します。どこから見ますか？", pick: true },
+    { title: "1. 問題を登録する", text: `初級編（6ステップ）です。\n\n最初の画面の「問題を作る・登録する」から、次のどれかで問題を入れます。\n・自分で作る：数字を手で入力する（写真から読み取ることもできます）\n・自動で作る：レベルを選ぶと新しい問題ができます\n・問題ファイルを読み込む\n\n手で入力するときは、小さな数字を${TAP}すると問題の数字になります。全部入れたら「問題登録完了」→「回答スタート」です。`, part: 1,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
-    { part: 1, title: `2. まずは数字を${MENU}`, text: `解くときは、小さな数字を${MENU}します。メニューが出るので、行いたい操作を選んでください。`, pressDemo: true },
+    { part: 1, title: `2. まずは数字を${MENU}`, text: `解くときは、小さな数字を${MENU}します。メニューが出るので、行いたい操作を選んでください。\nメニューの「○ と仮定する」（仮定モード）は、上級編で説明します。`, pressDemo: true },
     { part: 1, title: "3. 候補を選ぶ・確定候補にする", text: `メニューの「候補（青）にする」で青くなります（候補の印）。紙で解くときの「メモ」と同じ働きで、入りそうな数字に印を付けておけます。\n「確定候補にする」で大きな青い数字になります（確定候補）。大きな数字を${MENU}して「確定候補から外す」を選ぶと戻ります。`,
       cells: [0], target: [0, "7"], menu: true, ask: `「5」を${MENU}して候補（青）にしてから、「7」を${MENU}して確定候補にしてください。`,
       goal: (d) => d.cand(0, "5").classList.contains("pick") && d.cell(0).classList.contains("tent"), ok: "できました！ 青い数字が候補、大きな青い数字が確定候補です。" },
@@ -5041,7 +5051,11 @@ p.note:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
     ] },
     { part: 2, title: "ボタン", text: "【よく使う操作】\n1手戻す：1つ前の操作に戻す（パソコンは Ctrl+Z でも可）\nヒント：次に使える解き方を示す\n答え合わせ：確定したマスを正解と比べる\n\n【状態の管理】\nこの状態を保存：その時点を残す\n保存した状態に戻す：残した時点に戻る\n再生：確定した順に数字を再生する\n\n【その他の操作】\n表示方法変更：未確定のマスを空白／候補を表示／正解を表示\nリセット：問題だけの最初の状態に戻す\n問題一覧へ：問題の一覧に戻る\n\n一時停止：タイマーを止める。一時停止中は保存とその他の操作（表示方法変更を除く）だけ使えます\n\n" + (matchMedia("(hover: hover) and (pointer: fine)").matches ? "ボタンにマウスを乗せると" : "ボタンを長押しすると") + "、説明が出ます" },
-    { part: 2, title: "準備ができました", text: "このガイドは、アプリ名の右の「？」ボタンからいつでも見られます。", last: true },
+    { part: 2, title: "準備ができました", text: "難しい問題で使う「仮定モード」は、上級編で説明します。\nこのガイドは、アプリ名の右の「？」ボタンからいつでも見られます。", last: true, toAdv: true },
+    { part: 3, title: "ようこそ（上級編）", text: "難しい問題で、ヒントの解き方だけでは先に進めないときは「仮定モード」が使えます。\n\nあるマスに数字を仮に入れて先を試し、矛盾が出たら「その数字は入らない」と分かります（背理法）。紙で解くときに、鉛筆で薄く書いて試すのと同じです。" },
+    { part: 3, title: "1. 仮定を始める", text: `小さな数字を${MENU}して、メニューの「○ と仮定する」（紫の文字）を選びます。\n\n盤の外枠が紫になり、仮定したマスは紫の数字になります。そのあとに入れた確定候補は紫の数字、変えた候補は紫の枠で表示されます。`, asmDemo: true },
+    { part: 3, title: "2. 仮定しているあいだ", text: "・仮定できるのは1つだけです（仮定の中でさらに仮定はできません）\n・「1手戻す」で戻れるのは、仮定した直後までです\n・ヒント・答え合わせ・保存・リセットなどは使えません。タイマーは動き続けます\n・同じ数字が重なる、入る数字がないマスができる、入る場所がない数字ができる、のどれかになると、赤い字で「矛盾が見つかりました」と出ます" },
+    { part: 3, title: "3. 仮定を終える", text: "盤の右（スマホは下）の「仮定モード」の枠で選びます。\n・仮定を採用する：今の盤のまま続けます。全部埋まっていれば完成になります\n・仮定前に戻る：仮定する前の盤に戻します\n・仮定前に戻り、この数字を除外：仮定前に戻し、仮定した数字をそのマスの候補から消します。矛盾が出たときに使います\n\n矛盾が出ても、仮定のあとの入力にまちがいがないか確かめてから使ってください。\n仮定中にホームへ移ったりアプリを閉じたりすると、仮定前の盤が保存されます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
   let tutBeforeTap = null;
@@ -5064,7 +5078,7 @@ p.note:empty { display: none; }
     const st = tutSteps[tutIdx];
     // 初級編・中級編ごとに「何ページ目か」を出す
     const same = tutSteps.filter((x) => x.part === st.part);
-    document.getElementById("tut-step").textContent = `${st.part === 1 ? "初級編" : "中級編"}　${same.indexOf(st) + 1} / ${same.length}`;
+    document.getElementById("tut-step").textContent = st.part === 0 ? "" : `${["", "初級編", "中級編", "上級編"][st.part]}　${same.indexOf(st) + 1} / ${same.length}`;
     closeTutMenu();
     document.getElementById("tut-title").textContent = st.title;
     document.getElementById("tut-text").textContent = st.text;
@@ -5094,14 +5108,48 @@ p.note:empty { display: none; }
       box.append(go2, use);
       tutDemo.appendChild(box);
     }
-    // 最初のページから中級編へ飛べるようにする（2回目以降に見る人向け）
-    if (st.jump) {
+    // 最初のページ: 初級編・中級編・上級編から選ぶ
+    if (st.pick) {
+      const box = document.createElement("div");
+      box.className = "gen-levels tut-pick";
+      for (const [part, name, desc] of [[1, "初級編", "メニューで操作する基本（6ステップ）"], [2, "中級編", "タップの回数で速く操作する・ヒント・保存など"], [3, "上級編", "難しい問題で使う仮定モード"]]) {
+        const b = document.createElement("button");
+        b.type = "button";
+        b.innerHTML = `${name}<small>${desc}</small>`;
+        b.addEventListener("click", () => { tutIdx = tutSteps.findIndex((x) => x.part === part); renderTut(); });
+        box.appendChild(b);
+      }
+      tutDemo.appendChild(box);
+    }
+    if (st.toAdv) {
       const j = document.createElement("button");
       j.type = "button";
       j.className = "btn sub small";
-      j.textContent = "中級編から見る";
-      j.addEventListener("click", () => { tutIdx = tutSteps.findIndex((x) => x.part === 2); renderTut(); });
+      j.textContent = "上級編に進む";
+      j.addEventListener("click", () => { tutIdx = tutSteps.findIndex((x) => x.part === 3); renderTut(); });
       tutDemo.appendChild(j);
+    }
+    // 上級編: 仮定モードの見本（メニューの紫の項目と、仮定中の盤の見え方）
+    if (st.asmDemo) {
+      const wrap = document.createElement("div");
+      wrap.className = "tut-press";
+      const r3 = document.createElement("div");
+      r3.className = "row3 tut-asm";
+      const mk = (big, cls) => {
+        const c = document.createElement("div");
+        c.className = "cell " + cls;
+        if (big) { const b = document.createElement("span"); b.className = "big"; b.textContent = big; c.appendChild(b); c.classList.add("tent"); }
+        else for (const n of "123456789") { const sp = document.createElement("span"); sp.className = "cand" + (n === "2" ? " pick" : n === "7" ? " off as-c" : ""); sp.textContent = n; sp.dataset.n = n; c.appendChild(sp); }
+        r3.appendChild(c);
+      };
+      mk("5", "as-root");
+      mk("3", "as-t");
+      mk("", "");
+      const m = document.createElement("div");
+      m.className = "tut-pm still";
+      m.innerHTML = `<p>1行1列</p><span>5 を候補（青）にする</span><span>5 を確定候補にする</span><span>5 を候補から消す</span><span class="asm on2">5 と仮定する</span>`;
+      wrap.append(m, r3);
+      tutDemo.appendChild(wrap);
     }
     if (st.tryPhoto) {
       const b = document.createElement("button");
@@ -5146,7 +5194,7 @@ p.note:empty { display: none; }
       const m = document.createElement("div");
       m.className = "tut-pm";
       m.setAttribute("aria-label", "メニューの見本");
-      m.innerHTML = `<p>1行1列</p><span class="on">5 を候補（青）にする</span><span>5 を確定候補にする</span><span>5 を候補から消す</span>`;
+      m.innerHTML = `<p>1行1列</p><span class="on">5 を候補（青）にする</span><span>5 を確定候補にする</span><span>5 を候補から消す</span><span class="asm">5 と仮定する</span>`;
       wrap.append(r3, m);
       const more = document.createElement("div");
       more.className = "tut-more";
@@ -5381,7 +5429,13 @@ p.note:empty { display: none; }
     tutIdx++;
     renderTut();
   });
-  document.getElementById("tut-prev").addEventListener("click", () => { if (tutIdx > 0) { tutIdx--; renderTut(); } });
+  document.getElementById("tut-prev").addEventListener("click", () => {
+    if (tutIdx <= 0) return;
+    // 各編の1ページ目で「前へ」を押したら、選ぶ画面に戻る
+    const cur = tutSteps[tutIdx];
+    tutIdx = tutSteps.findIndex((x) => x.part === cur.part) === tutIdx ? 0 : tutIdx - 1;
+    renderTut();
+  });
   document.getElementById("tut-skip").addEventListener("click", () => { tutEl.hidden = true; });
   document.getElementById("tut-open").addEventListener("click", openTutorial);
 
