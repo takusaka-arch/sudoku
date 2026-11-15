@@ -3,12 +3,16 @@
   // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
   const GEN_STOCK_KEY = "sudoku-gen-stock6", GEN_STOCK_MAX = 10;  // 最難関の条件を変えたので、前の作り置きは使わない
   try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); localStorage.removeItem("sudoku-gen-stock5"); } catch (e) {}
-  const genLevels = [
-    { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
-    { label: "中級", desc: "★2〜3つの解き方（ポインティング、クレーミング、2つの数字のペア、3つの数字の組、Xウイング、スカイスクレイパー）が必要です" },
-    { label: "難問", desc: "★4〜5つの解き方（4つの数字の組、ソードフィッシュ、XY/XYZウイング、シンプルカラーリング、チェーンなど）が必要です（背理法はいりません）" },
-    { label: "最難関", desc: "問題の数字は21個以下。背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です。★4つ以上の解き方を4回以上使います" },
-  ];
+  // 難易度の説明文は 01a-levels.js の DIFFICULTIES と TECHNIQUES から作る（レベルを変えると説明もそろって変わる）
+  const genLevels = DIFFICULTIES.map((d, i) => {
+    const lo = i ? DIFFICULTIES[i - 1].maxLv + 1 : 1;
+    if (i === 0) return { label: d.label, desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" };
+    if (d.maxGivens) return { label: d.label, desc: `問題の数字は${d.maxGivens}個以下。背理法以外の解き方では${d.minLeft}マス以上が残り、仮に置いて矛盾したら消す、が必要です。★${d.highLv}つ以上の解き方を${d.minHighSteps}回以上使います` };
+    const names = TECHNIQUES.filter((t) => t.lv >= lo && t.lv <= d.maxLv).map((t) => t.name).join("、");
+    const stars = lo === d.maxLv ? `★${lo}つ` : `★${lo}〜${d.maxLv}つ`;
+    const noContra = DIFFICULTIES[i + 1] && DIFFICULTIES[i + 1].maxGivens ? "（背理法はいりません）" : "";
+    return { label: d.label, desc: `${stars}の解き方（${names}）が必要です${noContra}` };
+  });
   const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");
   const genStock = (list) => {
     try {
@@ -24,12 +28,12 @@
   const sent = [];  // Worker が途中で使えなくなったときに、画面側で同じ頼みごとをやり直すため
   function genOnPage() {
     const fake = { postMessage: (m) => setTimeout(() => onGen(m), 0), onmessage: null };
-    sudokuGen(fake);
+    sudokuGen(fake, GEN_RULES);
     genWorker = { postMessage: (m) => setTimeout(() => fake.onmessage({ data: m }), 0) };
     sent.forEach((m) => genWorker.postMessage(m));
   }
   try {
-    const w = new Worker(URL.createObjectURL(new Blob([`(${sudokuGen})(self)`], { type: "text/javascript" })));
+    const w = new Worker(URL.createObjectURL(new Blob([`(${sudokuGen})(self, ${JSON.stringify(GEN_RULES)})`], { type: "text/javascript" })));
     w.onmessage = (e) => onGen(e.data);
     w.onerror = () => { w.terminate(); genOnPage(); };
     genWorker = { postMessage: (m) => { sent.push(m); if (sent.length > 50) sent.shift(); w.postMessage(m); } };
@@ -50,7 +54,7 @@
       b.type = "button";
       b.textContent = lv.label;
       const sm = document.createElement("small");
-      sm.textContent = lv.desc + (i === 3 ? `（作り置き ${genStock().length}問）` : "");
+      sm.textContent = lv.desc + (i === DIFFICULTIES.length - 1 ? `（作り置き ${genStock().length}問）` : "");
       b.appendChild(sm);
       b.disabled = !!genWaiting;
       b.addEventListener("click", () => makeProblem(i + 1));

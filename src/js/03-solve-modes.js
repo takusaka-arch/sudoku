@@ -11,16 +11,15 @@
   // 残りのマス数（問題の数字も確定候補も入っていないマス）
   const leftEl = document.getElementById("left-cells");
   // 目標完成時間 = 解き終わるまでの1手ごとに、使うヒントのレベルの秒数を足したもの
-  // 1手ごとにヒントレベルの秒数を足す（ver.240-241）: レベル1 5秒（ver.245）・レベル2 1分30秒・レベル3 3分・レベル4 5分・レベル5 7分・レベル6（背理法） 10分
+  // 秒数（TARGET_SEC・CONTRA_FOLLOW_SEC）は 01a-levels.js で決める
   const targetEl = document.getElementById("target-time");
-  const TARGET_SEC = { 1: 5, 2: 90, 3: 180, 4: 300, 5: 420, 6: 600 };
   // 1手ずつのレベルの並びから、目標の秒数を出す。
-  // 背理法（レベル6）は、仮定するマスを10分、その仮定に続けて決まるマス（すぐあとに続くレベル6の手）をレベル3と同じ時間にする。
-  // 別のマスで仮定し直すとき（あいだに別の手が入ったとき）は、また10分から数える
+  // 背理法は、仮定するマスを TARGET_SEC[背理法のレベル]、その仮定に続けて決まるマス（すぐあとに続く背理法の手）を CONTRA_FOLLOW_SEC にする。
+  // 別のマスで仮定し直すとき（あいだに別の手が入ったとき）は、また TARGET_SEC から数える
   function targetSeconds(levels) {
     let sec = 0, prev = 0;
     for (const k of levels) {
-      sec += k === 6 && prev === 6 ? TARGET_SEC[3] : (TARGET_SEC[k] || 0);
+      sec += k === TECH_LV["背理法"] && prev === k ? CONTRA_FOLLOW_SEC : (TARGET_SEC[k] || 0);
       prev = k;
     }
     return sec;
@@ -37,7 +36,7 @@
     if (!solution) return "";
     const g = [...board.querySelectorAll(".cell")].sort((a, b) => (a.dataset.row * 9 + +a.dataset.col) - (b.dataset.row * 9 + +b.dataset.col)).map((c) => +((c.classList.contains("given") && c.dataset.value) || 0));
     try {
-      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} });
+      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
       hintEngine.grade(g, null, solution.sol || true);
       const rec = hintEngine.grade.steps || [];
       let sec = targetSeconds(rec);

@@ -755,7 +755,7 @@ body.fold .head button { flex-shrink: 0; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.247</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.248</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1359,6 +1359,60 @@ body.fold .head button { flex-shrink: 0; }
     }
     markConflicts();
   }
+  // ===== 01a-levels.js：ヒントのレベル・目標完成時間・自動作成の難易度の決まり =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
+  //
+  // ★ レベルや時間の調整は、このファイルだけを書きかえればよい ★
+  //   ここで決めたことは、次のすべてにそのまま使われる。
+  //   ・ヒントメニューの★の数と並び順（08-highlight-hintmenu-view.js）
+  //   ・ヒントポイント、「ヒントを控える」の判定、「答えと理由」の理由のレベル（10-hints-advanced.js）
+  //   ・目標完成時間（03-solve-modes.js）
+  //   ・自動作成の難易度分けと、難易度の説明文（15-puzzle-maker.js・16-generator.js）
+  //
+  // 問題を作る計算は裏の Worker でも動くので、ここの値は JSON にして渡す（関数は書かない）。
+
+  // 解き方とヒントのレベル。name はヒントメニューの名前と同じにする。
+  // 自動作成と目標時間の計算では、1手ごとにレベルの低いものから順に試す（同じレベルの中はこの並び順）。
+  // 新しい解き方を足すときは、ここに1行足し、15-puzzle-maker.js の SOLVERS に同じ名前の計算を足す。
+  const TECHNIQUES = [
+    { name: "注目するマス", lv: 1 },  // シングル（そのマスに入る数字が1つだけ／そこにしか入らない）
+    { name: "ポインティング", lv: 2 },
+    { name: "クレーミング", lv: 2 },
+    { name: "2つの数字のペア", lv: 2 },
+    { name: "3つの数字の組", lv: 3 },
+    { name: "Xウイング", lv: 3 },
+    { name: "スカイスクレイパー", lv: 3 },
+    { name: "4つの数字の組", lv: 4 },
+    { name: "ソードフィッシュ", lv: 4 },
+    { name: "XYウイング", lv: 4 },
+    { name: "XYZウイング", lv: 4 },
+    { name: "唯一解の原則", lv: 4 },
+    { name: "シンプルカラーリング", lv: 5 },
+    { name: "リモートペア", lv: 5 },
+    { name: "XYチェーン", lv: 5 },
+    { name: "チェーン", lv: 5 },
+    { name: "背理法", lv: 6 },
+  ];
+  const TECH_LV = Object.fromEntries(TECHNIQUES.map((t) => [t.name, t.lv]));
+
+  // 目標完成時間：1手ごとに、その手のレベルの秒数を足す
+  const TARGET_SEC = { 1: 5, 2: 90, 3: 180, 4: 300, 5: 420, 6: 600 };
+  // 背理法で仮定した直後に続けて決まるマス（すぐあとに続くレベル6の手）の秒数。あいだに別の手が入れば、また TARGET_SEC[6] から
+  const CONTRA_FOLLOW_SEC = 180;
+
+  // 自動作成の難易度。maxLv = 使ってよい一番高いレベル（その1つ下の難易度の maxLv より上のレベルが、少なくとも1手は必要）
+  // minGivens = 問題の数字をこれより少なくはしない
+  const DIFFICULTIES = [
+    { label: "初級", maxLv: 1, minGivens: 36 },
+    { label: "中級", maxLv: 3, minGivens: 26 },
+    { label: "難問", maxLv: 5, minGivens: 22 },
+    // 最難関 = 背理法が必要。問題の数字は maxGivens 個以下、背理法以外で解き進めて minLeft マス以上残り、
+    // レベル highLv 以上の手を minHighSteps 回以上使うもの
+    { label: "最難関", maxLv: 6, minGivens: 17, maxGivens: 21, minLeft: 15, highLv: 4, minHighSteps: 4 },
+  ];
+
+  // 問題を作る計算（sudokuGen）に渡す決まり
+  const GEN_RULES = { techniques: TECHNIQUES, difficulties: DIFFICULTIES };
   // ===== 02-input.js：マスの選択（スマホ）・タップ回数の判定・数字パッド・右クリック／長押しメニュー・問題登録完了・タイマー =====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // スマホではマスのタップでマスを選び、数字は下のパッドで操作する
@@ -1771,16 +1825,15 @@ body.fold .head button { flex-shrink: 0; }
   // 残りのマス数（問題の数字も確定候補も入っていないマス）
   const leftEl = document.getElementById("left-cells");
   // 目標完成時間 = 解き終わるまでの1手ごとに、使うヒントのレベルの秒数を足したもの
-  // 1手ごとにヒントレベルの秒数を足す（ver.240-241）: レベル1 5秒（ver.245）・レベル2 1分30秒・レベル3 3分・レベル4 5分・レベル5 7分・レベル6（背理法） 10分
+  // 秒数（TARGET_SEC・CONTRA_FOLLOW_SEC）は 01a-levels.js で決める
   const targetEl = document.getElementById("target-time");
-  const TARGET_SEC = { 1: 5, 2: 90, 3: 180, 4: 300, 5: 420, 6: 600 };
   // 1手ずつのレベルの並びから、目標の秒数を出す。
-  // 背理法（レベル6）は、仮定するマスを10分、その仮定に続けて決まるマス（すぐあとに続くレベル6の手）をレベル3と同じ時間にする。
-  // 別のマスで仮定し直すとき（あいだに別の手が入ったとき）は、また10分から数える
+  // 背理法は、仮定するマスを TARGET_SEC[背理法のレベル]、その仮定に続けて決まるマス（すぐあとに続く背理法の手）を CONTRA_FOLLOW_SEC にする。
+  // 別のマスで仮定し直すとき（あいだに別の手が入ったとき）は、また TARGET_SEC から数える
   function targetSeconds(levels) {
     let sec = 0, prev = 0;
     for (const k of levels) {
-      sec += k === 6 && prev === 6 ? TARGET_SEC[3] : (TARGET_SEC[k] || 0);
+      sec += k === TECH_LV["背理法"] && prev === k ? CONTRA_FOLLOW_SEC : (TARGET_SEC[k] || 0);
       prev = k;
     }
     return sec;
@@ -1797,7 +1850,7 @@ body.fold .head button { flex-shrink: 0; }
     if (!solution) return "";
     const g = [...board.querySelectorAll(".cell")].sort((a, b) => (a.dataset.row * 9 + +a.dataset.col) - (b.dataset.row * 9 + +b.dataset.col)).map((c) => +((c.classList.contains("given") && c.dataset.value) || 0));
     try {
-      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} });
+      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
       hintEngine.grade(g, null, solution.sol || true);
       const rec = hintEngine.grade.steps || [];
       let sec = targetSeconds(rec);
@@ -3338,27 +3391,34 @@ body.fold .head button { flex-shrink: 0; }
   }
   // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
   const hintKinds = [
-    // lv: ヒントのレベル（右の★の数・ポイント）。1 = 次に注目するマス、2 中級、3 上級、4 達人、5 超上級、6 背理法
+    // ★の数（レベル）は 01a-levels.js の TECHNIQUES で決まり、メニューはレベルの順に並ぶ（label を TECHNIQUES の name と同じにする）
     { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
-    { lv: 1, label: "注目するマス", desc: "次に考えるとよいマスに色を付けます。盤を変えずにもう一度選ぶと「次に注目するマス」になり、別のマスを示します", run: () => runHint(false) },
-    { lv: 2, label: "ポインティング", desc: "ブロックの中で1つの行（列）にしか入らない数字と、それでブロックの外から消せる候補を示します", run: () => showBoxLine("pointing") },
-    { lv: 2, label: "クレーミング", desc: "行（列）の中で1つのブロックにしか入らない数字と、それでそのブロックの中から消せる候補を示します", run: () => showBoxLine("claiming") },
-    { lv: 2, label: "2つの数字のペア", desc: "隠れペア（2つの数字が同じ2マスにしか入らない）と、ネイキッドペア（候補が同じ2つだけのマスが2つある）を、組ごとに色分けします", run: () => showPairs(2) },
-    { lv: 3, label: "3つの数字の組", desc: "隠れた3つの組と、ネイキッド3つの組（3マスの候補を合わせると3つの数字だけ）を、消せる候補と一緒に示します", run: () => showSubsets(3) },
-    { lv: 3, label: "Xウイング", desc: "2つの行（列）で長方形の角にしか入らない数字と、それで消せる候補を示します", run: () => showXWing() },
-    { lv: 3, label: "スカイスクレイパー", desc: "2か所にしか入らない行（列）を2本使い、端どうしの両方から見えるマスの候補を消します", run: () => showSkyscraper() },
-    { lv: 4, label: "4つの数字の組", desc: "3つの組と同じ考え方を、4つの数字と4マスで使います", run: () => showSubsets(4) },
-    { lv: 4, label: "ソードフィッシュ", desc: "Xウイングを3つの行（列）に広げたものです", run: () => showSwordfish() },
-    { lv: 4, label: "XYウイング", desc: "候補が2つのマス3つ（AB・AC・BC）を使い、両端から見えるマスのCを消します。Y-Wingとも呼びます", run: () => showWing(false) },
-    { lv: 4, label: "XYZウイング", desc: "軸のマスの候補が3つ（ABC）のXYウイングです。3マスすべてから見えるマスのCを消します", run: () => showWing(true) },
-    { lv: 4, label: "唯一解の原則", desc: "ユニークレクタングル。2つのブロックにまたがる長方形の4マスが同じ2つの候補だけになると答えが2通りになってしまうので、そうならないように候補を消します", run: () => showUR() },
-    { lv: 5, label: "シンプルカラーリング", desc: "ある数字が2か所にしか入らない所をたどって2色で塗り、どちらかの色が正解になることを使って候補を消します", run: () => showColoring() },
-    { lv: 5, label: "リモートペア", desc: "候補が同じ2つのマスが4つ以上つながるとき、交互に入る数字を使って候補を消します", run: () => showRemotePair() },
-    { lv: 5, label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
-    { lv: 5, label: "チェーン", desc: "「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぎ、両端のどちらかが正しいことを使って候補を消します", run: () => showChain() },
-    { lv: 6, label: "背理法", desc: "候補が2つのマスに片方を仮に入れ、矛盾が出たらもう一方が答えだと分かります", run: () => showContradiction() },
+    { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます。盤を変えずにもう一度選ぶと「次に注目するマス」になり、別のマスを示します", run: () => runHint(false) },
+    { label: "ポインティング", desc: "ブロックの中で1つの行（列）にしか入らない数字と、それでブロックの外から消せる候補を示します", run: () => showBoxLine("pointing") },
+    { label: "クレーミング", desc: "行（列）の中で1つのブロックにしか入らない数字と、それでそのブロックの中から消せる候補を示します", run: () => showBoxLine("claiming") },
+    { label: "2つの数字のペア", desc: "隠れペア（2つの数字が同じ2マスにしか入らない）と、ネイキッドペア（候補が同じ2つだけのマスが2つある）を、組ごとに色分けします", run: () => showPairs(2) },
+    { label: "3つの数字の組", desc: "隠れた3つの組と、ネイキッド3つの組（3マスの候補を合わせると3つの数字だけ）を、消せる候補と一緒に示します", run: () => showSubsets(3) },
+    { label: "Xウイング", desc: "2つの行（列）で長方形の角にしか入らない数字と、それで消せる候補を示します", run: () => showXWing() },
+    { label: "スカイスクレイパー", desc: "2か所にしか入らない行（列）を2本使い、端どうしの両方から見えるマスの候補を消します", run: () => showSkyscraper() },
+    { label: "4つの数字の組", desc: "3つの組と同じ考え方を、4つの数字と4マスで使います", run: () => showSubsets(4) },
+    { label: "ソードフィッシュ", desc: "Xウイングを3つの行（列）に広げたものです", run: () => showSwordfish() },
+    { label: "XYウイング", desc: "候補が2つのマス3つ（AB・AC・BC）を使い、両端から見えるマスのCを消します。Y-Wingとも呼びます", run: () => showWing(false) },
+    { label: "XYZウイング", desc: "軸のマスの候補が3つ（ABC）のXYウイングです。3マスすべてから見えるマスのCを消します", run: () => showWing(true) },
+    { label: "唯一解の原則", desc: "ユニークレクタングル。2つのブロックにまたがる長方形の4マスが同じ2つの候補だけになると答えが2通りになってしまうので、そうならないように候補を消します", run: () => showUR() },
+    { label: "シンプルカラーリング", desc: "ある数字が2か所にしか入らない所をたどって2色で塗り、どちらかの色が正解になることを使って候補を消します", run: () => showColoring() },
+    { label: "リモートペア", desc: "候補が同じ2つのマスが4つ以上つながるとき、交互に入る数字を使って候補を消します", run: () => showRemotePair() },
+    { label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
+    { label: "チェーン", desc: "「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぎ、両端のどちらかが正しいことを使って候補を消します", run: () => showChain() },
+    { label: "背理法", desc: "候補が2つのマスに片方を仮に入れ、矛盾が出たらもう一方が答えだと分かります", run: () => showContradiction() },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法が必要なら答えだけ示します）", run: () => runHint(true) },
   ];
+  // レベルを付け、レベルの順に並べ直す（「ヒントを消す」は一番上、「答えと理由」は一番下のまま）
+  hintKinds.forEach((k) => { if (TECH_LV[k.label]) k.lv = TECH_LV[k.label]; });
+  {
+    const leveled = hintKinds.filter((k) => k.lv).sort((x, y) => x.lv - y.lv);
+    let n = 0;
+    hintKinds.forEach((k, i) => { if (k.lv) hintKinds[i] = leveled[n++]; });
+  }
   const hintMenu = document.getElementById("hint-menu");
   // ヒントを控える設定: 控えるレベル以下のヒントは「もう少しがんばりましょう」を出し、「それでもヒントを見る」で表示する
   // 見せてよければ true を返す。控えるときは go を覚えておき、「それでもヒントを見る」で go を呼ぶ
@@ -4278,9 +4338,9 @@ body.fold .head button { flex-shrink: 0; }
     const show = (cand, text) => {
       const key = cand.closest(".cell").dataset.row + "-" + cand.closest(".cell").dataset.col;
       if (seen.has(key)) return false;
-      if (!hintGate(1, () => runHint(full))) return true;
+      if (!hintGate(TECH_LV["注目するマス"], () => runHint(full))) return true;
       seen.add(key);
-      countHint(true, full ? 2 : 1, full ? "" : key);
+      countHint(true, (full ? 2 : 1) * TECH_LV["注目するマス"], full ? "" : key);
       if (full) cand.classList.add("hint");
       else cand.closest(".cell").classList.add("hint-cell");
       renderPad();
@@ -4314,7 +4374,7 @@ body.fold .head button { flex-shrink: 0; }
     const showPair = (two, a, b, text) => {
       const key = "p" + two.map((o) => o.dataset.row + o.dataset.col).join("") + a + b;
       if (seen.has(key)) return false;
-      if (!hintGate(2, () => runHint(full))) return true;
+      if (!hintGate(TECH_LV["2つの数字のペア"], () => runHint(full))) return true;
       seen.add(key);
       countHint(true, undefined, key);
       for (const o of two) {
@@ -4356,7 +4416,7 @@ body.fold .head button { flex-shrink: 0; }
         if (!x) for (let d = 1; d <= 9; d++) if (can(o, String(d))) m |= 1 << d;
         cand.push(m);
       }
-      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} });
+      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
       const r = hintEngine.grade(null, { v, cand });
       const name = (i) => `${Math.floor(i / 9) + 1}行${(i % 9) + 1}列`;
       const mark = (i, d) => {
@@ -4365,14 +4425,14 @@ body.fold .head button { flex-shrink: 0; }
         o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
       };
       if (r.i !== undefined && r.log.length) {
-        // 理由のレベル = 使った解き方のレベルの一番高いもの（レベルは 15-puzzle-maker.js の TECHS で決まる）
+        // 理由のレベル = 使った解き方のレベルの一番高いもの（レベルは 01a-levels.js の TECHNIQUES で決まる）
         const rlv = Math.max(1, ...r.log.map((e) => e.lv));
         const ekey = "e" + r.i;
         if (!full && seen.has(ekey)) return focusDone();
         if (!hintGate(rlv, () => runHint(full))) return;
         if (!full) {
           seen.add(ekey);
-          countHint(true, 1, ekey);
+          countHint(true, TECH_LV["注目するマス"], ekey);
           at(r.i).classList.add("hint-cell");
           renderPad();
           workMsg.classList.remove("err");
@@ -4398,17 +4458,17 @@ body.fold .head button { flex-shrink: 0; }
         if (best >= 0) {
           const skey = "s" + best;
           if (!full && seen.has(skey)) return focusDone();
-          if (!hintGate(6, () => runHint(full))) return;
+          if (!hintGate(TECH_LV["背理法"], () => runHint(full))) return;
           if (!full) {
             seen.add(skey);
-            countHint(true, 1, skey);
+            countHint(true, TECH_LV["注目するマス"], skey);
             at(best).classList.add("hint-cell");
             renderPad();
             workMsg.classList.remove("err");
             workMsg.textContent = "ヒント：薄い赤のマスに注目してください。（ここから先は背理法が必要です）";
             return;
           }
-          countHint(true, 12);
+          countHint(true, 2 * TECH_LV["背理法"]);
           mark(best, solution.sol[best]);
           renderPad();
           workMsg.classList.remove("err");
@@ -5550,7 +5610,14 @@ body.fold .head button { flex-shrink: 0; }
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 問題を作る処理（裏の計算用 Worker でも、使えないときは画面側でも動く）
   // self: postMessage / onmessage を持つもの。レベル 1=初級 2=中級 3=難問 4=最難関
-  function sudokuGen(self) {
+  // rules: 解き方のレベルと難易度の決まり（01a-levels.js の GEN_RULES）。Worker でも使うので、外の変数は見ずに引数でもらう
+  function sudokuGen(self, rules) {
+    const TOP = rules.difficulties.length;  // 一番上の難易度（最難関）
+    const EXTREME = rules.difficulties[TOP - 1];
+    const lvOf = (name) => (rules.techniques.find((t) => t.name === name) || {}).lv;
+    const CONTRA_LV = lvOf("背理法");
+    // 1手のレベル → その手が必要になる難易度（1 = 初級 …）
+    const diffOf = (k) => rules.difficulties.findIndex((d) => k <= d.maxLv) + 1;
     const units = [];
     for (let i = 0; i < 9; i++) {
       units.push([...Array(9)].map((_, k) => i * 9 + k));
@@ -5919,24 +5986,73 @@ body.fold .head button { flex-shrink: 0; }
         }
         return false;
       }
-      // シングル以外の解き方と、そのヒントのレベル（ヒントメニューの★の数と同じ）。
-      // ここがレベルの決め所: 目標完成時間・「答えと理由」のレベル・自動作成の難易度分けは、すべてこの表から決まる。
-      // 1手ごとに、レベルの低い解き方から順に試す（同じレベルの中は上から順）
-      const TECHS = [
-        { name: "ポインティング", lv: 2, run: pointing },
-        { name: "クレーミング", lv: 2, run: claiming },
-        { name: "2つの数字のペア", lv: 2, run: pairs },
-        { name: "3つの数字の組", lv: 3, run: triples },
-        { name: "Xウイング", lv: 3, run: xWing },
-        { name: "スカイスクレイパー", lv: 3, run: skyscraper },
-        { name: "4つの数字の組", lv: 4, run: quads },
-        { name: "ソードフィッシュ", lv: 4, run: swordfish },
-        { name: "XYウイング", lv: 4, run: xyWing },
-        { name: "XYZウイング", lv: 4, run: xyzWing },
-        { name: "シンプルカラーリング", lv: 5, run: coloring },
-        { name: "XYチェーン", lv: 5, run: xyChain },
-        { name: "チェーン", lv: 5, run: chain },
-      ];
+      // 唯一解の原則（ユニークレクタングル）：2つのブロックにまたがる長方形の4マスが同じ2つの候補 a・b だけになると答えが2通りになるので、そうならないように消す
+      // タイプ1：3マスが a・b だけ → 残る1マスの a・b を消す
+      // タイプ2：2マスが a・b だけ、残る2マス（同じ行か列）が a・b・x → 2マスの両方から見えるマスの x を消す
+      // タイプ4：2マスが a・b だけ、残る2マス（同じ行か列）で、その行（列）の a がこの2マスにしか入らない → この2マスの b を消す
+      function uniqueRect() {
+        for (let r1 = 0; r1 < 9; r1++) for (let r2 = r1 + 1; r2 < 9; r2++) for (let c1 = 0; c1 < 9; c1++) for (let c2 = c1 + 1; c2 < 9; c2++) {
+          const four = [r1 * 9 + c1, r1 * 9 + c2, r2 * 9 + c1, r2 * 9 + c2];
+          if (new Set(four.map(boxOf)).size !== 2 || four.some((i) => v[i])) continue;
+          const ds = bits(four.reduce((m, i) => m & cand[i], ALL));
+          for (let x = 0; x < ds.length; x++) for (let y = x + 1; y < ds.length; y++) {
+            const a = ds[x], b = ds[y], ab = (1 << a) | (1 << b);
+            const two = four.filter((i) => cand[i] === ab), rest = four.filter((i) => cand[i] !== ab);
+            if (two.length === 3) { if (elim(rest[0], ab)) return true; continue; }
+            if (two.length !== 2) continue;
+            const [p, q] = rest;
+            if (rowOf(p) !== rowOf(q) && colOf(p) !== colOf(q)) continue;  // 対角の2マスは対象外
+            let ch = false;
+            const xp = cand[p] & ~ab;
+            if (xp === (cand[q] & ~ab) && pop(xp) === 1) {
+              for (let i = 0; i < 81; i++) if (i !== p && i !== q && sees(i, p) && sees(i, q)) ch = elim(i, xp) || ch;
+              if (ch) return true;
+            }
+            const us = units.filter((u) => u.includes(p) && u.includes(q));
+            for (const [d, e] of [[a, b], [b, a]]) {
+              if (!us.some((u) => u.every((i) => i === p || i === q || !(cand[i] & (1 << d))))) continue;
+              ch = elim(p, 1 << e) || ch;
+              ch = elim(q, 1 << e) || ch;
+              if (ch) return true;
+            }
+          }
+        }
+        return false;
+      }
+      // リモートペア：候補が同じ2つ（a・b）のマスが4つ以上つながるとき、交互に a・b が入るので、
+      // 違う側のマスの両方から見えるマスの a・b を消す
+      function remotePair() {
+        const bi = biCells(), done = new Set();
+        for (const s0 of bi) {
+          if (done.has(s0)) continue;
+          const color = new Map([[s0, 0]]), order = [s0];
+          let ok = true;
+          for (let q = 0; q < order.length; q++) for (const j of bi) {
+            const i = order[q];
+            if (cand[j] !== cand[s0] || !sees(i, j)) continue;
+            if (!color.has(j)) { color.set(j, 1 - color.get(i)); order.push(j); } else if (color.get(j) === color.get(i)) ok = false;
+          }
+          order.forEach((i) => done.add(i));
+          if (!ok || order.length < 4) continue;
+          let ch = false;
+          for (let i = 0; i < 81; i++) {
+            if (color.has(i)) continue;
+            if (order.some((j) => color.get(j) === 0 && sees(i, j)) && order.some((j) => color.get(j) === 1 && sees(i, j))) ch = elim(i, cand[s0]) || ch;
+          }
+          if (ch) return true;
+        }
+        return false;
+      }
+      // 解き方の名前 → 候補を消す計算（消せたら true）。名前は 01a-levels.js の TECHNIQUES と同じにする
+      // （「注目するマス」= singles() と「背理法」= contra() は別に扱う）
+      const SOLVERS = {
+        "ポインティング": pointing, "クレーミング": claiming, "2つの数字のペア": pairs,
+        "3つの数字の組": triples, "Xウイング": xWing, "スカイスクレイパー": skyscraper,
+        "4つの数字の組": quads, "ソードフィッシュ": swordfish, "XYウイング": xyWing, "XYZウイング": xyzWing, "唯一解の原則": uniqueRect,
+        "シンプルカラーリング": coloring, "リモートペア": remotePair, "XYチェーン": xyChain, "チェーン": chain,
+      };
+      // レベルの低い順に並べる（同じレベルの中は TECHNIQUES の並び順のまま）
+      const TECHS = rules.techniques.filter((t) => SOLVERS[t.name]).map((t) => ({ ...t, run: SOLVERS[t.name] })).sort((x, y) => x.lv - y.lv);
       // 1つの解き方で候補を消せたら、そのレベルを返す（どれも使えなければ 0）
       function advance() {
         for (const t of TECHS) {
@@ -5989,42 +6105,41 @@ body.fold .head button { flex-shrink: 0; }
       let level = 1;
       for (;;) {
         if (v.every((x) => x)) return level;
-        for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) { steps.length = 0; return 4; }
+        for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) { steps.length = 0; return TOP; }
         if (singles()) { steps.push(1); continue; }
         const k = advance();
-        if (k) { level = Math.max(level, k <= 3 ? 2 : 3); steps.push(k); continue; }
+        if (k) { level = Math.max(level, diffOf(k)); steps.push(k); continue; }
         if (timing) {
-          if (contra()) { steps.push(6); continue; }
+          if (contra()) { steps.push(CONTRA_LV); continue; }
           // 仮に置いてシングルだけでは矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める
           if (timing.length === 81) {
             let best = -1;
             for (let i = 0; i < 81; i++) if (!v[i] && (cand[i] & (1 << +timing[i])) && (best < 0 || pop(cand[i]) < pop(cand[best]))) best = i;
-            if (best >= 0) { place(best, +timing[best]); steps.push(6); continue; }
+            if (best >= 0) { place(best, +timing[best]); steps.push(CONTRA_LV); continue; }
           }
-          for (let k = v.filter((x) => !x).length; k > 0; k--) steps.push(6);
+          for (let k = v.filter((x) => !x).length; k > 0; k--) steps.push(CONTRA_LV);
         }
-        // 背理法を使わずに進めなくなった。最難関は、このとき15マス以上残っているものだけ（少なければ 3.5 = どのレベルにもしない）
-        return v.filter((x) => !x).length >= 15 ? 4 : 3.5;
+        // 背理法を使わずに進めなくなった。最難関は、このとき minLeft マス以上残っているものだけ（少なければ TOP - 0.5 = どのレベルにもしない）
+        return v.filter((x) => !x).length >= EXTREME.minLeft ? TOP : TOP - 0.5;
       }
     }
     // 1回だけ作ってみる。レベルが合えば問題（81桁の文字列）、合わなければ null
-    const FLOOR = { 1: 36, 2: 26, 3: 22, 4: 17 };
     function attempt(level) {
       const g = full();
       const sol = g.slice();
       let left = 81;
       for (const i of shuffle([...Array(81).keys()])) {
-        if (left <= FLOOR[level]) break;
+        if (left <= rules.difficulties[level - 1].minGivens) break;
         const keep = g[i];
         g[i] = 0;
-        if (count(g, 2) !== 1 || (level < 4 && grade(g) > level)) g[i] = keep;
+        if (count(g, 2) !== 1 || (level < TOP && grade(g) > level)) g[i] = keep;
         else left--;
       }
       if (grade(g) !== level) return null;
-      // 最難関は問題の数字を21個以下にする。1つ足して、ほかを消せるだけ消し、最難関のまま数が減れば採り入れる
-      if (level === 4) {
-        if (left > 23) return null;
-        for (let step = 0; step < 200 && left > 21; step++) {
+      // 最難関は問題の数字を maxGivens 個以下にする。1つ足して、ほかを消せるだけ消し、最難関のまま数が減れば採り入れる
+      if (level === TOP) {
+        if (left > EXTREME.maxGivens + 2) return null;
+        for (let step = 0; step < 200 && left > EXTREME.maxGivens; step++) {
           const blank = [...Array(81).keys()].filter((i) => !g[i]);
           const a = blank[Math.floor(Math.random() * blank.length)];
           const h = g.slice();
@@ -6035,12 +6150,12 @@ body.fold .head button { flex-shrink: 0; }
             if (count(h, 2) !== 1) h[b] = x;
           }
           const hl = h.filter((x) => x).length;
-          if (hl <= left && grade(h) === 4) { g.splice(0, 81, ...h); left = hl; }
+          if (hl <= left && grade(h) === TOP) { g.splice(0, 81, ...h); left = hl; }
         }
-        if (left > 21) return null;
-        // レベル4以上の手（達人・超上級・背理法）が3回以下の問題は、最難関にしない
+        if (left > EXTREME.maxGivens) return null;
+        // レベル highLv 以上の手（背理法も数える）が minHighSteps 回より少ない問題は、最難関にしない
         grade(g, null, sol);
-        if (grade.steps.filter((k) => k >= 4).length <= 3) return null;
+        if (grade.steps.filter((k) => k >= EXTREME.highLv).length < EXTREME.minHighSteps) return null;
       }
       return g.join("");
     }
@@ -6054,7 +6169,7 @@ body.fold .head button { flex-shrink: 0; }
         const p = attempt(job.level);
         if (p) { jobs.shift(); self.postMessage({ type: "made", id: job.id, level: job.level, givens: p }); }
       } else if (hunt) {
-        const p = attempt(4);
+        const p = attempt(TOP);
         if (p) self.postMessage({ type: "stock", givens: p });
       } else return;
       busy = true;
@@ -6076,12 +6191,16 @@ body.fold .head button { flex-shrink: 0; }
   // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
   const GEN_STOCK_KEY = "sudoku-gen-stock6", GEN_STOCK_MAX = 10;  // 最難関の条件を変えたので、前の作り置きは使わない
   try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); localStorage.removeItem("sudoku-gen-stock5"); } catch (e) {}
-  const genLevels = [
-    { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
-    { label: "中級", desc: "★2〜3つの解き方（ポインティング、クレーミング、2つの数字のペア、3つの数字の組、Xウイング、スカイスクレイパー）が必要です" },
-    { label: "難問", desc: "★4〜5つの解き方（4つの数字の組、ソードフィッシュ、XY/XYZウイング、シンプルカラーリング、チェーンなど）が必要です（背理法はいりません）" },
-    { label: "最難関", desc: "問題の数字は21個以下。背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です。★4つ以上の解き方を4回以上使います" },
-  ];
+  // 難易度の説明文は 01a-levels.js の DIFFICULTIES と TECHNIQUES から作る（レベルを変えると説明もそろって変わる）
+  const genLevels = DIFFICULTIES.map((d, i) => {
+    const lo = i ? DIFFICULTIES[i - 1].maxLv + 1 : 1;
+    if (i === 0) return { label: d.label, desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" };
+    if (d.maxGivens) return { label: d.label, desc: `問題の数字は${d.maxGivens}個以下。背理法以外の解き方では${d.minLeft}マス以上が残り、仮に置いて矛盾したら消す、が必要です。★${d.highLv}つ以上の解き方を${d.minHighSteps}回以上使います` };
+    const names = TECHNIQUES.filter((t) => t.lv >= lo && t.lv <= d.maxLv).map((t) => t.name).join("、");
+    const stars = lo === d.maxLv ? `★${lo}つ` : `★${lo}〜${d.maxLv}つ`;
+    const noContra = DIFFICULTIES[i + 1] && DIFFICULTIES[i + 1].maxGivens ? "（背理法はいりません）" : "";
+    return { label: d.label, desc: `${stars}の解き方（${names}）が必要です${noContra}` };
+  });
   const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");
   const genStock = (list) => {
     try {
@@ -6097,12 +6216,12 @@ body.fold .head button { flex-shrink: 0; }
   const sent = [];  // Worker が途中で使えなくなったときに、画面側で同じ頼みごとをやり直すため
   function genOnPage() {
     const fake = { postMessage: (m) => setTimeout(() => onGen(m), 0), onmessage: null };
-    sudokuGen(fake);
+    sudokuGen(fake, GEN_RULES);
     genWorker = { postMessage: (m) => setTimeout(() => fake.onmessage({ data: m }), 0) };
     sent.forEach((m) => genWorker.postMessage(m));
   }
   try {
-    const w = new Worker(URL.createObjectURL(new Blob([`(${sudokuGen})(self)`], { type: "text/javascript" })));
+    const w = new Worker(URL.createObjectURL(new Blob([`(${sudokuGen})(self, ${JSON.stringify(GEN_RULES)})`], { type: "text/javascript" })));
     w.onmessage = (e) => onGen(e.data);
     w.onerror = () => { w.terminate(); genOnPage(); };
     genWorker = { postMessage: (m) => { sent.push(m); if (sent.length > 50) sent.shift(); w.postMessage(m); } };
@@ -6123,7 +6242,7 @@ body.fold .head button { flex-shrink: 0; }
       b.type = "button";
       b.textContent = lv.label;
       const sm = document.createElement("small");
-      sm.textContent = lv.desc + (i === 3 ? `（作り置き ${genStock().length}問）` : "");
+      sm.textContent = lv.desc + (i === DIFFICULTIES.length - 1 ? `（作り置き ${genStock().length}問）` : "");
       b.appendChild(sm);
       b.disabled = !!genWaiting;
       b.addEventListener("click", () => makeProblem(i + 1));

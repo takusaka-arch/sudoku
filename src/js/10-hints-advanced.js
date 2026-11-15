@@ -531,9 +531,9 @@
     const show = (cand, text) => {
       const key = cand.closest(".cell").dataset.row + "-" + cand.closest(".cell").dataset.col;
       if (seen.has(key)) return false;
-      if (!hintGate(1, () => runHint(full))) return true;
+      if (!hintGate(TECH_LV["注目するマス"], () => runHint(full))) return true;
       seen.add(key);
-      countHint(true, full ? 2 : 1, full ? "" : key);
+      countHint(true, (full ? 2 : 1) * TECH_LV["注目するマス"], full ? "" : key);
       if (full) cand.classList.add("hint");
       else cand.closest(".cell").classList.add("hint-cell");
       renderPad();
@@ -567,7 +567,7 @@
     const showPair = (two, a, b, text) => {
       const key = "p" + two.map((o) => o.dataset.row + o.dataset.col).join("") + a + b;
       if (seen.has(key)) return false;
-      if (!hintGate(2, () => runHint(full))) return true;
+      if (!hintGate(TECH_LV["2つの数字のペア"], () => runHint(full))) return true;
       seen.add(key);
       countHint(true, undefined, key);
       for (const o of two) {
@@ -609,7 +609,7 @@
         if (!x) for (let d = 1; d <= 9; d++) if (can(o, String(d))) m |= 1 << d;
         cand.push(m);
       }
-      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} });
+      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
       const r = hintEngine.grade(null, { v, cand });
       const name = (i) => `${Math.floor(i / 9) + 1}行${(i % 9) + 1}列`;
       const mark = (i, d) => {
@@ -618,14 +618,14 @@
         o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
       };
       if (r.i !== undefined && r.log.length) {
-        // 理由のレベル = 使った解き方のレベルの一番高いもの（レベルは 15-puzzle-maker.js の TECHS で決まる）
+        // 理由のレベル = 使った解き方のレベルの一番高いもの（レベルは 01a-levels.js の TECHNIQUES で決まる）
         const rlv = Math.max(1, ...r.log.map((e) => e.lv));
         const ekey = "e" + r.i;
         if (!full && seen.has(ekey)) return focusDone();
         if (!hintGate(rlv, () => runHint(full))) return;
         if (!full) {
           seen.add(ekey);
-          countHint(true, 1, ekey);
+          countHint(true, TECH_LV["注目するマス"], ekey);
           at(r.i).classList.add("hint-cell");
           renderPad();
           workMsg.classList.remove("err");
@@ -651,17 +651,17 @@
         if (best >= 0) {
           const skey = "s" + best;
           if (!full && seen.has(skey)) return focusDone();
-          if (!hintGate(6, () => runHint(full))) return;
+          if (!hintGate(TECH_LV["背理法"], () => runHint(full))) return;
           if (!full) {
             seen.add(skey);
-            countHint(true, 1, skey);
+            countHint(true, TECH_LV["注目するマス"], skey);
             at(best).classList.add("hint-cell");
             renderPad();
             workMsg.classList.remove("err");
             workMsg.textContent = "ヒント：薄い赤のマスに注目してください。（ここから先は背理法が必要です）";
             return;
           }
-          countHint(true, 12);
+          countHint(true, 2 * TECH_LV["背理法"]);
           mark(best, solution.sol[best]);
           renderPad();
           workMsg.classList.remove("err");
