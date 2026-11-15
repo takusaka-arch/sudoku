@@ -24,7 +24,7 @@
     markConflicts();
     const el = [];
     board.querySelectorAll(".cell").forEach((o) => { el[+o.dataset.row * 9 + +o.dataset.col] = o; });
-    const fixed = el.map((o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : ""));
+    const fixed = el.map((o) => Number(o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : 0)));
     const cand = el.map((o, i) => fixed[i] ? [] : DIGS.filter((d) => !o.querySelector(`.cand[data-n="${d}"]`).classList.contains("off")
       && !fixed.some((v, j) => v === d && sees(i, j))));
     return { el, fixed, cand };
@@ -416,49 +416,28 @@
       { order });
   }
 
-  // 背理法：候補が2つのマスで片方を入れたと仮定し、確実に決まる数字をたどる。どこかで矛盾したら、その仮定は誤りなので、もう一方が答え
+  // 背理法：候補が2つのマスで仮定し、共通エンジンのレベル3までの解法で矛盾を探す。
   function showContradiction() {
     const st = hintState();
     if (!st) return;
     const { fixed, cand } = st;
-    const test = (s, v) => {
-      const c = cand.map((a, i) => (fixed[i] ? [fixed[i]] : a.slice()));
-      c[s] = [v];
-      const placed = new Set();
-      for (let guard = 0; guard < 200; guard++) {
-        let changed = false;
-        for (let i = 0; i < 81; i++) {
-          if (c[i].length === 0) return `${cellName(i)}のマスに入る数字がなくなり`;
-          if (c[i].length !== 1 || placed.has(i)) continue;
-          placed.add(i);
-          changed = true;
-          for (let j = 0; j < 81; j++) if (sees(i, j)) {
-            c[j] = c[j].filter((d) => d !== c[i][0]);
-            if (c[j].length === 0) return `${cellName(j)}のマスに入る数字がなくなり`;
-          }
-        }
-        for (const u of UNITS) for (const d of DIGS) {
-          const sp = u.ids.filter((i) => c[i].includes(d));
-          if (sp.length === 0) return `${u.name}に「${d}」を入れる場所がなくなり`;
-          if (sp.length === 1 && c[sp[0]].length > 1) { c[sp[0]] = [d]; changed = true; }
-        }
-        if (!changed) return null;
-      }
-      return null;
-    };
-    for (let s = 0; s < 81; s++) {
-      if (cand[s].length !== 2) continue;
-      for (const v of cand[s]) {
-        const why = test(s, v);
-        if (!why) continue;
-        const w = cand[s].find((d) => d !== v);
-        return paintHint(st, [{ marks: [[s, w]] }], [[s, v]],
-          `薄い赤のマスに「${v}」を入れたと仮定して、確実に決まる数字をたどっていくと、${why}、矛盾します。なので「${v}」（赤い枠）は入らず、このマスは「${w}」（色の付いた数字）です。`,
-          { cells: [s] });
-      }
+    if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
+    const proof = hintEngine.contradiction({ v: fixed, cand: cand.map((ds) => ds.reduce((m, d) => m | (1 << d), 0)) });
+    if (proof) {
+      const { i, d, answer, contradiction: bad } = proof;
+      const unit = bad.kind === "unit" ? unitsName(bad.unit) : "";
+      const why = bad.kind === "cell" ? `${cellName(bad.i)}のマスに入る数字がなくなり` : `${unit}に「${bad.d}」を入れる場所がなくなり`;
+      const names = [...new Set(proof.log.map((e) => e.tech))];
+      const how = ["シングル", ...names].join("・");
+      return paintHint(st, [{ marks: [[i, answer]] }], [[i, d]],
+        `薄い赤のマスに「${d}」を入れたと仮定して、${how}（レベル${CONTRA_MAX_LEVEL}まで）で進めると、${why}、矛盾します。なので「${d}」（赤い枠）は入らず、このマスは「${answer}」（色の付いた数字）です。`,
+        { cells: [i] });
     }
     workMsg.classList.remove("err");
-    workMsg.textContent = "ヒント：今は、候補が2つのマスで仮定を1つ置くだけでは矛盾が見つかりません。";
+    workMsg.textContent = `ヒント：今は、候補が2つのマスで1つ仮定し、レベル${CONTRA_MAX_LEVEL}までの解き方で進めても矛盾が見つかりません。`;
+    function unitsName(k) {
+      return k % 3 === 2 ? `${BOX_NAMES[Math.floor(k / 3)]}のブロック` : `${Math.floor(k / 3) + 1}${k % 3 === 0 ? "行目" : "列目"}`;
+    }
   }
   // Xウイング: ある数字が、2つの行でどちらも同じ2列にしか入らないとき、その2列のほかの行の同じ数字は消せる（行と列を入れ替えても同じ）
   // 消せる候補があるものだけを、4つの角を組ごとの色、消せる候補を赤い枠で示す

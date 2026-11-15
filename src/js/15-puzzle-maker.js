@@ -68,8 +68,8 @@
       return a;
     }
     // 人の解き方で解いて、必要だった一番難しい解き方のレベルを返す（解き切れなければ 4）
-    // start を渡すと「答えと理由」用: 今の盤の候補から始め、答えの決まるマスが出るまでに使った解き方と消した候補を返す
-    function grade(g, start, timing) {
+    // start を渡すと「答えと理由」用。trialMaxLevel を渡すと、仮定後の盤をそのレベルまでで検証する（仮定は重ねない）。
+    function grade(g, start, timing, trialMaxLevel = 0) {
       const v = start ? start.v.slice() : g.slice(), cand = start ? start.cand.slice() : new Array(81).fill(ALL);
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
       if (!start) for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
@@ -446,12 +446,28 @@
       // レベルの低い順に並べる（同じレベルの中は TECHNIQUES の並び順のまま）
       const TECHS = rules.techniques.filter((t) => SOLVERS[t.name]).map((t) => ({ ...t, run: SOLVERS[t.name] })).sort((x, y) => x.lv - y.lv);
       // 1つの解き方で候補を消せたら、そのレベルを返す（どれも使えなければ 0）
-      function advance() {
+      function advance(maxLevel = Infinity) {
         for (const t of TECHS) {
+          if (t.lv > maxLevel) break;
           tech = t.name; techLv = t.lv;
           if (t.run()) return t.lv;
         }
         return 0;
+      }
+      if (trialMaxLevel) {
+        // 仮定後に実際に使った手順だけを返す。通常の grade.steps は上書きしない。
+        const steps = [];
+        for (;;) {
+          for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) return { steps, log, contradiction: { kind: "cell", i } };
+          for (let unit = 0; unit < units.length; unit++) for (let d = 1; d <= 9; d++) {
+            const u = units[unit];
+            if (!u.some((i) => v[i] === d) && !where(u, d).length) return { steps, log, contradiction: { kind: "unit", unit, d } };
+          }
+          if (singles()) { steps.push(1); continue; }
+          const k = advance(trialMaxLevel);
+          if (!k) return { steps, log };
+          steps.push(k);
+        }
       }
       if (start) {
         // 答えの決まるマスが出るまで、やさしい解き方から順に候補を消していく（マスに数字は入れない）
@@ -471,29 +487,6 @@
       // 難易度: 初級 = シングル（レベル1）だけ、中級 = レベル2〜3、難問 = レベル4〜5 の解き方が必要。最難関 = 背理法（レベル6）が必要
       const steps = [];
       grade.steps = steps;
-      // 背理法: 候補が2つのマスに片方を仮に入れ、シングルだけで進めて矛盾が出たら、その候補を消す
-      function contra() {
-        for (let i = 0; i < 81; i++) {
-          if (v[i] || pop(cand[i]) !== 2) continue;
-          for (const d of bits(cand[i])) {
-            const v2 = v.slice(), c2 = cand.slice();
-            const put = (j, x) => { v2[j] = x; c2[j] = 0; for (const p of peers[j]) c2[p] &= ~(1 << x); };
-            put(i, d);
-            let bad = false, ch = true;
-            while (ch && !bad) {
-              ch = false;
-              for (let j = 0; j < 81 && !bad; j++) if (!v2[j]) { if (!c2[j]) bad = true; else if (pop(c2[j]) === 1) { put(j, bits(c2[j])[0]); ch = true; } }
-              for (const u of units) for (let x = 1; x <= 9 && !bad; x++) {
-                if (u.some((j) => v2[j] === x)) continue;
-                const w = u.filter((j) => !v2[j] && (c2[j] & (1 << x)));
-                if (!w.length) bad = true; else if (w.length === 1) { put(w[0], x); ch = true; }
-              }
-            }
-            if (bad) { cand[i] &= ~(1 << d); return true; }
-          }
-        }
-        return false;
-      }
       let level = 1;
       for (;;) {
         if (v.every((x) => x)) return level;
@@ -502,8 +495,14 @@
         const k = advance();
         if (k) { level = Math.max(level, diffOf(k)); steps.push(k); continue; }
         if (timing) {
-          if (contra()) { steps.push(CONTRA_LV); continue; }
-          // 仮に置いてシングルだけでは矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める
+          const proof = contradiction({ v, cand });
+          if (proof) {
+            cand[proof.i] &= ~(1 << proof.d);
+            // 仮定に10分。その後の手順は、それぞれ実際に使ったヒントレベルの時間にする。
+            steps.push(CONTRA_LV, ...proof.steps);
+            continue;
+          }
+          // レベル3までで矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める
           if (timing.length === 81) {
             let best = -1;
             for (let i = 0; i < 81; i++) if (!v[i] && (cand[i] & (1 << +timing[i])) && (best < 0 || pop(cand[i]) < pop(cand[best]))) best = i;
@@ -514,6 +513,20 @@
         // 背理法を使わずに進めなくなった。最難関は、このとき minLeft マス以上残っているものだけ（少なければ TOP - 0.5 = どのレベルにもしない）
         return v.filter((x) => !x).length >= EXTREME.minLeft ? TOP : TOP - 0.5;
       }
+    }
+    // ヒントと標準時間で共通の背理法。候補が2つのマスで1回だけ仮定し、レベル3までで矛盾を探す。
+    function contradiction(start) {
+      for (let i = 0; i < 81; i++) {
+        if (start.v[i] || pop(start.cand[i]) !== 2) continue;
+        for (const d of bits(start.cand[i])) {
+          const v = start.v.slice(), cand = start.cand.slice();
+          v[i] = d; cand[i] = 0;
+          for (const p of peers[i]) cand[p] &= ~(1 << d);
+          const proof = grade(null, { v, cand }, null, rules.contradictionMaxLevel);
+          if (proof.contradiction) return { ...proof, i, d, answer: bits(start.cand[i]).find((x) => x !== d) };
+        }
+      }
+      return null;
     }
     // 1回だけ作ってみる。レベルが合えば問題（81桁の文字列）、合わなければ null
     function attempt(level) {
@@ -575,6 +588,6 @@
       else if (m.type === "hunt") hunt = !!m.on;
       kick();
     };
-    return { grade, count, attempt };
+    return { grade, count, attempt, contradiction };
   }
 
