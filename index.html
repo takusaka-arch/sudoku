@@ -732,7 +732,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.231</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.232</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -5013,7 +5013,7 @@ p.note:empty { display: none; }
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
     { part: 0, title: "使い方ガイド", text: "使い方を、実際に試しながら説明します。どこから見ますか？", pick: true },
-    { title: "1. 問題を登録する", text: `初級編（6ステップ）です。\n\n最初の画面の「問題を作る・登録する」から、次のどれかで問題を入れます。\n・自分で作る：数字を手で入力する（写真から読み取ることもできます）\n・自動で作る：レベルを選ぶと新しい問題ができます\n・問題ファイルを読み込む\n\n手で入力するときは、小さな数字を${TAP}すると問題の数字になります。全部入れたら「問題登録完了」→「回答スタート」です。`, part: 1,
+    { title: "1. 問題を登録する", text: `初級編（7ステップ）です。\n\n最初の画面の「問題を作る・登録する」から、次のどれかで問題を入れます。\n・自分で作る：数字を手で入力する（写真から読み取ることもできます）\n・自動で作る：レベルを選ぶと新しい問題ができます\n・問題ファイルを読み込む\n\n手で入力するときは、小さな数字を${TAP}すると問題の数字になります。全部入れたら「問題登録完了」→「回答スタート」です。`, part: 1,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
     { part: 1, title: `2. まずは数字を${MENU}`, text: `解くときは、小さな数字を${MENU}します。メニューが出るので、行いたい操作を選んでください。\nメニューの「○ と仮定する」（仮定モード）は、上級編で説明します。`, pressDemo: true },
@@ -5026,7 +5026,8 @@ p.note:empty { display: none; }
     { part: 1, title: "5. 「1手戻す」で取り消す", text: "まちがえたときは「1手戻す」ボタンを押すと、1つ前の操作に戻ります。何回でも戻れます。\n\n間違って消した候補は、マスを選んで「候補を復活」（またはメニューの「このマスの消した候補を復活」）でも戻せます。",
       cells: [0], target: [0, "4"], menu: true, undo: true, ask: `「4」を${MENU}して「4 を候補から消す」を選んでから、下の「1手戻す」を押して元に戻してください。`,
       goal: (d) => d.undone && !d.cand(0, "4").classList.contains("off"), ok: "できました！ 「1手戻す」で1つ前に戻りました。" },
-    { part: 1, title: "6. 自動保存と、解き始め", text: "解いている途中の状態は、この端末に自動で保存されます。アプリを閉じても、次に開くと続きから始まります。\n「一時停止」でタイマーを止められます。\n\nこれで解き始められます。速く解く操作や、ヒント・保存などは中級編で説明します（アプリ名の右の「？」ボタンからいつでも見られます）。", fork: true },
+    { part: 1, title: "6. 数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字に色が付きます。\n続けて別の数字を${TAP}すると、別の色で4つまで同時に表示できます。もう一度${TAP}でその数字だけ止まります。\n盤に9つそろった数字は、押せなくなります。` },
+    { part: 1, title: "7. 自動保存と、解き始め", text: "解いている途中の状態は、この端末に自動で保存されます。アプリを閉じても、次に開くと続きから始まります。\n「一時停止」でタイマーを止められます。\n\nこれで解き始められます。速く解く操作や、ヒント・保存などは中級編で説明します（アプリ名の右の「？」ボタンからいつでも見られます）。", fork: true },
     { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
     { part: 2, title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
       cells: [0], target: [0, "5"], ask: `下のマスの「5」を${TAP1}してみてください。`,
@@ -5042,7 +5043,6 @@ p.note:empty { display: none; }
       goal: (d) => d.cand(1, "8").classList.contains("off") && d.cand(2, "8").classList.contains("off"), ok: "できました！ ほかのマスの「8」が消えました。" },
     { part: 2, title: "問題を作る：写真から読み取る", text: `「写真から問題を読み取る」で、撮影・画像ファイル・貼り付けのどれかを選びます。\n四隅のオレンジの丸を盤の角に合わせて「読み取る」を押します。\n読み取った数字は写真と見比べて、まちがいを直してください。自信のない数字には「?」が付きます。\n\nコツ：真上から明るい場所で撮る`,
       tryPhoto: true },
-    { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字に色が付きます。\n続けて別の数字を${TAP}すると、別の色で4つまで同時に表示できます。もう一度${TAP}でその数字だけ止まります。\n盤に9つそろった数字は、押せなくなります。` },
     { part: 2, title: "ヒント", text: "「ヒント」で、解き方を選べます。右の★の数がレベルです。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
     { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」（保存先がGoogleドライブを優先のときは「Googleドライブに保存」）。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：🏠→「設定」で「Googleドライブに接続」し、保存先を選びます（Googleドライブを優先／保存のたびに選ぶ／この端末）。Googleドライブには「Sudoku」フォルダに保存されます。PCとスマホで同じ問題の続きを解けます\n・開くときは「問題を解く」→「Googleドライブから開く」（接続しているときだけ出ます）。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
     { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・答え合わせ：途中でも、確定したマスを正解と比べ、違うマスを赤い背景で示します\n・再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
@@ -5113,7 +5113,7 @@ p.note:empty { display: none; }
     if (st.pick) {
       const box = document.createElement("div");
       box.className = "gen-levels tut-pick";
-      for (const [part, name, desc] of [[1, "初級編", "メニューで操作する基本（6ステップ）"], [2, "中級編", "タップの回数で速く操作する・ヒント・保存など"], [3, "上級編", "難しい問題で使う仮定モード"]]) {
+      for (const [part, name, desc] of [[1, "初級編", "メニューで操作する基本（7ステップ）"], [2, "中級編", "タップの回数で速く操作する・ヒント・保存など"], [3, "上級編", "難しい問題で使う仮定モード"]]) {
         const b = document.createElement("button");
         b.type = "button";
         b.innerHTML = `${name}<small>${desc}</small>`;
