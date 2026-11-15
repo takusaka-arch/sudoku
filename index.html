@@ -709,7 +709,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.221</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.222</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -2925,8 +2925,29 @@ p.note:empty { display: none; }
     });
     const dup = cells.some((c) => c.classList.contains("conflict") || c.classList.contains("tent-bad"));
     const none = cells.find((c) => !c.dataset.value && !c.classList.contains("tent") && c.querySelectorAll(".cand.off").length === 9);
-    if (dup || none) {
-      assumeWarn(`矛盾が見つかりました：${dup ? "同じ行・列・ブロックに同じ数字があります" : `${+none.dataset.row + 1}行${+none.dataset.col + 1}列に入る数字がありません`}。この仮定はまちがいです。「仮定前に戻り、この数字を除外」を押してください。`, true);
+    // 行・列・ブロックの中に、ある数字を入れられる場所が1つもない
+    const val = (o) => o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : "");
+    const sees = (a, b) => a.dataset.row === b.dataset.row || a.dataset.col === b.dataset.col
+      || (Math.floor(a.dataset.row / 3) === Math.floor(b.dataset.row / 3) && Math.floor(a.dataset.col / 3) === Math.floor(b.dataset.col / 3));
+    let gap = "";
+    if (!dup && !none) {
+      const units = [];
+      for (let k = 0; k < 9; k++) {
+        units.push([`${k + 1}行目`, cells.filter((o) => +o.dataset.row === k)]);
+        units.push([`${k + 1}列目`, cells.filter((o) => +o.dataset.col === k)]);
+        units.push([`${Math.floor(k / 3) * 3 + 1}〜${Math.floor(k / 3) * 3 + 3}行・${(k % 3) * 3 + 1}〜${(k % 3) * 3 + 3}列のブロック`, cells.filter((o) => Math.floor(o.dataset.row / 3) * 3 + Math.floor(o.dataset.col / 3) === k)]);
+      }
+      outer: for (const [name, us] of units) for (let n = 1; n <= 9; n++) {
+        const d = String(n);
+        if (us.some((o) => val(o) === d)) continue;
+        if (us.some((o) => !val(o) && !o.querySelector(`.cand[data-n="${d}"]`).classList.contains("off") && !cells.some((x) => x !== o && val(x) === d && sees(x, o)))) continue;
+        gap = `${name}に「${d}」を入れられる場所がありません`;
+        break outer;
+      }
+    }
+    if (dup || none || gap) {
+      const why = dup ? "同じ行・列・ブロックに同じ数字があります" : none ? `${+none.dataset.row + 1}行${+none.dataset.col + 1}列に入る数字がありません` : gap;
+      assumeWarn(`矛盾が見つかりました：${why}。仮定がまちがっているか、仮定のあとの入力にまちがいがあります。仮定のあとの入力に誤りがなければ、「仮定前に戻り、この数字を除外」を押してください。`, true);
     } else if (cells.every((c) => c.dataset.value || c.classList.contains("tent"))) {
       assumeWarn("すべてのマスが埋まりました。「仮定を採用する」を押すと完成になります。");
     } else if (assumeWarnEl.classList.contains("err")) {
@@ -3324,11 +3345,27 @@ p.note:empty { display: none; }
       closeHintMenu();
       clearHints();
       hintKindNow = k.label;
+      // 消しまちがえた候補や、正解と違う確定候補があると、ヒントがまちがった前提で計算されるので先に知らせる
+      if (k.label !== "ヒントを消す" && hintMistake()) return;
       // 注目するマスは、示すマスに要る解き方のレベルで判断する（runHint の中）
       if (!k.lv || k.label === "注目するマス" || hintGate(k.lv, () => k.run())) k.run();
     });
     hintMenu.appendChild(item);
   });
+  function hintMistake() {
+    if (board.dataset.mode !== "solve" || !solution || solution.n !== 1 || !solution.sol) return false;
+    const bad = [];
+    board.querySelectorAll(".cell").forEach((c) => {
+      if (c.classList.contains("given")) return;
+      const d = solution.sol[c.dataset.row * 9 + +c.dataset.col];
+      if (c.classList.contains("tent") ? c.querySelector(".big").textContent !== d : c.querySelector(`.cand[data-n="${d}"]`).classList.contains("off")) bad.push(c);
+    });
+    if (!bad.length) return false;
+    bad.forEach((c) => c.classList.add("check-wrong"));
+    workMsg.classList.add("err");
+    workMsg.textContent = `ヒントを出す前に：赤いマス（${bad.length}マス）に、正解の数字を消してしまった候補か、正解と違う確定候補があります。このままだとヒントがまちがった前提で計算されるので、先に直してください。（消した候補は、マスのメニューの「このマスの消した候補を復活」で戻せます）`;
+    return true;
+  }
   function closeHintMenu() {
     hintMenu.hidden = true;
     hintMenu.querySelectorAll(".hm-desc").forEach((x) => { x.hidden = true; });
@@ -4518,7 +4555,11 @@ p.note:empty { display: none; }
     try {
       const o = progressObj();
       // 仮定中は、仮定前の盤を保存する
-      if (assume) { o.picks = assume.snap.map((s) => s.pick); o.sure = assume.snap.map((s) => s.sure || "0").join(""); o.off = assume.snap.map((s) => s.off); }
+      if (assume) {
+        o.picks = assume.snap.map((s) => s.pick); o.sure = assume.snap.map((s) => s.sure || "0").join(""); o.off = assume.snap.map((s) => s.off);
+        // 解いた順番も、仮定のあとに確定したマスを除く（再生に仮定中の手が混ざらないように）
+        o.order = o.order.map((q, i) => (assume.snap[i].sure ? q : 0));
+      }
       localStorage.setItem(CUR_KEY, JSON.stringify(o));
     } catch (e) {}
   }
