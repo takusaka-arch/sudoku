@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#1d2427">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="数独回答支援">
+<meta name="description" content="数独を解くのを手伝うアプリです。送られてきた問題は、タップするとそのまま解き始められます。">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="数独回答支援アプリ">
+<meta property="og:title" content="数独回答支援アプリ">
+<meta property="og:description" content="タップすると数独の問題が開き、そのまま解き始められます。">
+<meta property="og:url" content="https://takusaka-arch.github.io/sudoku/">
+<meta property="og:image" content="https://takusaka-arch.github.io/sudoku/icons/icon-512.png">
+<meta name="twitter:card" content="summary">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
+<link rel="icon" href="icons/icon-192.png">
+<script>window.TESS_BASE = "tesseract/";
+window.CV_URL = "opencv/opencv.js";
+window.GDRIVE_CLIENT_ID = "282686886479-467ds4bfj0gmjg9mefj1nskgc50ej2ra.apps.googleusercontent.com";
+if ("serviceWorker" in navigator) addEventListener("load", () => navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).catch(() => {}));</script>
+<style>[hidden]{display:none!important} body{margin:0}</style>

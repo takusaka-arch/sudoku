@@ -1,0 +1,710 @@
+/* Layout: one centered square board; thick lines = outer frame and 3x3 boxes, medium = cells, hairline = candidate sub-cells */
+:root {
+  --bg: #f3f4f1;
+  --paper: #fdfdfb;
+  --ink: #1d2427;
+  --line-cell: #5b666b;
+  --line-sub: #d9ddd8;
+  --hover: #e6ebe7;
+  --given-bg: #eceee9;
+  --answer: #2f5fa8;
+  --error: #c62828;
+  --pick-bg: #e3ebf7;
+  --bad-bg: #f8e4e2;
+  --brown: #8a5a2b;
+  --brown-bg: #f1e6d8;
+  --sel: #d98c00;
+  --sel-bg: #ffd75e;
+  --peer-bg: #fff6d6;
+  --hl-bg: #fffcee;
+  --hint-bg: #fbd9d6;
+  --pair-bg: #e9def7;
+  --two-bg: #d6f0e3;
+  --pair: #6a3fa8;
+  --asm: #8e3fd0; --asm-bg: #f4ecfc;
+  --cand: #6f7b80;
+  --muted: #6a7478;
+  --font-ui: "Zen Kaku Gothic New", "Hiragino Sans", "Yu Gothic", system-ui, sans-serif;
+  --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  --thick: 3px;
+  --cell: 1.5px;
+  --sub: 1px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
+    --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; --pair-bg: #6c32b8; --two-bg: #1f4034; --pair: #e3ccff; --asm: #c9a2ff; --asm-bg: #2f2340; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191b; --paper: #1e2427; --ink: #e4e9ea; --line-cell: #8a979c;
+  --line-sub: #323b3f; --cand: #9aa7ab; --muted: #95a1a5; --hover: #2c3438; --given-bg: #283034; --answer: #7fa8e8; --error: #ff6b6b; --pick-bg: #22344d; --bad-bg: #4a2427; --brown: #d4a373; --brown-bg: #3f3124; --sel: #f2c14e; --sel-bg: #4a3d14; --peer-bg: #2e2b1f; --hl-bg: #232420; --hint-bg: #5a2a2a; --pair-bg: #6c32b8; --two-bg: #1f4034; --pair: #e3ccff; --asm: #c9a2ff; --asm-bg: #2f2340; color-scheme: dark;
+}
+html, body { min-height: 100%; }
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 16px;
+}
+/* 盤は画面の高さに収め、表示とボタンは右側に置く */
+main {
+  /* パソコンでは操作の欄を広めに（画面が狭いときは280px）。横長の画面では、盤の左右に余った幅の半分を操作の欄に回して、両脇の余白を半分にする */
+  --side: max(clamp(280px, 28vw, 380px), min(640px, calc((100vw - 100vh + 420px) / 2)));
+  display: grid;
+  grid-template-columns: auto var(--side);
+  justify-content: center;
+  align-items: start;
+  gap: 24px;
+}
+.side { display: grid; gap: 16px; min-width: 0; }
+@media (max-width: 760px) {
+  main { grid-template-columns: minmax(0, 1fr); }
+}
+.head { display: flex; align-items: center; justify-content: flex-start; gap: 6px; flex-wrap: nowrap; }
+h1 .ver { font: 500 0.7rem var(--font-num); color: var(--muted); letter-spacing: 0; display: inline-block; padding: 8px 6px; margin: -8px -6px; touch-action: manipulation; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+h1 { font-size: 1.35rem; font-weight: 700; margin: 0; letter-spacing: 0.02em; text-wrap: balance; }
+p.note { margin: 0; color: var(--muted); font-size: 0.85rem; line-height: 1.6; }
+p.note u { color: var(--ink); text-underline-offset: 3px; text-decoration-thickness: 1px; }
+
+.board {
+  touch-action: manipulation;
+  width: min(calc(100vh - 32px - 64px), calc(100vw - 32px - var(--side) - 24px));
+  aspect-ratio: 1;
+  max-width: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  gap: var(--thick);
+  padding: var(--thick);
+  background: var(--ink);
+  box-sizing: border-box;
+}
+@media (max-width: 760px) {
+  .board { width: 100%; }
+}
+/* パソコンでは候補の数字を盤の大きさに合わせて大きくする（13px〜22px） */
+@media (min-width: 761px) {
+  .board { container-type: inline-size; }
+  .board .cand { font-size: clamp(13px, 2.2cqw, 22px); }
+}
+/* 盤の下の 1〜9：押した数字が候補として残っているマスで点滅させる */
+.board-wrap { display: grid; gap: 8px; justify-items: center; min-width: 0; }
+.num-hl { display: grid; gap: 4px; justify-items: center; width: 100%; position: relative; }
+.board-wrap:has(.board:not([data-mode="solve"])) .num-hl { display: none; }
+.nh-label { font-size: 0.75rem; font-weight: 700; color: var(--muted); }
+.btn-tip { position: fixed; z-index: 9999; max-width: 260px; padding: 6px 10px; border-radius: 6px; background: #263238; color: #fff; font-size: 0.8rem; line-height: 1.5; box-shadow: 0 2px 8px rgba(0,0,0,0.25); pointer-events: none; opacity: 0; transition: opacity 0.12s; }
+.btn-tip.show { opacity: 1; }
+@media not ((hover: hover) and (pointer: fine)) { button { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; } }
+.nh-keys { display: grid; grid-template-columns: repeat(9, minmax(0, 40px)); gap: 4px; justify-content: center; width: 100%; }
+.nh-keys button { aspect-ratio: 1; min-width: 0; padding: 0; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1.05rem var(--font-num); cursor: pointer; touch-action: manipulation; }
+.nh-keys button:hover { background: var(--hover); }
+.nh-keys button.nh-done, .nh-keys button:disabled { opacity: 0.3; cursor: default; background: var(--paper); box-shadow: none; }
+/* ハイライトは4色まで。押した順に 黄・青・緑・ピンク */
+:root { --hl0: #d98c00; --hl0-bg: #ffd75e; --hl1: #2f7de1; --hl1-bg: #b9d3f8; --hl2: #2e9d4f; --hl2-bg: #b6e3c3; --hl3: #d6408f; --hl3-bg: #f5bcdb; }
+/* ダークモード：暗い背景でも色の違いがはっきり分かるよう、塗りは濃くて鮮やかな色、枠は明るい色にする */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --hl0: #ffd84d; --hl0-bg: #9a7400; --hl1: #7db4ff; --hl1-bg: #2860b8; --hl2: #6fe39a; --hl2-bg: #1f8a47; --hl3: #ff8fcf; --hl3-bg: #b02f78; }
+}
+:root[data-theme="dark"] { --hl0: #ffd84d; --hl0-bg: #9a7400; --hl1: #7db4ff; --hl1-bg: #2860b8; --hl2: #6fe39a; --hl2-bg: #1f8a47; --hl3: #ff8fcf; --hl3-bg: #b02f78; }
+.hlc0 { --hlc: var(--hl0); --hlc-bg: var(--hl0-bg); }
+.hlc1 { --hlc: var(--hl1); --hlc-bg: var(--hl1-bg); }
+.hlc2 { --hlc: var(--hl2); --hlc-bg: var(--hl2-bg); }
+.hlc3 { --hlc: var(--hl3); --hlc-bg: var(--hl3-bg); }
+.nh-keys button[aria-pressed="true"] { background: var(--hlc-bg); border-color: var(--hlc); box-shadow: 0 0 0 2px var(--hlc); }
+.nh-alert { position: absolute; left: 50%; bottom: calc(100% + 4px); transform: translateX(-50%); z-index: 30; white-space: nowrap; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25); margin: 0; padding: 4px 10px; border-radius: 6px; background: var(--error); color: #fff; font-size: 0.85rem; font-weight: 700; text-align: center; }
+.nh-keys button:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+.cand.hl-on { animation: hl-blink 1s ease-in-out infinite; }
+@keyframes hl-blink { 50% { background: var(--hlc-bg); color: var(--ink); font-weight: 700; } }
+/* 問題の数字・確定候補（大きな数字）は、同じ数字なら点滅させずに色を付ける */
+#board[data-mode="solve"] .cell.same-num, #board[data-mode="solve"] .cell.same-num .big { background: var(--hl0-bg); }
+#board[data-mode="solve"] .cell.same-num { box-shadow: inset 0 0 0 3px var(--hl0); }
+.cell.hl-big, .cell.hl-big .big { background: var(--hlc-bg); }
+.cell.hl-big { box-shadow: inset 0 0 0 3px var(--hlc); }
+@media (prefers-reduced-motion: reduce) { .cand.hl-on { animation: none; background: var(--hlc-bg); color: var(--ink); font-weight: 700; } }
+.box {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  min-height: 0;
+  gap: var(--cell);
+  background: var(--line-cell);
+  min-width: 0;
+}
+.cell {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(3, minmax(0, 1fr));
+  min-height: 0;
+  overflow: hidden;
+  gap: var(--sub);
+  background: var(--line-sub);
+  min-width: 0;
+}
+.cand {
+  background: var(--paper);
+  display: grid;
+  place-items: center;
+  font-family: var(--font-num);
+  font-weight: 500;
+  font-size: clamp(7px, 1.9vw, 13px);
+  color: var(--cand);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  user-select: none;
+  cursor: pointer;
+}
+.cand:hover { background: var(--hover); color: var(--ink); }
+.cand:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+.cell.fixed { display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 0; background: var(--paper); }
+.cell.fixed .cand { display: none; }
+.big {
+  display: grid; place-items: center;
+  font-family: var(--font-num); font-weight: 500;
+  font-size: clamp(18px, 6.2vw, 40px);
+  line-height: 1;
+  min-height: 0;
+  color: var(--ink); cursor: pointer; user-select: none;
+}
+.cell:not(.fixed):not(.tent) .big { display: none; }
+.cell.given { background: var(--given-bg); }
+.cell.fixed .big { font-weight: 700; }
+.cell.given .big { cursor: default; }
+.cand.pick { color: var(--answer); font-weight: 700; background: var(--pick-bg); }
+.cell.tent { grid-template-columns: minmax(0, 1fr); grid-template-rows: minmax(0, 1fr); gap: 0; background: var(--paper); }
+.cell.tent .cand { display: none; }
+.cell.tent .big { display: grid; color: var(--answer); font-weight: 700; }
+.cell.tent.tent-bad .big { color: var(--error); }
+/* 検証で正解と違った確定候補 */
+.cell.check-wrong, .cell.check-wrong .big { background: color-mix(in srgb, var(--error) 38%, var(--paper)) !important; }
+.cand.shadow, .cand.pick.shadow { color: var(--brown); font-weight: 700; }
+.cand.pick.shadow { background: var(--brown-bg); }
+.cand.pick.bad { color: var(--error); background: var(--bad-bg); }
+.cell .cand.hint, .cell .cand.pick.hint { background: var(--hint-bg); color: var(--error); font-weight: 700; box-shadow: inset 0 0 0 2px var(--error); }
+.cell .cand.pair, .cell .cand.pick.pair { background: var(--pair-bg); color: var(--pair); font-weight: 700; box-shadow: inset 0 0 0 2px var(--pair); }
+.key.pair { background: var(--pair-bg); border-color: var(--pair); color: var(--pair); }
+.cell.hint-cell .cand, .cell.hint-cell .cand.pick { background: var(--hint-bg); }
+.cell.pair-cell .cand, .cell.pair-cell .cand.pick { background: var(--pair-bg); }
+.cell.two-cell .cand, .cell.two-cell .cand.pick { background: var(--two-bg); }
+/* ③ ペアの組ごとの色（--pg に組の色が入る） */
+.cell[data-chain-no] { position: relative; }
+.cell[data-chain-no]::after { content: attr(data-chain-no); position: absolute; top: 1px; left: 1px; z-index: 2; min-width: 1.3em; height: 1.3em; padding: 0 2px; box-sizing: border-box; border-radius: 0.65em; background: var(--answer); color: #fff; font: 700 0.62rem/1.3em var(--font-num); text-align: center; pointer-events: none; }
+.cell .cand.pgrp, .cell .cand.pick.pgrp { color: var(--pg); background: color-mix(in srgb, var(--pg) 20%, var(--paper)); font-weight: 700; box-shadow: inset 0 0 0 2px var(--pg); text-decoration: none; }
+/* 2つの組に入っている数字は、2色を斜めに分けて示す */
+.cell .cand.pgrp.pgrp2 { background: linear-gradient(135deg, color-mix(in srgb, var(--pg) 30%, var(--paper)) 50%, color-mix(in srgb, var(--pg2) 30%, var(--paper)) 50%); box-shadow: inset 0 0 0 2px var(--pg), inset 0 0 0 4px var(--pg2); }
+.key.hint { background: var(--hint-bg); border-color: var(--error); color: var(--error); }
+/* 除外した候補は消して見えなくする（同じ場所をもう一度3回押すと戻る） */
+.cand.off, .cand.off.shadow { color: transparent; text-decoration: none; }
+/* 書き込み方式：候補（青）にした数字だけを表示する（PCはマスにマウスを乗せると、選べる数字を薄く表示） */
+.board[data-mode="solve"][data-style-write] .cell:not(.fixed):not(.tent) .cand:not(.pick):not(.hint):not(.pair) { color: transparent; }
+.board[data-mode="solve"][data-style-write] .cell:not(.fixed):not(.tent) { background: var(--paper); }
+@media (hover: hover) and (pointer: fine) {
+  .board[data-mode="solve"][data-style-write] .cell:not(.fixed):not(.tent):hover .cand:not(.pick):not(.off):not(.hint):not(.pair) { color: var(--line-sub); }
+  .board[data-mode="solve"][data-style-write] .cell:not(.fixed):not(.tent):hover .cand:not(.pick):not(.off):not(.hint):not(.pair):hover { color: var(--ink); }
+}
+.key.off { color: var(--line-sub); text-decoration: line-through; border-style: dashed; }
+.cell.conflict .big { color: var(--error); }
+.bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.bar .prompt { flex: 1 1 240px; }
+button#done, button#edit, button#reset {
+  font: 700 0.9rem var(--font-ui);
+  padding: 5px 12px; border: 2px solid var(--ink); border-radius: 4px;
+  background: var(--ink); color: var(--paper); cursor: pointer;
+}
+button#edit, button#reset { background: var(--paper); color: var(--ink); }
+button#done:hover, button#edit:hover, button#reset:hover { opacity: 0.85; }
+button#edit:disabled, button#reset:disabled { opacity: 0.4; cursor: default; }
+button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+.confirm {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+  padding: 14px 16px; background: var(--bad-bg); border: 2px solid var(--error); border-left-width: 6px; border-radius: 8px;
+  /* 確認は盤の上にポップアップで出す（位置は JS で盤の真ん中に合わせる） */
+  position: fixed; z-index: 60; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  width: min(440px, calc(100vw - 32px)); box-sizing: border-box; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+}
+.confirm[hidden] { display: none; }
+/* 正解を表示：確定していないマスに、正解を緑の数字で重ねる（自分の確定候補は青のまま、違うものは赤い背景） */
+.ans { display: none; }
+.board[data-mode="solve"][data-view-answer] .cell { position: relative; }
+.board[data-mode="solve"][data-view-answer] .cell:not(.fixed):not(.tent) .ans {
+  display: grid; place-items: center; position: absolute; inset: 0; z-index: 1;
+  background: var(--paper); color: var(--ans-color, #2e9d4f); font-family: var(--font-num); font-weight: 500;
+  font-size: clamp(18px, 6.2vw, 40px); line-height: 1; pointer-events: none;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --ans-color: #6fcf8f; } }
+:root[data-theme="dark"] { --ans-color: #6fcf8f; }
+/* この状態を保存：名前を付けて保存する欄 */
+.save-box { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px; }
+.save-box[hidden] { display: none; }
+.save-box .save-title { margin: 0; font-weight: 700; }
+.save-box .save-name { display: flex; gap: 8px; align-items: center; font-size: 0.9rem; }
+.save-box .save-name input { flex: 1; min-width: 0; font: inherit; padding: 6px 8px; border: 1.5px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); }
+.save-box .save-help { margin: 0; font-size: 0.78rem; color: var(--muted); line-height: 1.5; }
+.snap-item { display: flex; gap: 6px; }
+.hint-menu .snap-item .snap-go { flex: 1; }
+.hint-menu .snap-item .snap-del { display: block; flex: none; font-size: 0.8rem; color: var(--muted); }
+.hint-menu .snap-empty { margin: 0; padding: 6px; font-size: 0.85rem; color: var(--muted); }
+.confirm p { margin: 0; flex: 1 1 100%; font-weight: 700; line-height: 1.5; }
+.confirm button {
+  font: 700 0.9rem var(--font-ui); padding: 5px 12px; border-radius: 4px; cursor: pointer;
+  border: 2px solid var(--error); background: var(--paper); color: var(--error);
+}
+.confirm button#reset-yes { background: var(--error); color: var(--paper); }
+.confirm button:hover { opacity: 0.85; }
+.confirm button:focus-visible { outline: 3px solid var(--ink); outline-offset: 2px; }
+/* スマホ用: 選んだマスの候補を盤の下に大きく表示する数字パッド */
+.cell.sel { box-shadow: 0 0 0 4px var(--sel); position: relative; z-index: 2; }
+.cell.sel:is(.fixed, .tent), .cell.sel .cand:not(.pick):not(.shadow) { background: var(--sel-bg); }
+.cell.peer:is(.fixed, .tent):not(.given), .cell.peer .cand:not(.pick):not(.shadow) { background: var(--peer-bg); }
+/* パソコン: マウスを乗せたマスと同じ行・列・ブロックを薄い黄色にする */
+.cell.hl:is(.fixed, .tent):not(.given), .cell.hl .cand:not(.pick):not(.shadow):not(:hover) { background: var(--hl-bg); }
+.pad { border: 3px solid var(--sel); border-radius: 10px; padding: 10px; background: var(--peer-bg); width: min(100%, 340px); box-sizing: border-box; justify-self: center; }
+.pad #pad-title { font-weight: 700; font-size: 1rem; }
+.pad { display: grid; gap: 10px; justify-items: center; touch-action: manipulation; }
+.pad[hidden] { display: none; }
+/* 右上の×で拡大表示を閉じる（マスの選択を外す） */
+.pad { position: relative; }
+.pad .pad-close { position: absolute; top: 4px; right: 4px; width: 40px; height: 40px; border: none; border-radius: 8px; background: transparent; color: var(--ink); font: 700 1.6rem/1 var(--font-ui, sans-serif); cursor: pointer; }
+.pad .pad-close:active { background: var(--hover); }
+.pad .pad-close:focus-visible { outline: 3px solid var(--answer); }
+.pad #pad-title { padding: 0 40px; }
+.pad p { margin: 0; font-size: 0.9rem; text-align: center; }
+.pad .note { font-size: 0.8rem; }
+.keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: min(100%, 300px); }
+.key {
+  aspect-ratio: 1; font: 700 2rem var(--font-num); border-radius: 8px; cursor: pointer;
+  border: 2px solid var(--line-cell); background: var(--paper); color: var(--cand);
+  touch-action: manipulation; -webkit-user-select: none; user-select: none;
+}
+.key.pick { color: var(--answer); background: var(--pick-bg); border-color: var(--answer); }
+.key.shadow { color: var(--brown); background: var(--brown-bg); }
+.key.pick.bad { color: var(--error); background: var(--bad-bg); border-color: var(--error); }
+.key.sure { color: var(--paper); background: var(--answer); border-color: var(--answer); }
+.key.sure.bad { background: var(--error); border-color: var(--error); }
+.key.val { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+.key:disabled { cursor: default; opacity: 0.45; }
+.key.val:disabled { opacity: 1; }
+.key:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+/* スマホの拡大表示は、数字のボタンを左、説明を右に並べて、盤と一緒に画面に収まる大きさにする */
+@media (max-width: 760px) {
+  .pad { width: 100%; padding: 8px; gap: 4px 10px; border-width: 2px; grid-template-columns: auto 1fr; grid-template-areas: "keys title" "keys note"; grid-template-rows: auto 1fr; align-items: start; justify-items: stretch; align-content: start; }
+  .pad .keys { grid-area: keys; gap: 6px; width: 216px; }
+  .pad #pad-title { grid-area: title; font-size: 0.85rem; line-height: 1.35; padding: 0; text-align: left; white-space: pre-line; }
+  .pad #pad-revive { grid-area: rev; justify-self: start; }
+  .pad:has(#pad-revive:not([hidden])) { grid-template-areas: "keys title" "keys note" "keys rev"; grid-template-rows: auto 1fr auto; }
+  .pad #pad-note { grid-area: note; font-size: 0.7rem; line-height: 1.45; text-align: left; white-space: pre-line; }
+  .pad .pad-close { width: 32px; height: 32px; font-size: 1.3rem; top: 2px; right: 2px; }
+  .key { font-size: 1.6rem; border-radius: 7px; }
+}
+/* 写真の盤面の四隅を合わせる画面（端末内での読み取り用） */
+.crop {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center;
+  background: rgba(10, 14, 16, 0.6);
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px));
+}
+.crop[hidden] { display: none; }
+/* 右クリック・長押しのメニュー */
+.ctx { position: fixed; z-index: 60; display: grid; gap: 4px; padding: 6px; min-width: 200px; max-width: calc(100vw - 16px); box-sizing: border-box; background: var(--paper); color: var(--ink); border: 1.5px solid var(--line-cell); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25); }
+.ctx[hidden] { display: none; }
+.ctx p { margin: 2px 6px 4px; font-size: 0.8rem; color: var(--muted); }
+.ctx button { font: 500 0.95rem var(--font-ui); text-align: left; padding: 10px 12px; border: none; border-radius: 6px; background: transparent; color: var(--ink); cursor: pointer; }
+.ctx button:hover, .ctx button:focus-visible { background: var(--hover); outline: none; }
+.ctx button.cancel { color: var(--muted); }
+.ctx button.ctx-asm { color: var(--asm); font-weight: 700; }
+#board, #pad, .tut-menu-row { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+.crop-inner { background: var(--paper); color: var(--ink); border-radius: 8px; padding: 14px; display: grid; gap: 10px; max-width: 100%; justify-items: center; }
+.crop-inner p { margin: 0; font-size: 0.9rem; line-height: 1.6; }
+/* 回答の方式の詳細説明（表） */
+.style-inner #style-box-title { font-size: 1.2rem; font-weight: 700; }
+.style-inner #style-close { justify-self: center; }
+.style-inner { width: min(600px, 100%); max-height: calc(100dvh - 32px); overflow-y: auto; box-sizing: border-box; }
+.style-tbl { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: 1.05rem; line-height: 1.6; }
+.style-tbl th, .style-tbl td { padding: 8px 6px; vertical-align: top; text-align: left; }
+.style-tbl thead th { text-align: center; font-size: 1.12rem; border-bottom: 2px solid var(--ink); }
+.style-tbl .sb-row th { padding: 10px 6px 2px; font-size: 0.95rem; color: var(--muted); border-top: 1px solid var(--line-cell); }
+.style-tbl .sb-pick td { text-align: center; padding-top: 12px; }
+.sb-vis { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.sb-cell { display: grid; grid-template-columns: repeat(3, 22px); grid-template-rows: repeat(3, 22px); border: 2px solid var(--ink); background: var(--paper); }
+.sb-cell span { display: grid; place-items: center; font: 600 16px/1 var(--font-num); color: var(--cand); }
+.sb-cell span.b { color: var(--answer); font-weight: 800; }
+.sb-cell span.x { color: transparent; }
+.sb-arw { color: var(--muted); font-size: 0.8rem; }
+.sb-cap { display: flex; justify-content: space-around; font-size: 0.78rem; color: var(--muted); margin: 2px 0 6px; }
+.sb-who { color: #2e7d32; font-weight: 700; }
+@media (max-width: 420px) { .style-tbl { font-size: 0.95rem; } .sb-cell { grid-template-columns: repeat(3, 17px); grid-template-rows: repeat(3, 17px); } .sb-cell span { font-size: 13px; } .sb-vis { gap: 3px; } }
+.clear-inner { padding: 28px 36px; gap: 14px; text-align: center; }
+.gen-inner { width: min(100%, 420px); box-sizing: border-box; justify-items: stretch; }
+.gen-inner .gen-title { font-size: 1.1rem; font-weight: 700; }
+.gen-inner #gen-close { justify-self: center; }
+.gen-inner .gen-sub { margin: 0 0 8px; font-weight: 700; }
+#gen-step2 { display: grid; gap: 8px; }
+#gen-step1[hidden], #gen-step2[hidden] { display: none; }
+#gen-step2 #gen-backstep { justify-self: start; }
+.gen-inner .msg:empty { display: none; }
+.gen-levels { display: grid; gap: 6px; }
+.gen-levels button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1rem var(--font-ui); cursor: pointer; }
+.gen-levels button small { font-weight: 500; font-size: 0.8rem; color: var(--muted); }
+.gen-levels button:hover { background: var(--hover); }
+.gen-levels button:disabled { opacity: 0.5; cursor: default; }
+.clear-inner .btn { justify-self: center; }
+.clear-inner .clear-title { font-size: 1.5rem; font-weight: 700; }
+.clear-inner .clear-time { font: 700 1.1rem var(--font-num); color: var(--muted); }
+.splash { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; overflow: hidden; color: #eef3fc; cursor: pointer; transition: opacity 0.6s ease, transform 0.6s ease;
+  background: radial-gradient(120% 90% at 50% 38%, #1c2b47 0%, #0b111d 62%, #05080e 100%); }
+.splash::before { content: ""; position: absolute; inset: -40px; pointer-events: none; opacity: 0.18;
+  background-image: linear-gradient(#5b7bb0 1px, transparent 1px), linear-gradient(90deg, #5b7bb0 1px, transparent 1px); background-size: 44px 44px;
+  -webkit-mask-image: radial-gradient(circle at 50% 42%, #000 0%, transparent 65%); mask-image: radial-gradient(circle at 50% 42%, #000 0%, transparent 65%);
+  animation: splash-drift 14s linear infinite; }
+.splash-glow { position: absolute; width: 360px; height: 360px; left: 50%; top: 42%; transform: translate(-50%, -50%); border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, rgba(91, 155, 255, 0.28) 0%, rgba(91, 155, 255, 0) 70%); animation: splash-pulse 3.2s ease-in-out infinite; }
+.splash.fade { opacity: 0; transform: scale(1.04); pointer-events: none; }
+.splash[hidden] { display: none; }
+.splash-inner { position: relative; display: grid; justify-items: center; gap: 12px; padding: 24px 16px; text-align: center; }
+.splash-icon { width: 120px; height: 120px; margin-bottom: 8px; filter: drop-shadow(0 10px 28px rgba(40, 90, 200, 0.45)); animation: splash-icon 0.7s cubic-bezier(.2, .9, .3, 1.3) both; }
+.splash-icon path, .splash-icon rect[pathLength] { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.sp-thin path { animation: splash-draw 0.6s ease-out 0.25s forwards; }
+.sp-thin path + path { animation-delay: 0.35s; }
+.sp-thick path { animation: splash-draw 0.5s ease-out 0.5s forwards; }
+.sp-thick path + path { animation-delay: 0.6s; }
+.sp-thick rect { animation: splash-draw 0.7s ease-out 0.3s forwards; }
+.sp-cells rect { transform-box: fill-box; transform-origin: center; transform: scale(0); filter: drop-shadow(0 0 3px #8ab8ff); animation: splash-pop 0.35s cubic-bezier(.3, 1.6, .5, 1) forwards; }
+.sp-cells rect:nth-child(1) { animation-delay: 0.9s; }
+.sp-cells rect:nth-child(2) { animation-delay: 1.02s; }
+.sp-cells rect:nth-child(3) { animation-delay: 1.14s; }
+.splash-title { position: relative; margin: 0; will-change: transform; min-height: 1.4em; font-size: clamp(1.45rem, 6.4vw, 2rem); font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; color: #f4f8ff; text-shadow: 0 0 18px rgba(91, 155, 255, 0.6), 0 0 2px rgba(143, 184, 255, 0.8); }
+.splash-title .ch { display: inline-block; opacity: 0; will-change: opacity, transform; animation: splash-ch 0.7s cubic-bezier(.22, .61, .36, 1) calc(0.7s + var(--i) * 0.24s) both; }
+.splash-caret { position: absolute; left: 0; top: 0.2em; transition: transform 0.24s cubic-bezier(.22, .61, .36, 1); will-change: transform; width: 3px; height: 1.05em; border-radius: 2px; background: #8fb8ff; box-shadow: 0 0 10px #5b9bff; animation: splash-blink 0.9s steps(1) infinite; }
+.splash-sub { margin: 4px 0 0; max-width: 26em; font-size: 0.9rem; line-height: 1.8; color: #a9b8d3; text-wrap: balance; word-break: keep-all; overflow-wrap: anywhere; opacity: 0; transform: translateY(6px); transition: opacity 0.6s ease, transform 0.6s ease; }
+.splash-sub strong { display: inline-block; margin-top: 4px; font-size: 1.05rem; color: #eef3fc; text-shadow: 0 0 12px rgba(91, 155, 255, 0.55); }
+.splash-tap { margin: 18px 0 0; font-size: 0.72rem; letter-spacing: 0.2em; color: #6f82a6; opacity: 0; transition: opacity 0.6s ease 0.4s; }
+.splash.typed .splash-sub, .splash.typed .splash-tap { opacity: 1; transform: none; }
+@keyframes splash-icon { from { opacity: 0; transform: scale(0.7) rotate(-8deg); } to { opacity: 1; transform: none; } }
+@keyframes splash-draw { to { stroke-dashoffset: 0; } }
+@keyframes splash-pop { to { transform: scale(1); } }
+@keyframes splash-ch { from { opacity: 0; transform: translateY(0.3em) scale(0.92); } to { opacity: 1; transform: none; } }
+.splash-ver { margin: -4px 0 0; font: 600 0.9rem var(--font-num); letter-spacing: 0.12em; color: #a9c4f0; opacity: 0; transition: opacity 0.6s ease; }
+.splash.typed .splash-ver { opacity: 1; }
+.splash-tm { position: absolute; left: 0; right: 0; bottom: max(14px, env(safe-area-inset-bottom)); margin: 0; padding: 0 16px; text-align: center; font-size: 0.72rem; color: #8396b8; opacity: 0; transition: opacity 0.6s ease; }
+.splash.typed .splash-tm { opacity: 1; }
+@keyframes splash-blink { 50% { opacity: 0; } }
+@keyframes splash-pulse { 50% { transform: translate(-50%, -50%) scale(1.12); opacity: 0.75; } }
+@keyframes splash-drift { to { transform: translate(44px, 44px); } }
+@media (prefers-reduced-motion: reduce) { .splash, .splash *, .splash::before { animation: none !important; transition: none !important; } .splash-icon path, .splash-icon rect[pathLength] { stroke-dashoffset: 0; } .sp-cells rect { transform: none; } }
+.tut-inner { width: min(100%, 460px); box-sizing: border-box; gap: 12px; justify-items: stretch; max-height: calc(100dvh - 32px); overflow-y: auto; }
+.tut-inner .tut-step { font: 500 0.75rem var(--font-num); color: var(--muted); }
+.tut-inner .tut-title { font-size: 1.15rem; font-weight: 700; }
+.tut-inner .tut-text { font-size: 0.92rem; line-height: 1.7; white-space: pre-line; }
+.tut-inner .tut-status { min-height: 1.6em; font-weight: 700; color: var(--answer); }
+.tut-inner .tut-status.ok { color: #2e7d32; }
+.tut-status .tut-done { display: block; font-size: 1.02rem; }
+.tut-status .tut-why { display: block; margin-top: 2px; font-size: 0.82rem; font-weight: 500; color: var(--muted); }
+.tut-colors { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; width: 100%; }
+@media (min-width: 480px) { .tut-colors { grid-template-columns: repeat(3, 1fr); } }
+.tut-color { display: grid; justify-items: center; gap: 2px; padding: 12px 6px 10px; border: 1px solid var(--line-sub); border-radius: 10px; background: var(--paper); text-align: center; }
+.tut-color .tc-num { font: 700 2.1rem/1.1 var(--font-num); }
+.tut-color .tc-name { font-weight: 700; font-size: 0.9rem; }
+.tut-color .tc-mean { font-size: 0.75rem; color: var(--muted); line-height: 1.35; }
+.tut-color.c-blue .tc-num { color: var(--answer); }
+.tut-color.c-red .tc-num { color: var(--error); }
+.tut-color.c-brown .tc-num { color: var(--brown); }
+.tut-nav { justify-content: center; }
+.tut-fork { justify-content: center; }
+.tut-hide { font-size: 0.9rem; display: flex; gap: 6px; align-items: center; justify-content: center; }
+.tut-hide[hidden] { display: none; }
+.tut-demo { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; }
+.tut-demo .tut-undo-row { flex-basis: 100%; display: flex; justify-content: center; }
+.tut-demo:empty { display: none; }
+/* 初級編2ページ目: 長押しするとメニューが出る見本（盤のマスとメニューは実物と同じ見た目） */
+.tut-press { display: flex; align-items: center; justify-content: center; gap: 14px; flex-wrap: wrap; }
+.tut-press .cell { position: relative; }
+.tut-demo .tut-press .cand.tp-key { color: var(--answer); font-weight: 700; }
+.tut-press .tp-ring { position: absolute; left: calc(50% - 18px); top: calc(50% - 18px); width: 36px; height: 36px; border-radius: 50%; border: 2.5px solid var(--answer); background: color-mix(in srgb, var(--answer) 18%, transparent); pointer-events: none; animation: tp-press 3.6s ease-out infinite; }
+.tut-pm { display: grid; gap: 2px; padding: 6px; min-width: 190px; background: var(--paper); color: var(--ink); border: 1.5px solid var(--line-cell); border-radius: 8px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18); animation: tp-menu 3.6s ease-out infinite; }
+.tut-pm p { margin: 2px 6px 4px; font-size: 0.8rem; color: var(--muted); }
+.tut-pm span { font: 500 0.95rem var(--font-ui); padding: 8px 10px; border-radius: 6px; }
+.tut-pm span.on { color: var(--answer); font-weight: 700; animation: tp-pick 3.6s ease-out infinite; }
+.tut-pm span.asm { color: var(--asm); font-weight: 700; }
+.tut-pm span.on2 { background: var(--hover); }
+.tut-asm { outline: 3px solid var(--asm); outline-offset: 3px; }
+.tut-asm .cell.as-root { box-shadow: inset 0 0 0 3px var(--asm); background: var(--asm-bg); }
+.tut-asm .cell .big { color: var(--asm); }
+.tut-pm.still { animation: none; }
+.tut-asm { flex-wrap: wrap; }
+.tut-asm .cand.as-c { box-shadow: inset 0 0 0 1.5px var(--asm); border-radius: 3px; }
+.tut-pick { width: 100%; }
+.tut-more { flex-basis: 100%; display: grid; gap: 4px; padding-top: 10px; border-top: 1px solid var(--line-sub); font-size: 0.88rem; line-height: 1.6; }
+@keyframes tp-press { 0% { transform: scale(0.4); opacity: 0; } 8% { opacity: 1; } 22%, 88% { transform: scale(1.25); opacity: 1; } 100% { transform: scale(1.25); opacity: 0; } }
+@keyframes tp-menu { 0%, 22% { opacity: 0.25; transform: translateY(6px); } 30%, 92% { opacity: 1; transform: none; } 100% { opacity: 0.25; transform: translateY(6px); } }
+@keyframes tp-pick { 0%, 50% { background: transparent; } 58%, 88% { background: var(--hover); } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .tut-press .tp-ring, .tut-pm, .tut-pm span.on { animation: none; } .tut-press .tp-ring { transform: scale(1.25); } }
+.tut-demo .row3 { display: grid; grid-template-columns: repeat(3, 96px); gap: var(--cell); background: var(--line-cell); border: var(--thick) solid var(--ink); }
+.tut-demo .cell { width: 96px; height: 96px; touch-action: manipulation; }
+.tut-demo .cand { font-size: 17px; }
+.tut-demo .big { font-size: 52px; }
+.tut-demo .cand.target { outline: 2px dashed var(--sel); outline-offset: -3px; }
+#crop-canvas { touch-action: none; max-width: 100%; cursor: grab; border: 1px solid var(--line-cell); }
+.start, .work { display: grid; gap: 14px; }
+.trial { display: grid; gap: 8px; padding: 10px 12px; background: var(--peer-bg); border: 2px solid var(--sel); border-radius: 6px; }
+.trial[hidden] { display: none; }
+.trial p { margin: 0; font-size: 0.85rem; font-weight: 700; }
+.start[hidden], .work[hidden] { display: none; }
+/* 最初の画面（ホーム）と、「作る」「解く」それぞれのページ。そのページに要る物だけを出す */
+.edit-box[hidden] { display: none; }
+.edit-box h2 { font-size: 1rem; margin: 14px 0 6px; }
+.row.make-menu { display: grid; grid-template-columns: 1fr; max-width: 420px; gap: 10px; }
+.make-menu > .btn { justify-self: stretch; width: 100%; box-sizing: border-box; justify-content: flex-start; text-align: left; }
+.start:not([data-page="home"]) .p-home, .start:not([data-page="make"]) .p-make, .start:not([data-page="solve"]) .p-solve, .start:not([data-page="settings"]) .p-settings { display: none !important; }
+.head-btns { display: flex; gap: 6px; align-items: center; }
+.head h1 { display: flex; align-items: baseline; flex-wrap: nowrap; white-space: nowrap; column-gap: 6px; min-width: 0; font-size: min(1.35rem, 5vw); }
+/* 「？」は🏠と同じ見た目のボタン（大きさ・枠・角）にそろえる */
+/* ❓と🏠は幅・高さとも同じ大きさにそろえる */
+:root .head .home-btn { width: 38px; height: 30px; padding: 0; box-sizing: border-box; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+.help-ico { width: 20px; height: 20px; display: block; }
+.head h1 .help-btn { align-self: center; flex: none; margin-left: 4px; font-size: 1rem; line-height: 1; letter-spacing: 0; touch-action: manipulation; }
+.home-btn { font-size: 1rem; line-height: 1; }
+.home-menu { display: grid; gap: 12px; }
+.home-big { display: flex; align-items: center; gap: 14px; width: 100%; text-align: left; padding: 16px 18px; border: 2px solid var(--ink); border-radius: 10px; background: var(--paper); color: var(--ink); font: 700 1.15rem var(--font-ui); cursor: pointer; }
+.home-big:hover { background: var(--hover); }
+.home-big:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+.home-big .hb-icon { font-size: 1.8rem; line-height: 1; }
+.home-big small { display: block; margin-top: 4px; font-weight: 500; font-size: 0.8rem; color: var(--muted); }
+h2 { margin: 0; font-size: 1rem; font-weight: 700; }
+.list { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; max-height: 55vh; overflow-y: auto; }
+.list li { display: flex; flex-wrap: wrap; gap: 4px 6px; justify-content: flex-end; }
+.list button { font: 500 0.95rem var(--font-ui); border-radius: 4px; cursor: pointer; background: var(--paper); color: var(--ink); border: 1.5px solid var(--line-cell); }
+.list .open { flex: 1 1 100%; min-width: 0; text-align: left; padding: 8px 12px; overflow-wrap: anywhere; }
+.list .open.has-mini { display: flex; align-items: center; gap: 12px; padding: 8px 10px; }
+.list .open.has-mini .gd-mini { width: 64px; height: 64px; }
+.list .open-text { flex: 1; min-width: 0; }
+.paused-box { display: grid; gap: 8px; }
+.paused-box[hidden] { display: none; }
+.paused-box h2 { margin: 0; }
+.paused-box .open { border-color: var(--answer); border-width: 2px; }
+.list .open small { display: block; margin-top: 2px; color: var(--muted); font-size: 0.75rem; font-variant-numeric: tabular-nums; }
+.list .del, .list .share { flex: 0 0 auto; padding: 6px 10px; font-size: 0.8rem; color: var(--muted); white-space: nowrap; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+#startup-set { margin-bottom: 12px; }
+/* 新しい版があるときに画面の下に出すお知らせ（GitHub版のみ） */
+.upd-banner { position: fixed; left: 50%; bottom: max(12px, env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; padding: 10px 12px; background: var(--paper); color: var(--ink); border: 2px solid var(--answer); border-radius: 10px; box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25); font-size: 0.9rem; }
+.upd-banner[hidden] { display: none; }
+.gdrive { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px solid var(--line-cell); border-radius: 4px; }
+.gdrive[hidden], .gd-on[hidden], #gd-open-row[hidden] { display: none; }
+.gd-on { display: grid; gap: 8px; }
+.gd-title { margin: 0; font-weight: 700; }
+.gd-account { margin-left: 8px; font-weight: 500; font-size: 0.8rem; color: var(--muted); overflow-wrap: anywhere; }
+.linkbtn { margin-left: 10px; padding: 0; border: 0; background: none; color: var(--answer); font: inherit; font-size: 0.8rem; font-weight: 400; text-decoration: underline; cursor: pointer; }
+.gd-opt { display: flex; gap: 8px; align-items: flex-start; font-size: 0.85rem; line-height: 1.5; cursor: pointer; }
+.gd-opt input { margin-top: 3px; }
+.gd-dest { display: grid; gap: 6px; margin: 0; padding: 8px 10px 10px; border: 1px solid var(--line-cell); border-radius: 4px; }
+.gd-dest legend { padding: 0 4px; font-size: 0.85rem; font-weight: 700; }
+.gd-dest:disabled .gd-opt { opacity: 0.5; cursor: default; }
+.dest-inner { width: min(100%, 360px); box-sizing: border-box; }
+.dest-inner .gen-title { font-size: 1.05rem; font-weight: 700; margin: 0; }
+.dest-inner #dest-cancel, .dest-inner #exp-cancel { justify-self: center; }
+.exp-out { display: grid; gap: 8px; }
+.gd-note { margin: 4px 0 0; font-size: 0.8rem; line-height: 1.5; color: var(--muted); }
+#set-hintlimit { font: inherit; margin-left: 6px; padding: 2px 4px; }
+.exp-out[hidden] { display: none; }
+.exp-out textarea { width: 100%; box-sizing: border-box; font: 1rem/1.5 var(--font-num); letter-spacing: 0.05em; word-break: break-all; padding: 8px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); resize: none; }
+.exp-msg { margin: 0; font-size: 0.85rem; color: var(--muted); }
+.share-img { display: block; justify-self: center; max-width: 100%; max-height: 34vh; border: 1px solid var(--line-cell); border-radius: 6px; }
+#share-text { font-size: 0.85rem; letter-spacing: 0; }
+.share-btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.digits-row { display: flex; gap: 8px; align-items: center; }
+.photo .digits-row input { position: static; width: auto; height: auto; opacity: 1; flex: 1; min-width: 0; font: 0.95rem var(--font-num); padding: 6px 8px; border: 1.5px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); }
+.gd-policy { font-size: 0.75rem; color: var(--muted); }
+.gd-inner { width: min(100%, 440px); box-sizing: border-box; justify-items: stretch; max-height: calc(100dvh - 32px); }
+.gd-box-title { margin: 0; font-weight: 700; }
+.gd-inner .msg { margin: 0; }
+.gd-inner .msg:empty { display: none; }
+.gd-inner #gd-close { justify-self: center; }
+.gd-inner .list { max-height: calc(100dvh - 180px); }
+.gd-inner .list .gd-group { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1.5px solid var(--line-cell); }
+.gd-inner .list .gd-group:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+.gd-inner .list .gd-group p { flex: 1; margin: 0; font-weight: 700; overflow-wrap: anywhere; }
+.gd-inner .list .gd-group small { display: block; font-weight: 500; font-size: 0.75rem; color: var(--muted); }
+.gd-inner .list .gd-item { flex-wrap: nowrap; padding-left: 12px; }
+.gd-mini { flex: none; width: 72px; height: 72px; }
+.gd-mini .bg { fill: var(--paper); }
+.gd-mini .thin { stroke: var(--line-sub); stroke-width: 0.5; }
+.gd-mini .thick { stroke: var(--ink); stroke-width: 1.2; }
+.gd-mini .frame { fill: none; stroke: var(--ink); stroke-width: 1.5; }
+.gd-mini text { font: 700 7.5px var(--font-num); fill: var(--ink); text-anchor: middle; }
+.gd-inner .list .gd-item .open { flex: 1 1 auto; }
+.gd-inner .list .open:disabled { cursor: default; opacity: 0.6; }
+.filepick { position: relative; }
+.filepick input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.filepick:focus-within { outline: 3px solid var(--answer); outline-offset: 2px; }
+p.msg { margin: 0; font-size: 0.85rem; }
+/* 仮定モード: 盤の外枠・仮定したマス・仮定のあとに変えた数字と候補を紫で示す */
+#board.assuming { outline: 4px solid var(--asm); outline-offset: 3px; }
+#board.assuming .cell.as-root { box-shadow: inset 0 0 0 3px var(--asm); background: var(--asm-bg); }
+#board.assuming .cell.as-root .big, #board.assuming .cell.as-t .big { color: var(--asm); }
+#board.assuming .cell.as-t { background: var(--asm-bg); }
+#board.assuming .cell.tent-bad .big { color: var(--error); }
+#board.assuming .cand.as-c { box-shadow: inset 0 0 0 1.5px var(--asm); border-radius: 3px; }
+.assume-box { border: 2px solid var(--asm); border-radius: 10px; padding: 10px 12px; display: grid; gap: 6px; background: var(--paper); }
+.assume-box[hidden] { display: none; }
+.assume-box p { margin: 0; }
+.assume-box .as-h { font-size: 0.8rem; font-weight: 700; color: var(--asm); }
+.assume-box #assume-msg { font-weight: 700; }
+.assume-box #assume-warn { font-size: 0.85rem; color: var(--muted); }
+.assume-box #assume-warn.err { color: var(--error); font-weight: 700; }
+.assume-box .as-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+p.msg:empty { display: none; }
+.btn.small { font-size: 0.85rem; padding: 4px 10px; }
+.msg { color: var(--muted); }
+.hint-menu { display: grid; gap: 6px; padding: 8px; background: var(--paper); border: 1.5px solid var(--ink); border-radius: 8px; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12); }
+.hint-menu[hidden] { display: none; }
+/* スマホではタイトルの位置から重ねて出し、スクロールしなくても全部見えるようにする */
+@media (max-width: 760px) {
+  .side { position: relative; }
+  .hint-menu { position: absolute; top: 0; left: 0; right: 0; z-index: 20; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); }
+}
+.hint-menu button { display: grid; grid-template-columns: auto 1fr; column-gap: 10px; align-items: center; text-align: left; padding: 8px 10px; border: 1px solid var(--line-sub); border-radius: 6px; background: var(--paper); color: var(--ink); font: inherit; cursor: pointer; }
+.hint-menu button:hover { background: var(--hover); }
+.hint-menu button:focus-visible { outline: 3px solid var(--answer); outline-offset: 1px; }
+#hint-menu { gap: 3px; padding: 6px; }
+#hint-menu .hm-item { display: grid; grid-template-columns: 1fr auto; gap: 4px 6px; align-items: center; }
+#hint-menu .hm-go { grid-template-columns: auto 1fr auto; padding: 3px 10px; min-height: 30px; line-height: 1.2; }
+#hint-menu .hm-go .hm-no { grid-row: auto; }
+#hint-menu .hm-q { display: block; width: 36px; height: 100%; min-height: 30px; padding: 0; justify-content: center; font-weight: 700; color: var(--muted); text-align: center; }
+#hint-menu .hm-q[aria-expanded="true"] { color: var(--paper); background: var(--answer); border-color: var(--answer); }
+#hint-menu .hm-desc { grid-column: 1 / -1; margin: 0 2px 4px; padding: 6px 10px; font-size: 0.85rem; line-height: 1.5; color: var(--ink); background: var(--hover); border-radius: 6px; }
+#hint-menu .hm-desc[hidden] { display: none; }
+#hint-menu .hm-head { margin: 2px 2px 0; font-size: 0.7rem; line-height: 1.3; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--line-sub); }
+#hint-menu .hm-head:first-child { margin-top: 0; }
+.hint-menu .hm-no { grid-row: span 2; font: 700 1.1rem var(--font-num); color: var(--answer); }
+.hint-menu .hm-label { font-weight: 700; font-size: 0.92rem; }
+#hint-menu .hm-lv { justify-self: end; font-size: 0.75rem; letter-spacing: -0.05em; color: #c08a00; white-space: nowrap; }
+.hint-menu .hm-check { grid-row: span 2; width: 1.2em; text-align: center; font-weight: 700; color: var(--answer); }
+/* 表示方法変更：回答中だけ効く。マスの位置は変えずに見えなくする */
+.board[data-mode="solve"][data-view-blank] .cell:not(.fixed):not(.tent) .cand { visibility: hidden; }
+.board[data-mode="solve"][data-view-blank] .cell:not(.fixed):not(.tent) { background: var(--paper); }
+#view.on { border-color: var(--answer); color: var(--answer); }
+.hint-menu .hm-desc { font-size: 0.78rem; color: var(--muted); }
+.msg.err { color: var(--error); }
+/* PCでは右側が縦に長くなりやすいので、ボタンとヒントメニューを一回り小さく */
+@media (min-width: 761px) {
+  :root .btn, :root .btn.small, :root button#done, :root button#edit, :root button#reset { font-size: 0.9rem; padding: 4px 9px; }
+  .hint-menu button { padding: 4px 8px; font-size: 0.85rem; }
+  .hint-menu .hm-no { font-size: 0.95rem; }
+  .hint-menu .hm-label { font-size: 0.8rem; }
+  .hint-menu .hm-desc { font-size: 0.72rem; }
+  .list button { font-size: 0.85rem; }
+  .list .open { padding: 5px 10px; }
+  .list .del, .list .share { padding: 3px 8px; font-size: 0.75rem; }
+  .ctx button { font-size: 0.85rem; padding: 6px 10px; }
+  .gen-levels button { font-size: 0.9rem; padding: 6px 10px; }
+  .nh-keys { grid-template-columns: repeat(9, minmax(0, 34px)); }
+  .nh-keys button { font-size: 0.95rem; }
+  #hint-menu { gap: 3px; padding: 6px; }
+  /* パソコン: ヒントの一覧は「ヒント」ボタンのすぐ下に重ねて出す（位置は JS で合わせる） */
+  #hint-menu { position: fixed; z-index: 40; width: 360px; max-width: calc(100vw - 16px); box-sizing: border-box; overflow-y: auto; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25); }
+  #hint-menu .hm-item { gap: 3px 4px; }
+  #hint-menu .hm-go { padding: 2px 8px; min-height: 24px; column-gap: 8px; }
+  #hint-menu .hm-no { font-size: 0.95rem; }
+  #hint-menu .hm-label { font-size: 0.8rem; }
+  #hint-menu .hm-q { width: 28px; min-height: 24px; font-size: 0.8rem; }
+  #hint-menu .hm-desc { font-size: 0.78rem; padding: 4px 8px; }
+}
+.list .del.armed { border-color: var(--error); background: var(--error); color: var(--paper); }
+.list button:hover { background: var(--hover); }
+.list .del.armed:hover { background: var(--error); opacity: 0.85; }
+.list button:focus-visible, .btn:focus-visible, #pname:focus-visible { outline: 3px solid var(--answer); outline-offset: 2px; }
+.btn {
+  font: 700 0.9rem var(--font-ui); padding: 5px 12px; border-radius: 4px; cursor: pointer;
+  border: 2px solid var(--ink); background: var(--ink); color: var(--paper); justify-self: start;
+}
+.btn.sub { background: var(--paper); color: var(--ink); }
+.btn:hover { opacity: 0.85; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.photo { display: grid; gap: 8px; padding: 12px 14px; background: var(--paper); border: 1.5px dashed var(--line-cell); border-radius: 4px; }
+.photo[hidden] { display: none; }
+.photo input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.photo label.btn { display: inline-block; }
+.photo label.btn:focus-within { outline: 3px solid var(--answer); outline-offset: 2px; }
+.photo.busy label.btn { opacity: 0.5; pointer-events: none; }
+.photo p b { color: var(--ink); }
+.photo p { margin: 0; font-size: 0.85rem; line-height: 1.6; color: var(--muted); }
+.photo p.err { color: var(--error); }
+.photo p.warn { color: var(--ink); font-weight: 700; }
+.cell.ocr-unsure { position: relative; box-shadow: inset 0 0 0 3px var(--sel); }
+.cell.ocr-unsure::after { content: "?"; position: absolute; top: 1px; right: 4px; font: 700 0.8rem var(--font-num); color: var(--sel); pointer-events: none; }
+.name { display: grid; gap: 6px; }
+.name[hidden] { display: none; }
+.name label { font-size: 0.85rem; font-weight: 700; }
+#pname { font: 500 1rem var(--font-ui); padding: 8px 10px; border: 1.5px solid var(--line-cell); border-radius: 4px; background: var(--paper); color: var(--ink); min-width: 0; }
+.board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"], [data-mode="complete"]) .cand, .board[data-mode="complete"] .big { cursor: default; }
+.board:is([data-mode="start"], [data-mode="ready"], [data-mode="paused"]) .cand:not(.pick):hover { background: var(--paper); color: var(--cand); }
+.board[data-mode="paused"] .cell { background: var(--paper); }
+.board[data-mode="replay"] :is(.cand, .big) { cursor: default; }
+.cell.rp-wait .big { visibility: hidden; }
+.cell.rp-now { background: var(--sel-bg); }
+.board[data-mode="paused"] :is(.cand, .big) { visibility: hidden; }
+.timer { margin: 0; font: 700 2.2rem var(--font-num); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; line-height: 1; }
+.timer[hidden] { display: none; }
+.timer-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: 18px; row-gap: 4px; }
+.timer-row:not(:has(> :not([hidden]))) { display: none; }
+/* 回答中のボタンのまとまり。パソコン：用途別の3つの枠（よく使う操作／状態の管理／問題の管理）。スマホ：枠なしで同じ順の3行 */
+.grp:not(:has(button:not([hidden]))) { display: none; }
+.bar-break { display: none !important; }
+@media (max-width: 760px) { .bar:has(#pause:not([hidden])) .bar-break { display: block !important; } }
+@media (min-width: 761px) {
+  .bar .grp { flex: 1 1 100%; display: grid; gap: 6px; padding: 8px 10px 10px; border: 1.5px solid var(--line-sub); border-radius: 8px; }
+  .bar .grp-h { margin: 0; font-size: 0.75rem; font-weight: 700; color: var(--muted); letter-spacing: 0.04em; }
+  .bar .grp-btns { display: flex; flex-wrap: wrap; gap: 8px; }
+}
+@media (max-width: 760px) {
+  .bar .grp, .bar .grp-btns { display: contents; }
+  .bar .grp-h { display: none; }
+  /* 1行目：1手戻す・答え合わせ・ヒント／2行目：この状態を保存・保存した状態に戻す・再生／3行目：その他の操作（表示方法変更から） */
+  .bar #reg-cancel { order: 35; } .bar #pause { order: 10; } .bar .b0 { order: 11; } .bar #undo { order: 12; } .bar #check { order: 13; } .bar #hint { order: 14; } .bar #view { order: 30; }
+  .bar .b1 { order: 20; }
+  .bar #save-progress { order: 21; } .bar #snap-open { order: 22; } .bar #replay { order: 23; } .bar #save-solved { order: 24; } .bar #share-solved { order: 25; }
+  .bar .b2 { order: 29; }
+  .bar #reset { order: 31; } .bar #export-cur { order: 32; } .bar #edit { order: 33; } .bar #back { order: 34; }
+  .bar-break { flex-basis: 100%; height: 0; }
+  .bar:has(#pause:not([hidden])) { row-gap: 0; margin-bottom: -8px; }
+  .bar:has(#pause:not([hidden])) :is(.prompt, button) { margin-bottom: 8px; }
+  /* 一時停止ボタンは状態表示の右に並べ、ボタンは1行に収まるよう少し詰める */
+  .bar:has(#pause:not([hidden])) .prompt { flex: 1 1 0; min-width: 0; }
+  .bar:has(#pause:not([hidden])) button { padding-left: 9px; padding-right: 9px; letter-spacing: 0; }
+}
+.timer-side { display: flex; flex-direction: column; gap: 2px; }
+.timer-side:not(:has(> :not([hidden]))) { display: none; }
+.hints-used { margin: 0; font-size: 0.85rem; font-weight: 700; color: var(--muted); }
+.tl-row { display: flex; flex-wrap: wrap; column-gap: 1em; }
+.timer.paused { color: var(--muted); }
+.prompt {
+  margin: 0; padding: 10px 14px;
+  background: var(--paper); border-left: 4px solid var(--ink);
+  font-size: 1rem; font-weight: 700;
+}
+.prompt .prompt-sub { display: block; margin-top: 2px; font-size: 0.8rem; font-weight: 400; color: var(--muted); }
+p.note:empty { display: none; }
+/* ===== 折りたたみスマホを開いたとき（body.fold） =====
+   「開いた画面か」の判定は JS の FOLD_QUERY の1か所だけで行い、CSS は body.fold を見るだけにする。
+   左（.fold-left）：盤・ハイライトの数字・タイマー・状態表示と一時停止
+   右（.side）    ：アプリ名・マスの操作パネル・ボタン・説明（長ければ右だけスクロール） */
+body.fold main { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); justify-content: stretch; gap: 20px; }
+/* 盤は左半分いっぱい。中の数字は盤の幅に合わせて縮める */
+body.fold main .board { width: 100%; container-type: inline-size; }
+body.fold .board .cand { font-size: clamp(7px, 2.2cqw, 13px); }
+body.fold .board .big { font-size: clamp(18px, 6.6cqw, 40px); }
+/* 左の列 */
+body.fold .fold-left { display: grid; gap: 12px; align-content: start; min-width: 0; }
+body.fold .fold-left .timer-row { justify-self: start; }
+body.fold .fold-status { display: flex; align-items: center; gap: 8px; }
+body.fold .fold-status .prompt { flex: 1 1 0; min-width: 0; }
+body.fold .fold-status .prompt:empty { display: none; }
+/* ホーム・問題を作る・設定など（解く画面の部品が隠れているとき）は、左の状態表示とタイマーも出さない */
+body.fold:has(#work[hidden]) .fold-left :is(.fold-status, .timer-row) { display: none; }
+/* 右の列：半分の幅に収め、長いときは右だけスクロール */
+body.fold .side { grid-template-columns: minmax(0, 1fr); position: sticky; top: 16px; max-height: calc(100dvh - 32px); overflow-y: auto; overscroll-behavior: contain; align-content: start; }
+body.fold .side > .pad { width: 100%; }
+body.fold .head { flex-wrap: wrap; row-gap: 6px; }
+body.fold .head h1 { font-size: min(1.2rem, 2.1vw); column-gap: 4px; }
+body.fold .head button { flex-shrink: 0; }

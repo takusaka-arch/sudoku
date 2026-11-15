@@ -1,0 +1,140 @@
+  // ===== 16-generator.js：問題を自動で作る画面・最難関の作り置き・起動するときの設定 =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
+  // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
+  const GEN_STOCK_KEY = "sudoku-gen-stock5", GEN_STOCK_MAX = 10;  // 最難関の条件を変えたので、前の作り置きは使わない
+  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); } catch (e) {}
+  const genLevels = [
+    { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
+    { label: "中級", desc: "ポインティング、3つの数字の組、Xウイング、XYウイングなどが必要です" },
+    { label: "難問", desc: "4つの数字の組、XYZウイング、スカイスクレイパー、XYチェーンなどが必要です（背理法はいりません）" },
+    { label: "最難関", desc: "問題の数字は21個以下。背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です。★4つ以上の解き方を4回以上使います" },
+  ];
+  const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");
+  const genStock = (list) => {
+    try {
+      if (list) localStorage.setItem(GEN_STOCK_KEY, JSON.stringify(list.slice(0, GEN_STOCK_MAX)));
+      const a = JSON.parse(localStorage.getItem(GEN_STOCK_KEY) || "[]");
+      return Array.isArray(a) ? a.filter((g) => /^[0-9]{81}$/.test(g)) : [];
+    } catch (e) { return []; }
+  };
+  // 裏の計算（Worker）。使えないときは画面側で少しずつ計算する
+  let genWorker = null;
+  const genHandlers = [];
+  function onGen(m) { genHandlers.forEach((h) => h(m)); }
+  const sent = [];  // Worker が途中で使えなくなったときに、画面側で同じ頼みごとをやり直すため
+  function genOnPage() {
+    const fake = { postMessage: (m) => setTimeout(() => onGen(m), 0), onmessage: null };
+    sudokuGen(fake);
+    genWorker = { postMessage: (m) => setTimeout(() => fake.onmessage({ data: m }), 0) };
+    sent.forEach((m) => genWorker.postMessage(m));
+  }
+  try {
+    const w = new Worker(URL.createObjectURL(new Blob([`(${sudokuGen})(self)`], { type: "text/javascript" })));
+    w.onmessage = (e) => onGen(e.data);
+    w.onerror = () => { w.terminate(); genOnPage(); };
+    genWorker = { postMessage: (m) => { sent.push(m); if (sent.length > 50) sent.shift(); w.postMessage(m); } };
+  } catch (e) { genOnPage(); }
+  const genHunt = () => genWorker.postMessage({ type: "hunt", on: genStock().length < GEN_STOCK_MAX });
+  genHandlers.push((m) => {
+    if (m.type !== "stock") return;
+    const list = genStock();
+    if (list.length < GEN_STOCK_MAX && !list.includes(m.givens)) genStock([...list, m.givens]);
+    genHunt();
+    drawGenLevels();
+  });
+  let genWaiting = null, genSeq = 0;
+  function drawGenLevels() {
+    genLevelsEl.textContent = "";
+    genLevels.forEach((lv, i) => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = lv.label;
+      const sm = document.createElement("small");
+      sm.textContent = lv.desc + (i === 3 ? `（作り置き ${genStock().length}問）` : "");
+      b.appendChild(sm);
+      b.disabled = !!genWaiting;
+      b.addEventListener("click", () => makeProblem(i + 1));
+      genLevelsEl.appendChild(b);
+    });
+  }
+  function finishGen(level, givens) {
+    genWaiting = null;
+    genBox.hidden = true;
+    const d = new Date(), p2 = (n) => String(n).padStart(2, "0");
+    const base = `${genLevels[level - 1].label} ${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${p2(d.getMinutes())}`;
+    const list = loadAll();
+    let name = base;
+    for (let i = 2; list.some((q) => q.name === name); i++) name = `${base} (${i})`;
+    const p = { name, givens, saved: d.toISOString() };
+    list.push(p);
+    saveAll(list);
+    openProblem(p);
+  }
+  function makeProblem(level) {
+    if (level === 4) {
+      const list = genStock();
+      if (list.length) {
+        genStock(list.slice(1));
+        genHunt();
+        return finishGen(4, list[0]);
+      }
+    }
+    const id = ++genSeq;
+    genWaiting = { id, level };
+    genMsg.classList.remove("err");
+    genMsg.textContent = level === 4
+      ? "最難関の問題を作っています。見つかるまで時間がかかることがあります（この画面のままお待ちください）…"
+      : `${genLevels[level - 1].label}の問題を作っています…`;
+    drawGenLevels();
+    genWorker.postMessage(level === 4 ? { type: "hunt", on: true } : { type: "make", id, level });
+  }
+  genHandlers.push((m) => {
+    if (!genWaiting) return;
+    if (m.type === "made" && m.id === genWaiting.id) return finishGen(m.level, m.givens);
+    // 最難関を待っている間に見つかったら、ストックから取り出して開く
+    if (m.type === "stock" && genWaiting.level === 4) {
+      const list = genStock();
+      if (list.length) { genStock(list.slice(1)); genHunt(); finishGen(4, list[0]); }
+    }
+  });
+  function closeGen() {
+    if (genWaiting && genWaiting.level !== 4) genWorker.postMessage({ type: "cancel", id: genWaiting.id });
+    genWaiting = null;
+    genMsg.textContent = "";
+    genBox.hidden = true;
+  }
+  // 1段目: 自分で入力するか自動で作成するか。自動を選ぶと2段目でレベルを選ぶ
+  const genStep = (n) => {
+    document.getElementById("gen-step1").hidden = n !== 1;
+    document.getElementById("gen-step2").hidden = n !== 2;
+    (n === 1 ? document.getElementById("gen-self") : genLevelsEl.querySelector("button")).focus();
+  };
+  document.getElementById("gen-self").addEventListener("click", () => { closeGen(); startRegister(); });
+  document.getElementById("gen-auto").addEventListener("click", () => { drawGenLevels(); genStep(2); });
+  document.getElementById("new").addEventListener("click", () => startRegister());
+  document.getElementById("new-auto").addEventListener("click", () => {
+    genMsg.textContent = "";
+    drawGenLevels();
+    genBox.hidden = false;
+    genStep(2);
+  });
+  document.getElementById("gen-close").addEventListener("click", closeGen);
+  // アプリを開いている間は、最難関の作り置きを続ける（10問たまったら止める）
+  genHunt();
+
+  showStart("home");
+  // 前回、解いている途中で閉じた場合は一時停止の状態で続きを開く（ガイドの写真のお試しから戻ったときも）
+  function resumeSaved() {
+    try {
+      const cur = JSON.parse(localStorage.getItem(CUR_KEY) || "null");
+      if (!cur) return;
+      restoring = true;
+      openProgressData(cur, "回答中");
+      restoring = false;
+      if (board.dataset.mode === "paused") { setPausedPrompt("（前回の続き）"); setPauseLock(true); }
+      else { clearAutoSave(); showStart("home"); }
+    } catch (e) { restoring = false; }
+  }
+  // 起動するときの設定: 一時停止中の問題を回答画面で開く（resume・はじめから）か、ホームメニューを出す（home）か
+  const RESUME_KEY = "sudoku-start-resume";
+  const startResume = () => { try { return localStorage.getItem(RESUME_KEY) !== "home"; } catch (e) { return true; } };

@@ -755,7 +755,7 @@ body.fold .head button { flex-shrink: 0; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.237</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.238</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1125,6 +1125,8 @@ body.fold .head button { flex-shrink: 0; }
 </div>
 
 <script>
+// ===== 01-board.js：盤を作る・数字の表示・同じ数字の色付け・重複（赤）の確認・盤を空にする・問題作成／回答モードの基本 =====
+// （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
 (function () {
   const board = document.getElementById("board");
   // 小マスの表示順（行ごと）: 1 2 3 / 4 5 6 / 7 8 9
@@ -1357,6 +1359,8 @@ body.fold .head button { flex-shrink: 0; }
     }
     markConflicts();
   }
+  // ===== 02-input.js：マスの選択（スマホ）・タップ回数の判定・数字パッド・右クリック／長押しメニュー・問題登録完了・タイマー =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // スマホではマスのタップでマスを選び、数字は下のパッドで操作する
   const phoneMQ = window.matchMedia("(max-width: 760px)");
   const isPhone = () => phoneMQ.matches;
@@ -1754,6 +1758,8 @@ body.fold .head button { flex-shrink: 0; }
     hintPts = 0;
     drawHints();
   }
+  // ===== 03-solve-modes.js：ヒントの回数とポイント・目標時間・正解を求める・答え合わせ・画面の状態（登録・回答・一時停止）の切り替え =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 使ったヒントの回数（ヒントを示せたときだけ数える）
   const hintsEl = document.getElementById("hints-used");
   let hintsUsed = 0, hintPts = 0;
@@ -2051,6 +2057,8 @@ body.fold .head button { flex-shrink: 0; }
     editSaved.setAttribute("aria-expanded", String(open));
   });
 
+  // ===== 04-import-photo.js：81桁の盤面データの読み込み・写真／クリップボードからの読み取り（Tesseract.js・OpenCV.js） =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 81桁の盤面データを読み込む（問題を自分で作る画面）
   const digitsIn = document.getElementById("digits-in"), digitsStatus = document.getElementById("digits-status"), digitsHelp = digitsStatus.textContent;
   function loadDigits() {
@@ -2552,6 +2560,8 @@ body.fold .head button { flex-shrink: 0; }
     updatePhoto();
   }
 
+  // ===== 05-screens-list.js：ホーム・作る・解く・設定の画面切り替え・問題一覧・プレビュー・回答画面からの書き出し =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 起動画面: 保存した問題の一覧から選ぶか、新しい問題を作る
   const startPanel = document.getElementById("start");
   const workPanel = document.getElementById("work");
@@ -2786,6 +2796,8 @@ body.fold .head button { flex-shrink: 0; }
   const exportCur = document.getElementById("export-cur");
   const workMsg = document.getElementById("work-msg");
 
+  // ===== 06-hint-single-undo.js：ヒント（シングル・次に注目するマス）・候補の復活・1手戻す =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // ヒント: 入れられる数字が1つだけのマス、または行・列・ブロックで1か所にしか入らない数字を、1つだけ薄い赤で示す
   // どちらも無ければ、2つの数字が同じ2マスにしか入らないペアを紫で示す
   // 入れられる = 問題の数字・確定候補で埋まっておらず、消しておらず、同じ行・列・ブロックにその数字が確定していない
@@ -2946,6 +2958,8 @@ body.fold .head button { flex-shrink: 0; }
     undoBtn.disabled = undoStack.length === 0;
   }
   undoBtn.addEventListener("click", undo);
+  // ===== 07-assume-complete-share-replay.js：仮定モード・完成・完成形を保存・LINEなどで送る・再生 =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // ===== 仮定モード =====
   const assumeBox = document.getElementById("assume-box"), assumeWarnEl = document.getElementById("assume-warn");
   function assumeWarn(t, err) { assumeWarnEl.textContent = t; assumeWarnEl.classList.toggle("err", !!err); }
@@ -3265,6 +3279,8 @@ body.fold .head button { flex-shrink: 0; }
   });
   document.getElementById("clear-replay").addEventListener("click", startReplay);
 
+  // ===== 08-highlight-hintmenu-view.js：盤の下の1〜9のハイライト・ヒントメニュー・ヒントを控える設定・表示方法変更・確認の画面 =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   const hintBtn = document.getElementById("hint");
   const viewBtn = document.getElementById("view");
   // 盤の下の 1〜9：押すとその数字を点滅させる（もう一度押すと止める）
@@ -3553,6 +3569,8 @@ body.fold .head button { flex-shrink: 0; }
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape" && !viewMenu.hidden) { closeViewMenu(); viewBtn.focus(); }
   });
+  // ===== 09-hints-basic.js：ヒント：ペア・3つの組・ポインティング =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // ②③ 行・列・ブロックの中で、2つ（3つ）の数字が同じ2マス（3マス）にしか入らない組を、組ごとの色で示す
   // 青い候補かどうかは関係なく、入れられる数字（消した候補・確定済みの数字を除く）で調べる
   const PAIR_COLORS = ["#2f7de1", "#e07b00", "#2e9d4f", "#d6408f", "#0f9a92", "#8a5cd1", "#b8860b", "#c0392b"];
@@ -3684,6 +3702,8 @@ body.fold .head button { flex-shrink: 0; }
     renderPad();
     workMsg.textContent = `ヒント：ポインティング（${found.length}組）：同じ色の数字は、そのブロックの中では1つの行（列）にしか入りません。なので、その行（列）のブロックの外にある同じ数字（赤い枠）は消せます。`;
   }
+  // ===== 10-hints-advanced.js：上級のヒント（Xウイング・ソードフィッシュ・スカイスクレイパー・XY/XYZウイング・カラーリング・チェーン・唯一解の原則・背理法など） =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // ===== 上級のヒント（3つ・4つの組、ソードフィッシュ、スカイスクレイパー、XY/XYZウイング、リモートペア、XYチェーン、背理法） =====
   // マスは i = 行*9+列 で表す。盤の DOM の並びは行順ではないので、必ず data-row / data-col から作る
   const DIGS = ["1", "2", "3", "4", "5", "6", "7", "8", "9"];
@@ -4372,6 +4392,8 @@ body.fold .head button { flex-shrink: 0; }
   }
   let hintEngine = null;
   const bitCount = (m) => { let n = 0; for (; m; m &= m - 1) n++; return n; };
+  // ===== 11-export-save.js：問題の書き出し・この状態を保存・ファイルに保存・自動保存・回答中のファイルを開く =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 問題を書き出す: 問題ファイル（.json）か、81桁の盤面データ（コピー用）を選ぶ
   const expBox = document.getElementById("exp-box"), expOut = document.getElementById("exp-out"), expText = document.getElementById("exp-text"), expMsg = document.getElementById("exp-msg");
   const expGivens = () => { let g = ""; for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) g += cellAt(r, c).dataset.value || "0"; return g; };
@@ -4730,6 +4752,8 @@ body.fold .head button { flex-shrink: 0; }
     openProblem(p);
   }
 
+  // ===== 12-gdrive.js：Googleドライブへの保存・Googleドライブから開く =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // Googleドライブ: 直下の「Sudoku」フォルダに保存・そこから開く（GitHub版で使える。2回目からは前のアカウントで自動接続）
   const gd = (() => {
     const CLIENT = window.GDRIVE_CLIENT_ID || "";
@@ -5008,6 +5032,8 @@ body.fold .head button { flex-shrink: 0; }
     showReady(p.givens.replace(/0/g, "").length);
     markConflicts();
   }
+  // ===== 13-register-buttons.js：新しい問題を自分で作る・登録のキャンセル・ボタンの並び =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 「新しい問題を自分で作る」: 手で入力するか、写真から読み取る
   function startRegister() {
     clearBoard();
@@ -5030,6 +5056,8 @@ body.fold .head button { flex-shrink: 0; }
   // 「問題一覧へ」はパソコンもスマホも「問題の管理」のまとまり（リセットの右）に置く
   document.querySelector(".grp-prob .grp-btns").appendChild(document.getElementById("back"));
   document.querySelector(".grp-prob .grp-btns").appendChild(regCancel);
+  // ===== 14-tutorial.js：使い方ガイド（初級編・中級編・上級編）と、見本の写真でのお試し =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // ---- 使い方ガイド: 小さな盤で実際にタップを試しながら、1つずつ説明する ----
   const TUT_KEY = "sudoku-tutorial-hide";
   const tutEl = document.getElementById("tut");
@@ -5475,6 +5503,8 @@ body.fold .head button { flex-shrink: 0; }
   document.getElementById("tut-skip").addEventListener("click", () => { tutEl.hidden = true; });
   document.getElementById("tut-open").addEventListener("click", openTutorial);
 
+  // ===== 15-puzzle-maker.js：問題を作る計算（裏の Worker でも画面側でも動く） =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 問題を作る処理（裏の計算用 Worker でも、使えないときは画面側でも動く）
   // self: postMessage / onmessage を持つもの。レベル 1=初級 2=中級 3=難問 4=最難関
   function sudokuGen(self) {
@@ -5947,6 +5977,8 @@ body.fold .head button { flex-shrink: 0; }
     return { grade, count, attempt };
   }
 
+  // ===== 16-generator.js：問題を自動で作る画面・最難関の作り置き・起動するときの設定 =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
   const GEN_STOCK_KEY = "sudoku-gen-stock5", GEN_STOCK_MAX = 10;  // 最難関の条件を変えたので、前の作り置きは使わない
   try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); } catch (e) {}
@@ -6085,6 +6117,8 @@ body.fold .head button { flex-shrink: 0; }
   // 起動するときの設定: 一時停止中の問題を回答画面で開く（resume・はじめから）か、ホームメニューを出す（home）か
   const RESUME_KEY = "sudoku-start-resume";
   const startResume = () => { try { return localStorage.getItem(RESUME_KEY) !== "home"; } catch (e) { return true; } };
+  // ===== 17-startup.js：起動時の処理：URLで届いた問題・折りたたみスマホの表示・アプリの更新・スプラッシュ画面・ボタンの説明 =====
+  // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // URLに問題（?p=81桁&n=問題名）が付いていれば、その問題を一覧に加えて開く（LINEなどで送られたリンクから）
   const urlProblem = (() => {
     try {
