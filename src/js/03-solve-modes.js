@@ -11,9 +11,9 @@
   // 残りのマス数（問題の数字も確定候補も入っていないマス）
   const leftEl = document.getElementById("left-cells");
   // 目標完成時間 = 解き終わるまでの1手ごとに、使うヒントのレベルの秒数を足したもの
-  // 1手ごとにヒントレベルの秒数を足す: レベル1 25秒（ver.239 で5秒から変更）・レベル2 1分・レベル3 2分・レベル4 3分30秒・レベル5 5分・レベル6（背理法） 10分
+  // 1手ごとにヒントレベルの秒数を足す: レベル1 8秒（ver.240）・レベル2 1分・レベル3 2分・レベル4 3分30秒・レベル5 5分・レベル6（背理法） 10分
   const targetEl = document.getElementById("target-time");
-  const TARGET_SEC = { 1: 25, 2: 60, 3: 120, 4: 210, 5: 300, 6: 600 };
+  const TARGET_SEC = { 1: 8, 2: 60, 3: 120, 4: 210, 5: 300, 6: 600 };
   function drawTarget() {
     targetEl.hidden = true;
     const t = targetText();
