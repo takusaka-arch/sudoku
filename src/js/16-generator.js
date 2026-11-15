@@ -1,12 +1,12 @@
   // ===== 16-generator.js：問題を自動で作る画面・最難関の作り置き・起動するときの設定 =====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
-  const GEN_STOCK_KEY = "sudoku-gen-stock5", GEN_STOCK_MAX = 10;  // 最難関の条件を変えたので、前の作り置きは使わない
-  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); } catch (e) {}
+  const GEN_STOCK_KEY = "sudoku-gen-stock6", GEN_STOCK_MAX = 10;  // 最難関の条件を変えたので、前の作り置きは使わない
+  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); localStorage.removeItem("sudoku-gen-stock5"); } catch (e) {}
   const genLevels = [
     { label: "初級", desc: "「このマスにはこの数字しか入らない」を見つけるだけで解けます" },
-    { label: "中級", desc: "ポインティング、クレーミング、3つの数字の組、Xウイング、XYウイングなどが必要です" },
-    { label: "難問", desc: "4つの数字の組、XYZウイング、スカイスクレイパー、XYチェーンなどが必要です（背理法はいりません）" },
+    { label: "中級", desc: "★2〜3つの解き方（ポインティング、クレーミング、2つの数字のペア、3つの数字の組、Xウイング、スカイスクレイパー）が必要です" },
+    { label: "難問", desc: "★4〜5つの解き方（4つの数字の組、ソードフィッシュ、XY/XYZウイング、シンプルカラーリング、チェーンなど）が必要です（背理法はいりません）" },
     { label: "最難関", desc: "問題の数字は21個以下。背理法以外の解き方では15マス以上が残り、仮に置いて矛盾したら消す、が必要です。★4つ以上の解き方を4回以上使います" },
   ];
   const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");

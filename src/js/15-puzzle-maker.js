@@ -66,9 +66,9 @@
       const v = start ? start.v.slice() : g.slice(), cand = start ? start.cand.slice() : new Array(81).fill(ALL);
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
       if (!start) for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
-      let tech = "";
+      let tech = "", techLv = 0;
       const log = [];
-      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { if (start) log.push({ i, m: cand[i] & m, tech }); cand[i] &= ~m; return true; } return false; };
+      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { if (start) log.push({ i, m: cand[i] & m, tech, lv: techLv }); cand[i] &= ~m; return true; } return false; };
       const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
       // 初級: そのマスに入る数字が1つだけ／その行・列・ブロックでその数字が入るマスが1つだけ
       function singles() {
@@ -80,9 +80,10 @@
         }
         return false;
       }
-      // 中級: 2つの数字のペア（2マスに同じ2つの候補だけ／2つの数字が同じ2マスにしか入らない）
+      const sees = (a, b) => a !== b && peers[a].includes(b);
+      const biCells = () => [...Array(81).keys()].filter((i) => !v[i] && pop(cand[i]) === 2);
+      // 2つの数字のペア（2マスに同じ2つの候補だけ／2つの数字が同じ2マスにしか入らない）
       function pairs() {
-        tech = "2つの数字のペア";
         let ch = false;
         for (const u of units) {
           const e = u.filter((i) => !v[i]);
@@ -101,9 +102,8 @@
         }
         return false;
       }
-      // 難問: ブロックと行・列の関係、3つの数字の組、Xウイング
-      function hard() {
-        tech = "ポインティング";
+      // ポインティング: ブロックの中で、ある数字が1つの行（列）にしか入らないとき、その行（列）のブロックの外から消す
+      function pointing() {
         let ch = false;
         for (let b = 0; b < 9; b++) {
           const box = units[b * 3 + 2];
@@ -117,9 +117,11 @@
             }
           }
         }
-        if (ch) return true;
-        // クレーミング: 行（列）の中で、ある数字が1つのブロックにしか入らないとき、そのブロックのほかのマスから消す
-        tech = "クレーミング";
+        return ch;
+      }
+      // クレーミング: 行（列）の中で、ある数字が1つのブロックにしか入らないとき、そのブロックのほかのマスから消す
+      function claiming() {
+        let ch = false;
         for (let L = 0; L < 9; L++) for (const k of [0, 1]) {
           const line = units[L * 3 + k];
           for (let d = 1; d <= 9; d++) {
@@ -128,8 +130,11 @@
             for (const i of units[boxOf(w[0]) * 3 + 2]) if (!line.includes(i)) ch = elim(i, 1 << d) || ch;
           }
         }
-        if (ch) return true;
-        tech = "3つの数字の組";
+        return ch;
+      }
+      // 3つの数字の組（ネイキッド・隠れ）
+      function triples() {
+        let ch = false;
         for (const u of units) {
           const e = u.filter((i) => !v[i] && pop(cand[i]) <= 3);
           for (let x = 0; x < e.length; x++) for (let y = x + 1; y < e.length; y++) for (let z = y + 1; z < e.length; z++) {
@@ -148,8 +153,11 @@
           }
           if (ch) return true;
         }
-        // Xウイング（行で見つけて列から消す／列で見つけて行から消す）
-        tech = "Xウイング";
+        return false;
+      }
+      // Xウイング（行で見つけて列から消す／列で見つけて行から消す）
+      function xWing() {
+        let ch = false;
         for (let d = 1; d <= 9; d++) for (const k of [0, 1]) {
           const lines = [];
           for (let L = 0; L < 9; L++) {
@@ -166,8 +174,11 @@
           }
           if (ch) return true;
         }
-        // ソードフィッシュ（Xウイングの3行・3列版）
-        tech = "ソードフィッシュ";
+        return false;
+      }
+      // ソードフィッシュ（Xウイングの3行・3列版）
+      function swordfish() {
+        let ch = false;
         for (let d = 1; d <= 9; d++) for (const k of [0, 1]) {
           const lines = [];
           for (let L = 0; L < 9; L++) {
@@ -184,10 +195,12 @@
           }
           if (ch) return true;
         }
-        tech = "XYウイング";
-        // XYウイング: 候補が2つのマス3つ（XY・XZ・YZ）で、XYが両方と同じ単位にあれば、XZとYZの両方から見えるマスのZを消せる
-        const bi = [...Array(81).keys()].filter((i) => !v[i] && pop(cand[i]) === 2);
-        const sees = (a, b) => peers[a].includes(b);
+        return false;
+      }
+      // XYウイング: 候補が2つのマス3つ（XY・XZ・YZ）で、XYが両方と同じ単位にあれば、XZとYZの両方から見えるマスのZを消せる
+      function xyWing() {
+        let ch = false;
+        const bi = biCells();
         for (const p of bi) {
           const [x, y] = bits(cand[p]);
           const wa = bi.filter((q) => q !== p && sees(p, q) && (cand[q] & (1 << x)) && !(cand[q] & (1 << y)));
@@ -201,12 +214,9 @@
         }
         return false;
       }
-      // さらに上の解き方（背理法は使わない）: 4つの組、XYZウイング、スカイスクレイパー、XYチェーン（リモートペアを含む）
-      function extreme() {
+      // 4つの数字の組（ネイキッド・隠れ）
+      function quads() {
         let ch = false;
-        const sees = (a, b) => a !== b && peers[a].includes(b);
-        // 4つの数字の組（ネイキッド・隠れ）
-        tech = "4つの数字の組";
         for (const u of units) {
           const e = u.filter((i) => !v[i] && pop(cand[i]) <= 4);
           const n = e.length;
@@ -228,9 +238,12 @@
           }
           if (ch) return true;
         }
-        // XYZウイング
-        tech = "XYZウイング";
-        const bi = [...Array(81).keys()].filter((i) => !v[i] && pop(cand[i]) === 2);
+        return false;
+      }
+      // XYZウイング
+      function xyzWing() {
+        let ch = false;
+        const bi = biCells();
         for (let p = 0; p < 81; p++) {
           if (v[p] || pop(cand[p]) !== 3) continue;
           const w = bi.filter((q) => sees(p, q) && (cand[q] & ~cand[p]) === 0);
@@ -243,8 +256,11 @@
             if (ch) return true;
           }
         }
-        // スカイスクレイパー
-        tech = "スカイスクレイパー";
+        return false;
+      }
+      // スカイスクレイパー
+      function skyscraper() {
+        let ch = false;
         for (let d = 1; d <= 9; d++) for (const k of [0, 1]) {
           const lines = [];
           for (let L = 0; L < 9; L++) { const w = where(units[L * 3 + k], d); if (w.length === 2) lines.push(w); }
@@ -258,8 +274,11 @@
             }
           }
         }
-        // シンプルカラーリング
-        tech = "シンプルカラーリング";
+        return false;
+      }
+      // シンプルカラーリング
+      function coloring() {
+        let ch = false;
         for (let d = 1; d <= 9; d++) {
           const link = [...Array(81)].map(() => []);
           for (const u of units) { const w = where(u, d); if (w.length === 2) { link[w[0]].push(w[1]); link[w[1]].push(w[0]); } }
@@ -281,8 +300,12 @@
             if (ch) return true;
           }
         }
-        tech = "XYチェーン";
-        // XYチェーン: 候補が2つのマスをつなぎ、両端で同じ数字 z が出てくれば、両端から見えるマスの z を消せる
+        return false;
+      }
+      // XYチェーン（リモートペアを含む）: 候補が2つのマスをつなぎ、両端で同じ数字 z が出てくれば、両端から見えるマスの z を消せる
+      function xyChain() {
+        let ch = false;
+        const bi = biCells();
         for (const s0 of bi) for (const z of bits(cand[s0])) {
           const start = { c: s0, out: bits(cand[s0] & ~(1 << z))[0] };
           const seen = new Set([s0 * 10 + start.out]);
@@ -301,9 +324,12 @@
             }
           }
         }
-        // チェーン（AIC）: 「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぐ。
-        // 始めの候補が違うなら終わりの候補が正しい、が言えるので、両方と同時には成り立たない候補を消せる
-        tech = "チェーン";
+        return false;
+      }
+      // チェーン（AIC）: 「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぐ。
+      // 始めの候補が違うなら終わりの候補が正しい、が言えるので、両方と同時には成り立たない候補を消せる
+      function chain() {
+        let ch = false;
         const strong = [];
         for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 2) { const [a, b] = bits(cand[i]); (strong[i * 10 + a] ||= []).push(i * 10 + b); (strong[i * 10 + b] ||= []).push(i * 10 + a); }
         for (const u of units) for (let d = 1; d <= 9; d++) { const w = where(u, d); if (w.length === 2) { (strong[w[0] * 10 + d] ||= []).push(w[1] * 10 + d); (strong[w[1] * 10 + d] ||= []).push(w[0] * 10 + d); } }
@@ -345,6 +371,32 @@
         }
         return false;
       }
+      // シングル以外の解き方と、そのヒントのレベル（ヒントメニューの★の数と同じ）。
+      // ここがレベルの決め所: 目標完成時間・「答えと理由」のレベル・自動作成の難易度分けは、すべてこの表から決まる。
+      // 1手ごとに、レベルの低い解き方から順に試す（同じレベルの中は上から順）
+      const TECHS = [
+        { name: "ポインティング", lv: 2, run: pointing },
+        { name: "クレーミング", lv: 2, run: claiming },
+        { name: "2つの数字のペア", lv: 2, run: pairs },
+        { name: "3つの数字の組", lv: 3, run: triples },
+        { name: "Xウイング", lv: 3, run: xWing },
+        { name: "スカイスクレイパー", lv: 3, run: skyscraper },
+        { name: "4つの数字の組", lv: 4, run: quads },
+        { name: "ソードフィッシュ", lv: 4, run: swordfish },
+        { name: "XYウイング", lv: 4, run: xyWing },
+        { name: "XYZウイング", lv: 4, run: xyzWing },
+        { name: "シンプルカラーリング", lv: 5, run: coloring },
+        { name: "XYチェーン", lv: 5, run: xyChain },
+        { name: "チェーン", lv: 5, run: chain },
+      ];
+      // 1つの解き方で候補を消せたら、そのレベルを返す（どれも使えなければ 0）
+      function advance() {
+        for (const t of TECHS) {
+          tech = t.name; techLv = t.lv;
+          if (t.run()) return t.lv;
+        }
+        return 0;
+      }
       if (start) {
         // 答えの決まるマスが出るまで、やさしい解き方から順に候補を消していく（マスに数字は入れない）
         for (let step = 0; step < 200; step++) {
@@ -355,13 +407,12 @@
             const w = where(u, d);
             if (w.length === 1) return { log, i: w[0], d, how: "unit", unit: k };
           }
-          if (!(pairs() || hard() || extreme())) break;
+          if (!advance()) break;
         }
         return { log, stuck: true };
       }
       // grade.steps（timing のとき）: 1手ごとのヒントレベル。目標完成時間の計算に使う
-      // レベル1 = シングル、レベル2 = ポインティング・クレーミング・2つの数字のペア、レベル3 = 3つの数字の組・Xウイング・スカイスクレイパー、レベル4 = 4つの組・ソードフィッシュ・XY/XYZウイング・唯一解の原則、レベル5 = カラーリング・チェーン、レベル6 = 背理法
-      const LV = { "2つの数字のペア": 2, "ポインティング": 2, "クレーミング": 2, "3つの数字の組": 3, "Xウイング": 3, "スカイスクレイパー": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
+      // 難易度: 初級 = シングル（レベル1）だけ、中級 = レベル2〜3、難問 = レベル4〜5 の解き方が必要。最難関 = 背理法（レベル6）が必要
       const steps = [];
       grade.steps = steps;
       // 背理法: 候補が2つのマスに片方を仮に入れ、シングルだけで進めて矛盾が出たら、その候補を消す
@@ -392,10 +443,8 @@
         if (v.every((x) => x)) return level;
         for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) { steps.length = 0; return 4; }
         if (singles()) { steps.push(1); continue; }
-        // 2つのペアだけで解ける問題は 1.5（どのレベルにもしない）。中級はポインティング・3つの組・Xウイングなど、難問は4つの組・XYチェーンなどが必要なもの
-        if (pairs()) { level = Math.max(level, 1.5); steps.push(LV[tech] || 4); continue; }
-        if (hard()) { level = Math.max(level, 2); steps.push(LV[tech] || 4); continue; }
-        if (extreme()) { level = Math.max(level, 3); steps.push(LV[tech] || 4); continue; }
+        const k = advance();
+        if (k) { level = Math.max(level, k <= 3 ? 2 : 3); steps.push(k); continue; }
         if (timing) {
           if (contra()) { steps.push(6); continue; }
           // 仮に置いてシングルだけでは矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める

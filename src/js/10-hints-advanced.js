@@ -618,8 +618,8 @@
         o.querySelector(`.cand[data-n="${d}"]`).classList.add("pair");
       };
       if (r.i !== undefined && r.log.length) {
-        const TL0 = { "2つの数字のペア": 2, "ポインティング": 2, "クレーミング": 2, "3つの数字の組": 3, "Xウイング": 3, "スカイスクレイパー": 3, "シンプルカラーリング": 5, "XYチェーン": 5, "チェーン": 5 };
-        const rlv = Math.max(1, ...r.log.map((e) => TL0[e.tech] || 4));
+        // 理由のレベル = 使った解き方のレベルの一番高いもの（レベルは 15-puzzle-maker.js の TECHS で決まる）
+        const rlv = Math.max(1, ...r.log.map((e) => e.lv));
         const ekey = "e" + r.i;
         if (!full && seen.has(ekey)) return focusDone();
         if (!hintGate(rlv, () => runHint(full))) return;
