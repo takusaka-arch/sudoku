@@ -732,7 +732,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.232</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.233</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -5052,11 +5052,13 @@ p.note:empty { display: none; }
       ["brown", "6", "茶", "入らない候補"],
     ] },
     { part: 2, title: "ボタン", text: "【よく使う操作】\n1手戻す：1つ前の操作に戻す（パソコンは Ctrl+Z でも可）\nヒント：次に使える解き方を示す\n答え合わせ：確定したマスを正解と比べる\n\n【状態の管理】\nこの状態を保存：その時点を残す\n保存した状態に戻す：残した時点に戻る\n再生：確定した順に数字を再生する\n\n【その他の操作】\n表示方法変更：未確定のマスを空白／候補を表示／正解を表示\nリセット：問題だけの最初の状態に戻す\n問題一覧へ：問題の一覧に戻る\n\n一時停止：タイマーを止める。一時停止中は保存とその他の操作（表示方法変更を除く）だけ使えます\n\n" + (matchMedia("(hover: hover) and (pointer: fine)").matches ? "ボタンにマウスを乗せると" : "ボタンを長押しすると") + "、説明が出ます" },
-    { part: 2, title: "準備ができました", text: "難しい問題で使う「仮定モード」は、上級編で説明します。\nこのガイドは、アプリ名の右の「？」ボタンからいつでも見られます。", last: true, toAdv: true },
-    { part: 3, title: "ようこそ（上級編）", text: "難しい問題で、ヒントの解き方だけでは先に進めないときは「仮定モード」が使えます。\n\nあるマスに数字を仮に入れて先を試し、矛盾が出たら「その数字は入らない」と分かります（背理法）。紙で解くときに、鉛筆で薄く書いて試すのと同じです。" },
+    { part: 2, title: "準備ができました", text: "難しい問題で使う「仮定モード」や、81桁の盤面データ・LINEなどで送る方法は、上級編で説明します。\nこのガイドは、アプリ名の右の「？」ボタンからいつでも見られます。", last: true, toAdv: true },
+    { part: 3, title: "ようこそ（上級編）", text: "上級編では、仮定モードと、問題のやりとり（81桁の盤面データ・LINEなどで送る）を説明します。\n\n難しい問題で、ヒントの解き方だけでは先に進めないときは「仮定モード」が使えます。\n\nあるマスに数字を仮に入れて先を試し、矛盾が出たら「その数字は入らない」と分かります（背理法）。紙で解くときに、鉛筆で薄く書いて試すのと同じです。" },
     { part: 3, title: "1. 仮定を始める", text: `小さな数字を${MENU}して、メニューの「○ と仮定する」（紫の文字）を選びます。\n\n盤の外枠が紫になり、仮定したマスは紫の数字になります。そのあとに入れた確定候補は紫の数字、変えた候補は紫の枠で表示されます。`, asmDemo: true },
     { part: 3, title: "2. 仮定しているあいだ", text: "・仮定できるのは1つだけです（仮定の中でさらに仮定はできません）\n・「1手戻す」で戻れるのは、仮定した直後までです\n・ヒント・答え合わせ・保存・リセットなどは使えません。タイマーは動き続けます\n・同じ数字が重なる、入る数字がないマスができる、入る場所がない数字ができる、のどれかになると、赤い字で「矛盾が見つかりました」と出ます" },
-    { part: 3, title: "3. 仮定を終える", text: "盤の右（スマホは下）の「仮定モード」の枠で選びます。\n・仮定を採用する：今の盤のまま続けます。全部埋まっていれば完成になります\n・仮定前に戻る：仮定する前の盤に戻します\n・仮定前に戻り、この数字を除外：仮定前に戻し、仮定した数字をそのマスの候補から消します。矛盾が出たときに使います\n\n矛盾が出ても、仮定のあとの入力にまちがいがないか確かめてから使ってください。\n仮定中にホームへ移ったりアプリを閉じたりすると、仮定前の盤が保存されます。", last: true },
+    { part: 3, title: "3. 仮定を終える", text: "盤の右（スマホは下）の「仮定モード」の枠で選びます。\n・仮定を採用する：今の盤のまま続けます。全部埋まっていれば完成になります\n・仮定前に戻る：仮定する前の盤に戻します\n・仮定前に戻り、この数字を除外：仮定前に戻し、仮定した数字をそのマスの候補から消します。矛盾が出たときに使います\n\n矛盾が出ても、仮定のあとの入力にまちがいがないか確かめてから使ってください。\n仮定中にホームへ移ったりアプリを閉じたりすると、仮定前の盤が保存されます。" },
+    { part: 3, title: "4. 81桁の盤面データ", text: "問題を、上の行から順に81個の数字（空きマスは0）で表したものです。ほかの数独アプリやWebサイトとの問題のやりとりに使えます。\n\n【書き出す】\n「その他の操作」の「問題を書き出す」→「🔢 81桁の盤面データ」を選び、「コピーする」を押します。解いている途中でも使えます。書き出すのは最初の問題の数字だけです。\n\n【読み込む】\n最初の画面の「問題を作る・登録する」→「自分で作る」で、盤の下の「81桁の盤面データを読み込む」の欄に貼り付けて「読み込む」を押します。空きマスは 0 か . で、空白や改行は無視されます。数字を確かめてから「問題登録完了」を押してください。" },
+    { part: 3, title: "5. LINEなどで送る", text: "問題を、LINEなどで友だちに送れます。\n\n【送り方】\n・解いている途中：「問題を書き出す」→「💬 LINEなどに送る」\n・完成したとき：完成のお知らせの画面か、「問題図を送る」ボタン\n\nスマホは共有メニューが開くので、LINEを選んで相手を選びます。パソコンは「画像をコピー」「文をコピー」を押して、LINEのトークにそれぞれ貼り付けます。\n\n【送られる内容】\n最初の数字だけの問題図と、標準回答時間・81桁の盤面データ・問題を開くリンクです。完成したときは、かかった時間とヒントの回数も入ります。途中まで解いた内容は送られません。\n\n【受け取った人】\nリンクを開くと、このアプリにその問題が入り、すぐ解き始められます。LINEから開くと、ふだん使っているブラウザで開きます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
   let tutBeforeTap = null;
@@ -5113,7 +5115,7 @@ p.note:empty { display: none; }
     if (st.pick) {
       const box = document.createElement("div");
       box.className = "gen-levels tut-pick";
-      for (const [part, name, desc] of [[1, "初級編", "メニューで操作する基本（7ステップ）"], [2, "中級編", "タップの回数で速く操作する・ヒント・保存など"], [3, "上級編", "難しい問題で使う仮定モード"]]) {
+      for (const [part, name, desc] of [[1, "初級編", "メニューで操作する基本（7ステップ）"], [2, "中級編", "タップの回数で速く操作する・ヒント・保存など"], [3, "上級編", "仮定モード・81桁の盤面データ・LINEなどで送る"]]) {
         const b = document.createElement("button");
         b.type = "button";
         b.innerHTML = `${name}<small>${desc}</small>`;
