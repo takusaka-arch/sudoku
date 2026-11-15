@@ -678,11 +678,11 @@ p.msg:empty { display: none; }
 @media (max-width: 760px) {
   .bar .grp, .bar .grp-btns { display: contents; }
   .bar .grp-h { display: none; }
-  /* 1行目：戻る・検証・ヒント・表示方法変更／2行目：この状態を保存・保存した状態に戻す・再生／3行目：問題の管理 */
-  .bar #reg-cancel { order: 35; } .bar #pause { order: 10; } .bar .b0 { order: 11; } .bar #undo { order: 12; } .bar #check { order: 13; } .bar #hint { order: 14; } .bar #view { order: 15; }
+  /* 1行目：1手戻す・答え合わせ・ヒント／2行目：この状態を保存・保存した状態に戻す・再生／3行目：その他の操作（表示方法変更から） */
+  .bar #reg-cancel { order: 35; } .bar #pause { order: 10; } .bar .b0 { order: 11; } .bar #undo { order: 12; } .bar #check { order: 13; } .bar #hint { order: 14; } .bar #view { order: 30; }
   .bar .b1 { order: 20; }
   .bar #save-progress { order: 21; } .bar #snap-open { order: 22; } .bar #replay { order: 23; } .bar #save-solved { order: 24; } .bar #share-solved { order: 25; }
-  .bar .b2 { order: 30; }
+  .bar .b2 { order: 29; }
   .bar #reset { order: 31; } .bar #export-cur { order: 32; } .bar #edit { order: 33; } .bar #back { order: 34; }
   .bar-break { flex-basis: 100%; height: 0; }
   .bar:has(#pause:not([hidden])) { row-gap: 0; margin-bottom: -8px; }
@@ -723,7 +723,7 @@ p.note:empty { display: none; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.225</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.226</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -881,10 +881,9 @@ p.note:empty { display: none; }
     <div class="grp grp-main">
       <p class="grp-h">よく使う操作</p>
       <div class="grp-btns">
-        <button type="button" class="btn sub" id="undo" hidden disabled>戻る</button>
+        <button type="button" class="btn sub" id="undo" hidden disabled>1手戻す</button>
         <button type="button" class="btn sub" id="hint" aria-haspopup="menu" aria-expanded="false" hidden>ヒント ▾</button>
-        <button type="button" class="btn sub" id="check" hidden>検証</button>
-        <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
+        <button type="button" class="btn sub" id="check" hidden>答え合わせ</button>
       </div>
     </div>
     <span class="bar-break b0" aria-hidden="true"></span>
@@ -901,8 +900,9 @@ p.note:empty { display: none; }
     </div>
     <span class="bar-break b2" aria-hidden="true"></span>
     <div class="grp grp-prob">
-      <p class="grp-h">問題の管理</p>
+      <p class="grp-h">その他の操作</p>
       <div class="grp-btns">
+        <button type="button" class="btn sub" id="view" aria-haspopup="menu" aria-expanded="false" hidden>表示方法変更 ▾</button>
         <button type="button" id="edit" hidden>問題修正</button>
         <button type="button" class="btn sub" id="export-cur" hidden>問題を書き出す</button>
         <button type="button" id="reset" hidden>リセット</button>
@@ -1821,9 +1821,9 @@ p.note:empty { display: none; }
       if (solution.sol[c.dataset.row * 9 + +c.dataset.col] !== v) { wrong++; c.classList.add("check-wrong"); }
     });
     const multi = solution.n > 1 ? "（この問題は答えが1つに決まらないため、答えの1つと比べています）" : "";
-    workMsg.textContent = !total ? "検証：まだ確定したマスがありません。" + multi
-      : wrong ? `検証：確定した${total}マスのうち、${wrong}マスが正解と違います（赤いマス）。` + multi
-      : `検証：確定した${total}マスは、すべて正解です。` + multi;
+    workMsg.textContent = !total ? "答え合わせ：まだ確定したマスがありません。" + multi
+      : wrong ? `答え合わせ：確定した${total}マスのうち、${wrong}マスが正解と違います（赤いマス）。` + multi
+      : `答え合わせ：確定した${total}マスは、すべて正解です。` + multi;
   });
   function showReady(count) {
     sameNum = ""; applySame();
@@ -2852,7 +2852,7 @@ p.note:empty { display: none; }
     markConflicts();
     renderPad();
     workMsg.classList.remove("err");
-    workMsg.textContent = back.length ? `${r + 1}行${c + 1}列の消した候補 ${back.map((x) => x.dataset.n).join("・")} を復活しました。（「戻る」で元に戻せます）`
+    workMsg.textContent = back.length ? `${r + 1}行${c + 1}列の消した候補 ${back.map((x) => x.dataset.n).join("・")} を復活しました。（「1手戻す」で元に戻せます）`
       : `${r + 1}行${c + 1}列には、復活できる候補はありません。`;
   });
   document.getElementById("pad-revive").addEventListener("click", () => reviveCell(sel));
@@ -2896,7 +2896,7 @@ p.note:empty { display: none; }
     if (!["register", "solve"].includes(board.dataset.mode) || !undoStack.length) return;
     flushTap();
     if (assume && undoStack.length <= assume.base) {
-      assumeWarn("仮定より前には「戻る」で戻れません。「仮定前に戻る」を使ってください。", true);
+      assumeWarn("仮定より前には「1手戻す」で戻れません。「仮定前に戻る」を使ってください。", true);
       return;
     }
     restore(undoStack.pop());
@@ -2992,7 +2992,7 @@ p.note:empty { display: none; }
     if (typeof renderPad === "function") renderPad();
     workMsg.classList.remove("err");
     workMsg.textContent = how === "adopt" ? `${a.r + 1}行${a.c + 1}列の「${a.n}」の仮定を採用しました。`
-      : how === "drop" ? `仮定前に戻り、${a.r + 1}行${a.c + 1}列の候補から「${a.n}」を消しました。（「戻る」で消す前に戻せます）`
+      : how === "drop" ? `仮定前に戻り、${a.r + 1}行${a.c + 1}列の候補から「${a.n}」を消しました。（「1手戻す」で消す前に戻せます）`
       : "仮定前の盤に戻しました。";
     if (how === "adopt") checkComplete();
   }
@@ -4509,7 +4509,7 @@ p.note:empty { display: none; }
           drawTimer();
         }
         workMsg.classList.remove("err");
-        workMsg.textContent = `「${x.name}」の時点に戻しました。（「戻る」で戻す前に戻れます）`;
+        workMsg.textContent = `「${x.name}」の時点に戻しました。（「1手戻す」で戻す前に戻れます）`;
       });
       const del = document.createElement("button");
       del.type = "button";
@@ -5012,9 +5012,9 @@ p.note:empty { display: none; }
     { part: 1, title: "4. 候補を消す", text: `メニューの「候補から消す」を選ぶと、その数字が消えます。\n同じ行・列・ブロックに同じ数字が確定していれば、まとめて消えます。もう一度選ぶと戻ります。`,
       cells: ["5", 0, 0], target: [1, "5"], menu: true, ask: `左に「5」が確定しています。真ん中のマスの「5」を${MENU}して、「5 を候補から消す」を選んでください。`,
       goal: (d) => d.cand(1, "5").classList.contains("off") && d.cand(2, "5").classList.contains("off"), ok: "できました！ この行の「5」がまとめて消えました。" },
-    { part: 1, title: "5. 「戻る」で取り消す", text: "まちがえたときは「戻る」ボタンを押すと、1つ前の操作に戻ります。何回でも戻れます。\n\n間違って消した候補は、マスを選んで「候補を復活」（またはメニューの「このマスの消した候補を復活」）でも戻せます。",
-      cells: [0], target: [0, "4"], menu: true, undo: true, ask: `「4」を${MENU}して「4 を候補から消す」を選んでから、下の「戻る」を押して元に戻してください。`,
-      goal: (d) => d.undone && !d.cand(0, "4").classList.contains("off"), ok: "できました！ 「戻る」で1つ前に戻りました。" },
+    { part: 1, title: "5. 「1手戻す」で取り消す", text: "まちがえたときは「1手戻す」ボタンを押すと、1つ前の操作に戻ります。何回でも戻れます。\n\n間違って消した候補は、マスを選んで「候補を復活」（またはメニューの「このマスの消した候補を復活」）でも戻せます。",
+      cells: [0], target: [0, "4"], menu: true, undo: true, ask: `「4」を${MENU}して「4 を候補から消す」を選んでから、下の「1手戻す」を押して元に戻してください。`,
+      goal: (d) => d.undone && !d.cand(0, "4").classList.contains("off"), ok: "できました！ 「1手戻す」で1つ前に戻りました。" },
     { part: 1, title: "6. 自動保存と、解き始め", text: "解いている途中の状態は、この端末に自動で保存されます。アプリを閉じても、次に開くと続きから始まります。\n「一時停止」でタイマーを止められます。\n\nこれで解き始められます。速く解く操作や、ヒント・保存などは中級編で説明します（アプリ名の右の「？」ボタンからいつでも見られます）。", fork: true },
     { part: 2, title: "ようこそ（中級編）", text: `慣れてきたら、${MENU}でメニューから選ぶより、${TAP}の回数で操作するほうが速くて効率的です。\n\n・${TAP1}：候補を選ぶ\n・${TAP2}：確定候補にする\n・${TAP3}：候補を消す\n\n次のページから、実際に試してみましょう。${MENU}のメニューも、これまでどおり使えます。` },
     { part: 2, title: `${TAP1}：候補を選ぶ`, text: `小さな数字を${TAP1}すると青くなります（候補の印）。もう${TAP1}で戻ります。`,
@@ -5034,13 +5034,13 @@ p.note:empty { display: none; }
     { part: 2, title: "数字をハイライトする", text: `盤の下の1〜9を${TAP}すると、その数字が入る可能性のある候補が点滅し、確定している同じ数字に色が付きます。\n続けて別の数字を${TAP}すると、別の色で4つまで同時に表示できます。もう一度${TAP}でその数字だけ止まります。\n盤に9つそろった数字は、押せなくなります。` },
     { part: 2, title: "ヒント", text: "「ヒント」で、解き方を選べます。右の★の数がレベルです。\n各行の「？」を押すと、その解き方の説明が出ます。\n「答えと理由」で入る数字と理由が分かり、「ヒントを消す」で表示を消せます。\n\n使った回数はタイマーの右に出ます。" },
     { part: 2, title: "ファイルとGoogleドライブに保存", text: "別の日や別の端末で続きを解くときは、端末の外に保存します。\n・ファイルに保存：「この状態を保存」→「ファイルに保存」（保存先がGoogleドライブを優先のときは「Googleドライブに保存」）。開くときは「問題を解く」→「回答中のファイルを開く」\n・Googleドライブ：🏠→「設定」で「Googleドライブに接続」し、保存先を選びます（Googleドライブを優先／保存のたびに選ぶ／この端末）。Googleドライブには「Sudoku」フォルダに保存されます。PCとスマホで同じ問題の続きを解けます\n・開くときは「問題を解く」→「Googleドライブから開く」（接続しているときだけ出ます）。問題ごとに、問題・回答の途中・完成形が並びます\n\nGoogleドライブはアプリ版・Web版で使えます。" },
-    { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・検証：途中でも、確定したマスを正解と比べ、違うマスを赤い背景で示します\n・再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
+    { part: 2, title: "完成したら", text: "全マスが大きな数字で埋まり、赤がなければ完成です。\n・答え合わせ：途中でも、確定したマスを正解と比べ、違うマスを赤い背景で示します\n・再生：確定した順に数字を再生します（解いている途中でも使えます）\n・完成形を保存：完成した盤をファイルやGoogleドライブに残します\n・一覧の「完成を見る」：あとから完成した盤を開けます" },
     { part: 2, title: "色の意味", text: "数字の色の意味です。", colors: [
       ["blue", "5", "青", "選んだ候補"],
       ["red", "3", "赤", "数字の重複"],
       ["brown", "6", "茶", "入らない候補"],
     ] },
-    { part: 2, title: "ボタン", text: "【よく使う操作】\n戻る：1つ前の操作に戻す（パソコンは Ctrl+Z でも可）\nヒント：次に使える解き方を示す\n検証：確定したマスを正解と比べる\n表示方法変更：未確定のマスを空白／候補を表示／正解を表示\n\n【状態の管理】\nこの状態を保存：その時点を残す\n保存した状態に戻す：残した時点に戻る\n再生：確定した順に数字を再生する\n\n【問題の管理】\nリセット：問題だけの最初の状態に戻す\n問題一覧へ：問題の一覧に戻る\n\n一時停止：タイマーを止める。一時停止中は保存と問題の管理だけ使えます\n\n" + (matchMedia("(hover: hover) and (pointer: fine)").matches ? "ボタンにマウスを乗せると" : "ボタンを長押しすると") + "、説明が出ます" },
+    { part: 2, title: "ボタン", text: "【よく使う操作】\n1手戻す：1つ前の操作に戻す（パソコンは Ctrl+Z でも可）\nヒント：次に使える解き方を示す\n答え合わせ：確定したマスを正解と比べる\n\n【状態の管理】\nこの状態を保存：その時点を残す\n保存した状態に戻す：残した時点に戻る\n再生：確定した順に数字を再生する\n\n【その他の操作】\n表示方法変更：未確定のマスを空白／候補を表示／正解を表示\nリセット：問題だけの最初の状態に戻す\n問題一覧へ：問題の一覧に戻る\n\n一時停止：タイマーを止める。一時停止中は保存とその他の操作（表示方法変更を除く）だけ使えます\n\n" + (matchMedia("(hover: hover) and (pointer: fine)").matches ? "ボタンにマウスを乗せると" : "ボタンを長押しすると") + "、説明が出ます" },
     { part: 2, title: "準備ができました", text: "このガイドは、アプリ名の右の「？」ボタンからいつでも見られます。", last: true },
   ];
   let tutIdx = 0, tutTap = { el: null, n: 0, t: null };
@@ -5189,7 +5189,7 @@ p.note:empty { display: none; }
       undoBtn2 = document.createElement("button");
       undoBtn2.type = "button";
       undoBtn2.className = "btn sub tut-undo";
-      undoBtn2.textContent = "戻る";
+      undoBtn2.textContent = "1手戻す";
       undoBtn2.disabled = true;
       undoBtn2.addEventListener("click", () => {
         const sn = hist.pop();
