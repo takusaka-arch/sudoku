@@ -755,7 +755,7 @@ body.fold .head button { flex-shrink: 0; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.249</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.250</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1397,8 +1397,6 @@ body.fold .head button { flex-shrink: 0; }
 
   // 目標完成時間：1手ごとに、その手のレベルの秒数を足す
   const TARGET_SEC = { 1: 5, 2: 90, 3: 180, 4: 300, 5: 420, 6: 600 };
-  // 背理法の仮定後に使う解法の上限。仮定を重ねず、このレベルまでで矛盾を探す。
-  const CONTRA_MAX_LEVEL = 3;
 
   // 自動作成の難易度。maxLv = 使ってよい一番高いレベル（その1つ下の難易度の maxLv より上のレベルが、少なくとも1手は必要）
   // minGivens = 問題の数字をこれより少なくはしない
@@ -1412,7 +1410,7 @@ body.fold .head button { flex-shrink: 0; }
   ];
 
   // 問題を作る計算（sudokuGen）に渡す決まり
-  const GEN_RULES = { techniques: TECHNIQUES, difficulties: DIFFICULTIES, contradictionMaxLevel: CONTRA_MAX_LEVEL };
+  const GEN_RULES = { techniques: TECHNIQUES, difficulties: DIFFICULTIES };
   // ===== 02-input.js：マスの選択（スマホ）・タップ回数の判定・数字パッド・右クリック／長押しメニュー・問題登録完了・タイマー =====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // スマホではマスのタップでマスを選び、数字は下のパッドで操作する
@@ -3404,7 +3402,7 @@ body.fold .head button { flex-shrink: 0; }
     { label: "リモートペア", desc: "候補が同じ2つのマスが4つ以上つながるとき、交互に入る数字を使って候補を消します", run: () => showRemotePair() },
     { label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
     { label: "チェーン", desc: "「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぎ、両端のどちらかが正しいことを使って候補を消します", run: () => showChain() },
-    { label: "背理法", desc: `候補が2つのマスに片方を仮に入れ、レベル${CONTRA_MAX_LEVEL}までの解き方で進めます。矛盾が出たらもう一方が答えだと分かります（仮定は重ねません）`, run: () => showContradiction() },
+    { label: "背理法", desc: "候補が2つのマスに片方を仮に入れ、すべての論理解法で進めます。矛盾が出たらもう一方が答えだと分かります（仮定は重ねません）", run: () => showContradiction() },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法が必要なら答えだけ示します）", run: () => runHint(true) },
   ];
   // レベルを付け、レベルの順に並べ直す（「ヒントを消す」は一番上、「答えと理由」は一番下のまま）
@@ -4218,7 +4216,7 @@ body.fold .head button { flex-shrink: 0; }
       { order });
   }
 
-  // 背理法：候補が2つのマスで仮定し、共通エンジンのレベル3までの解法で矛盾を探す。
+  // 背理法：候補が2つのマスで仮定し、共通エンジンのすべての論理解法で矛盾を探す。
   function showContradiction() {
     const st = hintState();
     if (!st) return;
@@ -4232,11 +4230,11 @@ body.fold .head button { flex-shrink: 0; }
       const names = [...new Set(proof.log.map((e) => e.tech))];
       const how = ["シングル", ...names].join("・");
       return paintHint(st, [{ marks: [[i, answer]] }], [[i, d]],
-        `薄い赤のマスに「${d}」を入れたと仮定して、${how}（レベル${CONTRA_MAX_LEVEL}まで）で進めると、${why}、矛盾します。なので「${d}」（赤い枠）は入らず、このマスは「${answer}」（色の付いた数字）です。`,
+        `薄い赤のマスに「${d}」を入れたと仮定して、${how}で進めると、${why}、矛盾します。なので「${d}」（赤い枠）は入らず、このマスは「${answer}」（色の付いた数字）です。`,
         { cells: [i] });
     }
     workMsg.classList.remove("err");
-    workMsg.textContent = `ヒント：今は、候補が2つのマスで1つ仮定し、レベル${CONTRA_MAX_LEVEL}までの解き方で進めても矛盾が見つかりません。`;
+    workMsg.textContent = "ヒント：今は、候補が2つのマスで1つ仮定し、すべての論理解法で進めても矛盾が見つかりません（仮定は重ねません）。";
     function unitsName(k) {
       return k % 3 === 2 ? `${BOX_NAMES[Math.floor(k / 3)]}のブロック` : `${Math.floor(k / 3) + 1}${k % 3 === 0 ? "行目" : "列目"}`;
     }
@@ -5650,8 +5648,8 @@ body.fold .head button { flex-shrink: 0; }
       return a;
     }
     // 人の解き方で解いて、必要だった一番難しい解き方のレベルを返す（解き切れなければ 4）
-    // start を渡すと「答えと理由」用。trialMaxLevel を渡すと、仮定後の盤をそのレベルまでで検証する（仮定は重ねない）。
-    function grade(g, start, timing, trialMaxLevel = 0) {
+    // start を渡すと「答えと理由」用。trial は仮定後の盤をすべての論理解法で検証する（仮定は重ねない）。
+    function grade(g, start, timing, trial = false) {
       const v = start ? start.v.slice() : g.slice(), cand = start ? start.cand.slice() : new Array(81).fill(ALL);
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
       if (!start) for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
@@ -6028,15 +6026,14 @@ body.fold .head button { flex-shrink: 0; }
       // レベルの低い順に並べる（同じレベルの中は TECHNIQUES の並び順のまま）
       const TECHS = rules.techniques.filter((t) => SOLVERS[t.name]).map((t) => ({ ...t, run: SOLVERS[t.name] })).sort((x, y) => x.lv - y.lv);
       // 1つの解き方で候補を消せたら、そのレベルを返す（どれも使えなければ 0）
-      function advance(maxLevel = Infinity) {
+      function advance() {
         for (const t of TECHS) {
-          if (t.lv > maxLevel) break;
           tech = t.name; techLv = t.lv;
           if (t.run()) return t.lv;
         }
         return 0;
       }
-      if (trialMaxLevel) {
+      if (trial) {
         // 仮定後に実際に使った手順だけを返す。通常の grade.steps は上書きしない。
         const steps = [];
         for (;;) {
@@ -6046,7 +6043,7 @@ body.fold .head button { flex-shrink: 0; }
             if (!u.some((i) => v[i] === d) && !where(u, d).length) return { steps, log, contradiction: { kind: "unit", unit, d } };
           }
           if (singles()) { steps.push(1); continue; }
-          const k = advance(trialMaxLevel);
+          const k = advance();
           if (!k) return { steps, log };
           steps.push(k);
         }
@@ -6084,7 +6081,7 @@ body.fold .head button { flex-shrink: 0; }
             steps.push(CONTRA_LV, ...proof.steps);
             continue;
           }
-          // レベル3までで矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める
+          // すべての論理解法でも矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める
           if (timing.length === 81) {
             let best = -1;
             for (let i = 0; i < 81; i++) if (!v[i] && (cand[i] & (1 << +timing[i])) && (best < 0 || pop(cand[i]) < pop(cand[best]))) best = i;
@@ -6096,7 +6093,7 @@ body.fold .head button { flex-shrink: 0; }
         return v.filter((x) => !x).length >= EXTREME.minLeft ? TOP : TOP - 0.5;
       }
     }
-    // ヒントと標準時間で共通の背理法。候補が2つのマスで1回だけ仮定し、レベル3までで矛盾を探す。
+    // ヒントと標準時間で共通の背理法。候補が2つのマスで1回だけ仮定し、すべての論理解法で矛盾を探す。
     function contradiction(start) {
       for (let i = 0; i < 81; i++) {
         if (start.v[i] || pop(start.cand[i]) !== 2) continue;
@@ -6104,7 +6101,7 @@ body.fold .head button { flex-shrink: 0; }
           const v = start.v.slice(), cand = start.cand.slice();
           v[i] = d; cand[i] = 0;
           for (const p of peers[i]) cand[p] &= ~(1 << d);
-          const proof = grade(null, { v, cand }, null, rules.contradictionMaxLevel);
+          const proof = grade(null, { v, cand }, null, true);
           if (proof.contradiction) return { ...proof, i, d, answer: bits(start.cand[i]).find((x) => x !== d) };
         }
       }
@@ -6176,8 +6173,8 @@ body.fold .head button { flex-shrink: 0; }
   // ===== 16-generator.js：問題を自動で作る画面・最難関の作り置き・起動するときの設定 =====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
-  const GEN_STOCK_KEY = "sudoku-gen-stock7", GEN_STOCK_MAX = 10;  // 背理法の手順が変わったので、新しい判定で作り置きする
-  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); localStorage.removeItem("sudoku-gen-stock5"); localStorage.removeItem("sudoku-gen-stock6"); } catch (e) {}
+  const GEN_STOCK_KEY = "sudoku-gen-stock8", GEN_STOCK_MAX = 10;  // 背理法の手順が変わったので、新しい判定で作り置きする
+  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); localStorage.removeItem("sudoku-gen-stock5"); localStorage.removeItem("sudoku-gen-stock6"); localStorage.removeItem("sudoku-gen-stock7"); } catch (e) {}
   // 難易度の説明文は 01a-levels.js の DIFFICULTIES と TECHNIQUES から作る（レベルを変えると説明もそろって変わる）
   const genLevels = DIFFICULTIES.map((d, i) => {
     const lo = i ? DIFFICULTIES[i - 1].maxLv + 1 : 1;

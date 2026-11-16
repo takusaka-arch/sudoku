@@ -1,8 +1,8 @@
   // ===== 16-generator.js：問題を自動で作る画面・最難関の作り置き・起動するときの設定 =====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 問題を自動で作る: レベルを選ぶと裏で作り、一覧に保存して開く。最難関は時間がかかるので、アプリを開いている間に裏で作ってストックしておく
-  const GEN_STOCK_KEY = "sudoku-gen-stock7", GEN_STOCK_MAX = 10;  // 背理法の手順が変わったので、新しい判定で作り置きする
-  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); localStorage.removeItem("sudoku-gen-stock5"); localStorage.removeItem("sudoku-gen-stock6"); } catch (e) {}
+  const GEN_STOCK_KEY = "sudoku-gen-stock8", GEN_STOCK_MAX = 10;  // 背理法の手順が変わったので、新しい判定で作り置きする
+  try { localStorage.removeItem("sudoku-gen-stock"); localStorage.removeItem("sudoku-gen-stock2"); localStorage.removeItem("sudoku-gen-stock3"); localStorage.removeItem("sudoku-gen-stock4"); localStorage.removeItem("sudoku-gen-stock5"); localStorage.removeItem("sudoku-gen-stock6"); localStorage.removeItem("sudoku-gen-stock7"); } catch (e) {}
   // 難易度の説明文は 01a-levels.js の DIFFICULTIES と TECHNIQUES から作る（レベルを変えると説明もそろって変わる）
   const genLevels = DIFFICULTIES.map((d, i) => {
     const lo = i ? DIFFICULTIES[i - 1].maxLv + 1 : 1;

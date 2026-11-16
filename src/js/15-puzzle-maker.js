@@ -68,8 +68,8 @@
       return a;
     }
     // 人の解き方で解いて、必要だった一番難しい解き方のレベルを返す（解き切れなければ 4）
-    // start を渡すと「答えと理由」用。trialMaxLevel を渡すと、仮定後の盤をそのレベルまでで検証する（仮定は重ねない）。
-    function grade(g, start, timing, trialMaxLevel = 0) {
+    // start を渡すと「答えと理由」用。trial は仮定後の盤をすべての論理解法で検証する（仮定は重ねない）。
+    function grade(g, start, timing, trial = false) {
       const v = start ? start.v.slice() : g.slice(), cand = start ? start.cand.slice() : new Array(81).fill(ALL);
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
       if (!start) for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
@@ -446,15 +446,14 @@
       // レベルの低い順に並べる（同じレベルの中は TECHNIQUES の並び順のまま）
       const TECHS = rules.techniques.filter((t) => SOLVERS[t.name]).map((t) => ({ ...t, run: SOLVERS[t.name] })).sort((x, y) => x.lv - y.lv);
       // 1つの解き方で候補を消せたら、そのレベルを返す（どれも使えなければ 0）
-      function advance(maxLevel = Infinity) {
+      function advance() {
         for (const t of TECHS) {
-          if (t.lv > maxLevel) break;
           tech = t.name; techLv = t.lv;
           if (t.run()) return t.lv;
         }
         return 0;
       }
-      if (trialMaxLevel) {
+      if (trial) {
         // 仮定後に実際に使った手順だけを返す。通常の grade.steps は上書きしない。
         const steps = [];
         for (;;) {
@@ -464,7 +463,7 @@
             if (!u.some((i) => v[i] === d) && !where(u, d).length) return { steps, log, contradiction: { kind: "unit", unit, d } };
           }
           if (singles()) { steps.push(1); continue; }
-          const k = advance(trialMaxLevel);
+          const k = advance();
           if (!k) return { steps, log };
           steps.push(k);
         }
@@ -502,7 +501,7 @@
             steps.push(CONTRA_LV, ...proof.steps);
             continue;
           }
-          // レベル3までで矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める
+          // すべての論理解法でも矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める
           if (timing.length === 81) {
             let best = -1;
             for (let i = 0; i < 81; i++) if (!v[i] && (cand[i] & (1 << +timing[i])) && (best < 0 || pop(cand[i]) < pop(cand[best]))) best = i;
@@ -514,7 +513,7 @@
         return v.filter((x) => !x).length >= EXTREME.minLeft ? TOP : TOP - 0.5;
       }
     }
-    // ヒントと標準時間で共通の背理法。候補が2つのマスで1回だけ仮定し、レベル3までで矛盾を探す。
+    // ヒントと標準時間で共通の背理法。候補が2つのマスで1回だけ仮定し、すべての論理解法で矛盾を探す。
     function contradiction(start) {
       for (let i = 0; i < 81; i++) {
         if (start.v[i] || pop(start.cand[i]) !== 2) continue;
@@ -522,7 +521,7 @@
           const v = start.v.slice(), cand = start.cand.slice();
           v[i] = d; cand[i] = 0;
           for (const p of peers[i]) cand[p] &= ~(1 << d);
-          const proof = grade(null, { v, cand }, null, rules.contradictionMaxLevel);
+          const proof = grade(null, { v, cand }, null, true);
           if (proof.contradiction) return { ...proof, i, d, answer: bits(start.cand[i]).find((x) => x !== d) };
         }
       }

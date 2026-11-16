@@ -36,8 +36,6 @@
 
   // 目標完成時間：1手ごとに、その手のレベルの秒数を足す
   const TARGET_SEC = { 1: 5, 2: 90, 3: 180, 4: 300, 5: 420, 6: 600 };
-  // 背理法の仮定後に使う解法の上限。仮定を重ねず、このレベルまでで矛盾を探す。
-  const CONTRA_MAX_LEVEL = 3;
 
   // 自動作成の難易度。maxLv = 使ってよい一番高いレベル（その1つ下の難易度の maxLv より上のレベルが、少なくとも1手は必要）
   // minGivens = 問題の数字をこれより少なくはしない
@@ -51,4 +49,4 @@
   ];
 
   // 問題を作る計算（sudokuGen）に渡す決まり
-  const GEN_RULES = { techniques: TECHNIQUES, difficulties: DIFFICULTIES, contradictionMaxLevel: CONTRA_MAX_LEVEL };
+  const GEN_RULES = { techniques: TECHNIQUES, difficulties: DIFFICULTIES };
