@@ -416,7 +416,7 @@
       { order });
   }
 
-  // 背理法：候補が2つのマスで仮定し、共通エンジンのレベル3までの解法で矛盾を探す。
+  // 背理法：候補が2つのマスで仮定し、共通エンジンのすべての論理解法で矛盾を探す。
   function showContradiction() {
     const st = hintState();
     if (!st) return;
@@ -430,11 +430,11 @@
       const names = [...new Set(proof.log.map((e) => e.tech))];
       const how = ["シングル", ...names].join("・");
       return paintHint(st, [{ marks: [[i, answer]] }], [[i, d]],
-        `薄い赤のマスに「${d}」を入れたと仮定して、${how}（レベル${CONTRA_MAX_LEVEL}まで）で進めると、${why}、矛盾します。なので「${d}」（赤い枠）は入らず、このマスは「${answer}」（色の付いた数字）です。`,
+        `薄い赤のマスに「${d}」を入れたと仮定して、${how}で進めると、${why}、矛盾します。なので「${d}」（赤い枠）は入らず、このマスは「${answer}」（色の付いた数字）です。`,
         { cells: [i] });
     }
     workMsg.classList.remove("err");
-    workMsg.textContent = `ヒント：今は、候補が2つのマスで1つ仮定し、レベル${CONTRA_MAX_LEVEL}までの解き方で進めても矛盾が見つかりません。`;
+    workMsg.textContent = "ヒント：今は、候補が2つのマスで1つ仮定し、すべての論理解法で進めても矛盾が見つかりません（仮定は重ねません）。";
     function unitsName(k) {
       return k % 3 === 2 ? `${BOX_NAMES[Math.floor(k / 3)]}のブロック` : `${Math.floor(k / 3) + 1}${k % 3 === 0 ? "行目" : "列目"}`;
     }
