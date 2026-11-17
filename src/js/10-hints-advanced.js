@@ -623,6 +623,32 @@
         workMsg.textContent = `ヒント：${techs}で赤い枠の候補を消すと、${where}になります（紫の数字）。`;
         return;
       }
+      if (r.stuck && r.log.length) {
+        // 答えの決まるマスまではたどり着かないが、解き方で消せる候補はある。背理法に進む前に、まず最初の解き方で消せる候補を示す
+        const first = r.log[0].tech, part = [];
+        for (const e of r.log) { if (e.tech !== first) break; part.push(e); }
+        const plv = part[0].lv;
+        const cellsOf = [...new Set(part.map((e) => e.i))];
+        const xkey = "x" + cellsOf.join(",") + first;
+        if (!full && seen.has(xkey)) return focusDone();
+        if (!hintGate(plv, () => runHint(full))) return;
+        if (!full) {
+          seen.add(xkey);
+          countHint(true, TECH_LV["注目するマス"], xkey);
+          for (const i of cellsOf) at(i).classList.add("hint-cell");
+          renderPad();
+          workMsg.classList.remove("err");
+          workMsg.textContent = `ヒント：薄い赤のマスで、消せる候補があります。（${"★".repeat(plv)} の解き方を使います。「答えと理由」で、消せる候補と理由を表示します）`;
+          return;
+        }
+        countHint(true, 2 * plv);
+        for (const e of part) for (let d = 1; d <= 9; d++) if (e.m & (1 << d)) at(e.i).querySelector(`.cand[data-n="${d}"]`).classList.add("hint");
+        renderPad();
+        const list = cellsOf.map((i) => `${name(i)}の「${part.filter((e) => e.i === i).flatMap((e) => [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => e.m & (1 << d))).join("・")}」`).join("、");
+        workMsg.classList.remove("err");
+        workMsg.textContent = `ヒント：${first}で、${list}（赤い枠）を消せます。まだ答えの決まるマスは出ないので、消してからもう一度ヒントを使ってください。くわしくは「${first}」のヒントで確かめられます。`;
+        return;
+      }
       if (r.stuck && solution && solution.n) {
         // 背理法が要る所まで来た。候補の一番少ないマスの答えを、正解から教える
         let best = -1;
