@@ -787,3 +787,9 @@ body.path-open { overflow: hidden; }
 .path-explain-section > p:last-child { margin: 0; }
 #hint-menu .hm-desc-block { margin: 0 0 6px; }
 #hint-menu .hm-desc-block:last-child { margin-bottom: 0; }
+
+/* 完成時は「次へ」が「最初から見る」に変わる。狭い画面のみ間隔を縮める。 */
+@media (max-width: 380px) {
+  .path-nav { gap: 6px; padding-left: 8px; padding-right: 8px; }
+  .path-nav button { padding-left: 7px; padding-right: 7px; }
+}
