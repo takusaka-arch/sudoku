@@ -1,6 +1,6 @@
   // ===== 08a-path.js：正解への道筋（表示方法変更のメニューから）=====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
-  // 正解までの解き方を1ページずつ見せる。盤と解説だけの画面で、「戻る」「進む」「終わる」で動かす。
+  // 正解までの解き方を1ページずつ見せる。盤と解説だけの画面で、「前へ」「次へ」「閉じる」で動かす。
   // ページの中身（どの解き方で、どのマスが決まり、どの候補が消えるか）は 15-puzzle-maker.js の solvePath() が作る。
   // ここは見せるだけ。回答中の盤・ヒントの回数・目標時間には何も触らない（タイマーは見ている間だけ止める）。
   const pathView = document.getElementById("path-view"), pathBoard = document.getElementById("path-board");
@@ -192,7 +192,7 @@
       const last = pages[total - 1];
       drawPathBoard(last.after, { given });
       pathHead.textContent = `${total}／${total}　${path.solved ? "完成" : "ここまで"}`;
-      say(path.solved ? "これで全部のマスが埋まりました。「戻る」で、もう一度たどれます。" : (path.logicalOnly ? "ここから先は、利用できる論理手順では進められませんでした。必要なら最初の画面で「正解データも使う」を選んでください。" : "ここから先は、この道筋では進められませんでした。"));
+      say(path.solved ? "これで全部のマスが埋まりました。「前へ」で、もう一度たどれます。" : (path.logicalOnly ? "ここから先は、利用できる論理手順では進められませんでした。必要なら最初の画面で「正解データも使う」を選んでください。" : "ここから先は、この道筋では進められませんでした。"));
       return;
     }
     const pg = pages[pathAt];
