@@ -179,18 +179,28 @@
       if (many) say("同じ解き方を使える所がいくつかあるので、組ごとに色を分けています。");
       say("消す候補は赤い線です。消した結果、決まるマスは次のページで埋めます。");
     } else if (pg.kind === "contra") {
-      const w = pg.why || {};
-      const whyCells = w.kind === "cell" ? [w.i] : [];
-      drawPathBoard(pg.before, { gone: pg.gone.map((x) => ({ ...x, g: 0 })), basis: [{ cells: [pg.i], g: 0 }, { cells: whyCells, g: 1 }], given });
-      pathHead.textContent = `${no}　背理法（${"★".repeat(TECH_LV["背理法"])}）`;
-      say(esc(`ほかの解き方では進めないので、仮に置いて確かめます。${cellNm(pg.i)}は「${pg.d}」か「${pg.answer}」のどちらかです。`));
-      const what = w.kind === "cell" ? `${cellNm(w.i)}（${PATH_COLOR_NAMES[1]}）に入る数字がなくなります`
-        : w.kind === "unit" ? `${unitNm(w.unit % 3, Math.floor(w.unit / 3))}に「${w.d}」を入れるマスがなくなります` : "矛盾が出ます";
-      say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めていくと${esc(what)}。`);
-      say(esc(`これは矛盾なので、${cellNm(pg.i)}は「${pg.d}」ではありません。候補から「${pg.d}」を消すと、「${pg.answer}」に決まります。`));
+      // 背理法。depth 1 = 1回の仮定、depth 2 = 仮定の中でもう1回仮定する（2段の仮定）
+      const whatOf = (w) => !w ? "矛盾が出ます"
+        : w.kind === "cell" ? `${cellNm(w.i)}に入る数字がなくなります`
+        : `${unitNm(w.unit % 3, Math.floor(w.unit / 3))}に「${w.d}」を入れるマスがなくなります`;
+      const cellOf = (w) => (w && w.kind === "cell" ? [w.i] : []);
+      const deep = pg.depth === 2;
+      const basis = [{ cells: [pg.i], g: 0 }, ...(deep ? [{ cells: [pg.j], g: 1 }] : [{ cells: cellOf(pg.why), g: 1 }])];
+      drawPathBoard(pg.before, { gone: pg.gone.map((x) => ({ ...x, g: 0 })), basis, given });
+      pathHead.textContent = `${no}　背理法${deep ? "（2段の仮定）" : ""}（${"★".repeat(TECH_LV["背理法"])}）`;
+      const all = digitsOf(pg.before.cand[pg.i]);
+      say(esc(`ほかの解き方では進めないので、仮に置いて確かめます。${cellNm(pg.i)}の候補は「${all.join("・")}」です。`));
+      if (!deep) {
+        say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めていくと${esc(whatOf(pg.why))}${cellOf(pg.why).length ? `（${sw(1)}）` : ""}。`);
+      } else {
+        say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めた盤で${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。`);
+        say(esc(`そこでもう一度仮に置くと、「${pg.a}」なら${whatOf(pg.whyA)}。「${pg.b}」なら${whatOf(pg.whyB)}。どちらでも矛盾します。`));
+      }
+      const rest = pg.left || [];
+      say(esc(`これは矛盾なので、${cellNm(pg.i)}は「${pg.d}」ではありません。候補から「${pg.d}」を消します` + (rest.length === 1 ? `。残るのは「${rest[0]}」だけなので、「${rest[0]}」に決まります。` : `（残りは「${rest.join("・")}」）。`)));
     } else if (pg.kind === "answer") {
       drawPathBoard(pg.before, { placed: [{ i: pg.i, d: pg.d, g: 0 }], given });
       pathHead.textContent = `${no}　正解から決める`;
-      say(esc(`ここは、これまでの解き方や1回の仮定（背理法）では決められません。正解から、${cellNm(pg.i)}は「${pg.d}」です。`));
+      say(esc(`ここは、これまでの解き方や2段までの仮定（背理法）では決められません。正解から、${cellNm(pg.i)}は「${pg.d}」です。`));
     }
   }

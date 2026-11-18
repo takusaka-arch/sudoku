@@ -465,7 +465,7 @@
           }
           if (singles()) { steps.push(1); continue; }
           const k = advance();
-          if (!k) return { steps, log };
+          if (!k) return { steps, log, v, cand };
           steps.push(k);
         }
       }
@@ -537,6 +537,35 @@
       }
       return null;
     }
+    // 正解への道筋だけで使う、もっと深い背理法（ヒント・目標時間・難易度の判定には使わない）
+    //  深さ1: 候補が3つ以上のマスも含めて、どの候補でも仮に置いて矛盾すれば、その候補を消す
+    //  深さ2: 仮に置いて解き進めた盤で、さらに候補が2つのマスを両方試し、どちらも矛盾すれば、最初の仮定が違う（2段の仮定）
+    function deepContradiction(start) {
+      const trial = (v0, c0, i, d) => {
+        const v = v0.slice(), cand = c0.slice();
+        v[i] = d; cand[i] = 0;
+        for (const p of peers[i]) cand[p] &= ~(1 << d);
+        return grade(null, { v, cand }, null, true);
+      };
+      const order = [...Array(81).keys()].filter((i) => !start.v[i] && pop(start.cand[i]) >= 2).sort((a, b) => pop(start.cand[a]) - pop(start.cand[b]));
+      for (const i of order) for (const d of bits(start.cand[i])) {
+        const r = trial(start.v, start.cand, i, d);
+        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction };
+      }
+      for (const i of order) for (const d of bits(start.cand[i])) {
+        const r = trial(start.v, start.cand, i, d);
+        if (r.contradiction || !r.v) continue;
+        for (let j = 0; j < 81; j++) {
+          if (r.v[j] || pop(r.cand[j]) !== 2) continue;
+          const [a, b] = bits(r.cand[j]);
+          const ra = trial(r.v, r.cand, j, a);
+          if (!ra.contradiction) continue;
+          const rb = trial(r.v, r.cand, j, b);
+          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction };
+        }
+      }
+      return null;
+    }
     // 正解への道筋: 盤（v: 81個の数字、0 = 空き）から最後まで、ページごとの解き方を返す。sol（81文字の正解）があれば背理法でも進めない所を補う
     // ページ: { kind, before: {v, cand}, after: {v, cand}, ... }
     //   start  … 盤の数字で消える候補を消す（gone）
@@ -600,7 +629,13 @@
         const proof = contradiction({ v, cand });
         if (proof) {
           cand[proof.i] &= ~(1 << proof.d);
-          pages.push({ kind: "contra", i: proof.i, d: proof.d, answer: proof.answer, why: proof.contradiction, gone: [{ i: proof.i, m: 1 << proof.d }], before, after: snap() });
+          pages.push({ kind: "contra", depth: 1, i: proof.i, d: proof.d, left: [proof.answer], why: proof.contradiction, gone: [{ i: proof.i, m: 1 << proof.d }], before, after: snap() });
+          continue;
+        }
+        const deep = deepContradiction({ v, cand });
+        if (deep) {
+          cand[deep.i] &= ~(1 << deep.d);
+          pages.push({ kind: "contra", ...deep, left: bits(cand[deep.i]), gone: [{ i: deep.i, m: 1 << deep.d }], before, after: snap() });
           continue;
         }
         if (sol && sol.length === 81) {

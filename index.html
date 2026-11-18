@@ -809,7 +809,7 @@ body.path-open { overflow: hidden; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.254</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.255</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -3890,19 +3890,29 @@ body.path-open { overflow: hidden; }
       if (many) say("同じ解き方を使える所がいくつかあるので、組ごとに色を分けています。");
       say("消す候補は赤い線です。消した結果、決まるマスは次のページで埋めます。");
     } else if (pg.kind === "contra") {
-      const w = pg.why || {};
-      const whyCells = w.kind === "cell" ? [w.i] : [];
-      drawPathBoard(pg.before, { gone: pg.gone.map((x) => ({ ...x, g: 0 })), basis: [{ cells: [pg.i], g: 0 }, { cells: whyCells, g: 1 }], given });
-      pathHead.textContent = `${no}　背理法（${"★".repeat(TECH_LV["背理法"])}）`;
-      say(esc(`ほかの解き方では進めないので、仮に置いて確かめます。${cellNm(pg.i)}は「${pg.d}」か「${pg.answer}」のどちらかです。`));
-      const what = w.kind === "cell" ? `${cellNm(w.i)}（${PATH_COLOR_NAMES[1]}）に入る数字がなくなります`
-        : w.kind === "unit" ? `${unitNm(w.unit % 3, Math.floor(w.unit / 3))}に「${w.d}」を入れるマスがなくなります` : "矛盾が出ます";
-      say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めていくと${esc(what)}。`);
-      say(esc(`これは矛盾なので、${cellNm(pg.i)}は「${pg.d}」ではありません。候補から「${pg.d}」を消すと、「${pg.answer}」に決まります。`));
+      // 背理法。depth 1 = 1回の仮定、depth 2 = 仮定の中でもう1回仮定する（2段の仮定）
+      const whatOf = (w) => !w ? "矛盾が出ます"
+        : w.kind === "cell" ? `${cellNm(w.i)}に入る数字がなくなります`
+        : `${unitNm(w.unit % 3, Math.floor(w.unit / 3))}に「${w.d}」を入れるマスがなくなります`;
+      const cellOf = (w) => (w && w.kind === "cell" ? [w.i] : []);
+      const deep = pg.depth === 2;
+      const basis = [{ cells: [pg.i], g: 0 }, ...(deep ? [{ cells: [pg.j], g: 1 }] : [{ cells: cellOf(pg.why), g: 1 }])];
+      drawPathBoard(pg.before, { gone: pg.gone.map((x) => ({ ...x, g: 0 })), basis, given });
+      pathHead.textContent = `${no}　背理法${deep ? "（2段の仮定）" : ""}（${"★".repeat(TECH_LV["背理法"])}）`;
+      const all = digitsOf(pg.before.cand[pg.i]);
+      say(esc(`ほかの解き方では進めないので、仮に置いて確かめます。${cellNm(pg.i)}の候補は「${all.join("・")}」です。`));
+      if (!deep) {
+        say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めていくと${esc(whatOf(pg.why))}${cellOf(pg.why).length ? `（${sw(1)}）` : ""}。`);
+      } else {
+        say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めた盤で${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。`);
+        say(esc(`そこでもう一度仮に置くと、「${pg.a}」なら${whatOf(pg.whyA)}。「${pg.b}」なら${whatOf(pg.whyB)}。どちらでも矛盾します。`));
+      }
+      const rest = pg.left || [];
+      say(esc(`これは矛盾なので、${cellNm(pg.i)}は「${pg.d}」ではありません。候補から「${pg.d}」を消します` + (rest.length === 1 ? `。残るのは「${rest[0]}」だけなので、「${rest[0]}」に決まります。` : `（残りは「${rest.join("・")}」）。`)));
     } else if (pg.kind === "answer") {
       drawPathBoard(pg.before, { placed: [{ i: pg.i, d: pg.d, g: 0 }], given });
       pathHead.textContent = `${no}　正解から決める`;
-      say(esc(`ここは、これまでの解き方や1回の仮定（背理法）では決められません。正解から、${cellNm(pg.i)}は「${pg.d}」です。`));
+      say(esc(`ここは、これまでの解き方や2段までの仮定（背理法）では決められません。正解から、${cellNm(pg.i)}は「${pg.d}」です。`));
     }
   }
   // ===== 09-hints-basic.js：ヒント：ペア・3つの組・ポインティング・クレーミング =====
@@ -6342,7 +6352,7 @@ body.path-open { overflow: hidden; }
           }
           if (singles()) { steps.push(1); continue; }
           const k = advance();
-          if (!k) return { steps, log };
+          if (!k) return { steps, log, v, cand };
           steps.push(k);
         }
       }
@@ -6414,6 +6424,35 @@ body.path-open { overflow: hidden; }
       }
       return null;
     }
+    // 正解への道筋だけで使う、もっと深い背理法（ヒント・目標時間・難易度の判定には使わない）
+    //  深さ1: 候補が3つ以上のマスも含めて、どの候補でも仮に置いて矛盾すれば、その候補を消す
+    //  深さ2: 仮に置いて解き進めた盤で、さらに候補が2つのマスを両方試し、どちらも矛盾すれば、最初の仮定が違う（2段の仮定）
+    function deepContradiction(start) {
+      const trial = (v0, c0, i, d) => {
+        const v = v0.slice(), cand = c0.slice();
+        v[i] = d; cand[i] = 0;
+        for (const p of peers[i]) cand[p] &= ~(1 << d);
+        return grade(null, { v, cand }, null, true);
+      };
+      const order = [...Array(81).keys()].filter((i) => !start.v[i] && pop(start.cand[i]) >= 2).sort((a, b) => pop(start.cand[a]) - pop(start.cand[b]));
+      for (const i of order) for (const d of bits(start.cand[i])) {
+        const r = trial(start.v, start.cand, i, d);
+        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction };
+      }
+      for (const i of order) for (const d of bits(start.cand[i])) {
+        const r = trial(start.v, start.cand, i, d);
+        if (r.contradiction || !r.v) continue;
+        for (let j = 0; j < 81; j++) {
+          if (r.v[j] || pop(r.cand[j]) !== 2) continue;
+          const [a, b] = bits(r.cand[j]);
+          const ra = trial(r.v, r.cand, j, a);
+          if (!ra.contradiction) continue;
+          const rb = trial(r.v, r.cand, j, b);
+          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction };
+        }
+      }
+      return null;
+    }
     // 正解への道筋: 盤（v: 81個の数字、0 = 空き）から最後まで、ページごとの解き方を返す。sol（81文字の正解）があれば背理法でも進めない所を補う
     // ページ: { kind, before: {v, cand}, after: {v, cand}, ... }
     //   start  … 盤の数字で消える候補を消す（gone）
@@ -6477,7 +6516,13 @@ body.path-open { overflow: hidden; }
         const proof = contradiction({ v, cand });
         if (proof) {
           cand[proof.i] &= ~(1 << proof.d);
-          pages.push({ kind: "contra", i: proof.i, d: proof.d, answer: proof.answer, why: proof.contradiction, gone: [{ i: proof.i, m: 1 << proof.d }], before, after: snap() });
+          pages.push({ kind: "contra", depth: 1, i: proof.i, d: proof.d, left: [proof.answer], why: proof.contradiction, gone: [{ i: proof.i, m: 1 << proof.d }], before, after: snap() });
+          continue;
+        }
+        const deep = deepContradiction({ v, cand });
+        if (deep) {
+          cand[deep.i] &= ~(1 << deep.d);
+          pages.push({ kind: "contra", ...deep, left: bits(cand[deep.i]), gone: [{ i: deep.i, m: 1 << deep.d }], before, after: snap() });
           continue;
         }
         if (sol && sol.length === 81) {
