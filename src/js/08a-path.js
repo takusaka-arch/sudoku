@@ -165,6 +165,18 @@
   // 解き方の説明（ヒントメニューの説明と同じ文）
   const techDesc = (name) => (hintKinds.find((k) => k.label === name) || {}).desc || "";
   const goneText = (list) => list.map((x) => `${cellNm(x.i)}の「${digitsOf(x.m).join("・")}」`).join("、");
+  // ヒントメニューと同じ情報の順序で、盤面の説明を整理する。ボタンの寸法・配置は変えない。
+  const pathSection = (label, html) => {
+    const block = document.createElement("div");
+    block.className = "path-explain-section";
+    const title = document.createElement("p");
+    title.className = "path-explain-label";
+    title.textContent = label;
+    const body = document.createElement("p");
+    body.innerHTML = html;
+    block.append(title, body);
+    pathText.appendChild(block);
+  };
 
   function drawPath() {
     const pages = path.pages, total = pages.length;
@@ -188,8 +200,9 @@
     if (pg.kind === "start") {
       drawPathBoard(pg.before, { gone: pg.gone, given });
       pathHead.textContent = `${no}　問題の数字で候補を消す`;
-      say(path.fromNow ? "今の盤から始めます。まず、盤の数字と同じ行・列・ブロックにあるマスから、その数字の候補を消します（赤い線）。" : "まず、問題の数字と同じ行・列・ブロックにあるマスから、その数字の候補を消します（赤い線）。");
-      say(path.fromNow ? "今の盤で除外した候補も引き継いでいます。残った小さな数字が候補です。" : "残った小さな数字が、そのマスに入る可能性のある数字（候補）です。");
+      pathSection("解法", "確定済みの数字から、同じ行・列・ブロックに入れられない候補を除外します。");
+      pathSection("注目する場所", path.fromNow ? "今の盤の確定数字と、除外済み候補を確認します。" : "問題の最初から入っている数字に注目します。");
+      pathSection("実行する操作", "赤い丸の候補を除外します。残った小さな数字が候補です。");
     } else if (pg.kind === "single") {
       const placed = pg.placed.map((x) => ({ ...x, g: 0 }));
       drawPathBoard(pg.before, { placed, given });
@@ -198,20 +211,18 @@
         box: [2, "ブロックに注目", "ブロックの中で、ある数字を入れられるマスが1つしかなければ、その数字はそのマスに決まります。"],
         cell: [-1, "マスに注目", "候補が1つしか残っていないマスは、その数字に決まります。"] }[pg.key];
       pathHead.textContent = `${no}　${K[1]}（シングル ★）`;
-      say(K[2]);
-      say(pg.placed.map((x) => K[0] < 0 ? `${cellNm(x.i)}は「${x.d}」` : `${unitNm(K[0], x.unit)}の「${x.d}」→ ${cellNm(x.i)}`).map(esc).join("<br>"));
-      say(`決まった${pg.placed.length}マスを${sw(0)}の数字で埋めました。決まった数字は、同じ行・列・ブロックの候補から消えます。`);
+      pathSection("解法", esc(K[2]));
+      pathSection("注目する場所", pg.placed.map((x) => esc(K[0] < 0 ? cellNm(x.i) : `${unitNm(K[0], x.unit)} → ${cellNm(x.i)}`)).join("、"));
+      pathSection("実行する操作", pg.placed.map((x) => esc(`${cellNm(x.i)}を「${x.d}」に確定`)).join("、") + `。${sw(0)}の数字で表示しています。確定した数字は同じ行・列・ブロックの候補から除外されます。`);
     } else if (pg.kind === "tech") {
       const gone = pg.groups.flatMap((g, n) => g.gone.map((x) => ({ ...x, g: n })));
       const basis = pg.groups.map((g, n) => ({ cells: g.basis, g: n }));
       drawPathBoard(pg.before, { gone, basis, given });
       pathHead.textContent = `${no}　${pg.tech}（${"★".repeat(pg.lv)}）`;
-      say("シングルで決まるマスがなくなったので、次にやさしい解き方を使います。");
-      say(esc(techDesc(pg.tech)));
-      const many = pg.groups.length > 1;
-      say(pg.groups.map((g, n) => (g.basis.length ? `${sw(n)}のマス（${esc(g.basis.map(cellNm).join("・"))}）を使うと、` : "") + `${esc(goneText(g.gone))}を消せます。`).join("<br>"));
-      if (many) say("同じ解き方を使える所がいくつかあるので、組ごとに色を分けています。");
-      say("消す候補は赤い線です。消した結果、決まるマスは次のページで埋めます。");
+      pathSection("解法", "シングルでは進めないため、次の解法を使います。" + esc(techDesc(pg.tech)));
+      pathSection("注目する場所", pg.groups.map((g, n) => g.basis.length ? `${sw(n)}のマス（${esc(g.basis.map(cellNm).join("・"))}）` : "候補の配置").join("、"));
+      pathSection("実行する操作", pg.groups.map((g, n) => `${sw(n)}：${esc(goneText(g.gone))}を除外します。`).join("<br>") + "赤い丸が除外する候補です。確定するマスは次のページで表示します。");
+      if (pg.groups.length > 1) say("同じ解法を使う複数の組は、色を分けて表示しています。");
     } else if (pg.kind === "contra") {
       // 背理法。depth 1 = 1回の仮定、depth 2 = 仮定の中でもう1回仮定する（2段の仮定）
       const whatOf = (w) => !w ? "矛盾が出ます"
@@ -223,13 +234,18 @@
       drawPathBoard(pg.before, { gone: pg.gone.map((x) => ({ ...x, g: 0 })), basis, given });
       pathHead.textContent = `${no}　背理法${deep ? "（2段の仮定）" : ""}（${"★".repeat(TECH_LV["背理法"])}）`;
       const all = digitsOf(pg.before.cand[pg.i]);
-      say(esc(`ほかの解き方では進めないので、仮に置いて確かめます。${cellNm(pg.i)}の候補は「${all.join("・")}」です。`));
+      pathSection("解法", "ほかの解法で進めないため、仮に数字を置いて矛盾が起こるか調べる背理法を使います。");
+      pathSection("注目する場所", esc(`${cellNm(pg.i)}の候補「${all.join("・")}」を調べます。`));
+      let proofExplanation;
       if (!deep) {
-        say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めていくと${esc(whatOf(pg.why))}${cellOf(pg.why).length ? `（${sw(1)}）` : ""}。`);
+        proofExplanation = `もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」なら、推論を進めると${esc(whatOf(pg.why))}${cellOf(pg.why).length ? `（${sw(1)}）` : ""}。`;
       } else {
-        say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めた盤で${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。`);
-        say(esc(`そこでもう一度仮に置くと、「${pg.a}」なら${whatOf(pg.whyA)}。「${pg.b}」なら${whatOf(pg.whyB)}。どちらでも矛盾します。`));
+        proofExplanation = `もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」なら、推論後に${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。` +
+          esc(`さらに仮定すると「${pg.a}」なら${whatOf(pg.whyA)}、「${pg.b}」なら${whatOf(pg.whyB)}。両方で矛盾します。`);
       }
+      const rest = pg.left || [];
+      const result = esc(`このため、${cellNm(pg.i)}の「${pg.d}」を候補から除外します` + (rest.length === 1 ? `。残る「${rest[0]}」に確定します。` : `（残りは「${rest.join("・")}」）。`));
+      pathSection("実行する操作", proofExplanation + " " + result);
       // 仮定後の実際の推論手順。各ボタンでその直後の盤面を確認できる。
       const branches = deep
         ? [{ key: "outer", title: "最初の仮定からの推論", steps: pg.outerTrace || [] },
@@ -274,11 +290,12 @@
           basis: [{ cells: step.kind === "elim" ? step.basis || [] : [step.i], g: 0 }]
         });
       }
-      const rest = pg.left || [];
-      say(esc(`これは矛盾なので、${cellNm(pg.i)}は「${pg.d}」ではありません。候補から「${pg.d}」を消します` + (rest.length === 1 ? `。残るのは「${rest[0]}」だけなので、「${rest[0]}」に決まります。` : `（残りは「${rest.join("・")}」）。`)));
+
     } else if (pg.kind === "answer") {
       drawPathBoard(pg.before, { placed: [{ i: pg.i, d: pg.d, g: 0 }], given });
       pathHead.textContent = `${no}　正解から決める`;
-      say(esc(`ここは、これまでの解き方や2段までの仮定（背理法）では決められません。正解から、${cellNm(pg.i)}は「${pg.d}」です。`));
+      pathSection("解法", "正解データからの補完です。論理的に導いた手順ではありません。");
+      pathSection("注目する場所", esc(cellNm(pg.i)));
+      pathSection("実行する操作", esc(`${cellNm(pg.i)}を「${pg.d}」に確定します。`));
     }
   }
