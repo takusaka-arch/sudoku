@@ -131,7 +131,27 @@
     q.setAttribute("aria-expanded", "false");
     const desc = document.createElement("p");
     desc.className = "hm-desc";
-    desc.textContent = k.desc;
+    // 「？」の説明は道筋と同じ「解法 → 注目する場所 → 実行する操作」の順。
+    // ヒントボタン自体の文字数・配置は変えず、詳細を開いたときだけ表示する。
+    const hintHelp = (label) => {
+      if (label === "ヒントを消す") return ["現在表示されているヒント", "色と説明を消します"];
+      if (label === "注目するマス") return ["次に考えるとよいマス", "色が付いたマスを手がかりに考えます"];
+      if (label === "答えと理由") return ["ヒントが示すマスや候補", "示された理由を確認し、数字の確定または候補の除外を考えます"];
+      if (label === "背理法") return ["仮に数字を置くマスと、矛盾する場所", "仮定から矛盾を確認し、候補を除外または確定します"];
+      return ["ヒント実行後に盤上で色が付いたマス・候補", "表示された根拠を確認し、除外できる候補を判断します"];
+    };
+    const [focus, action] = hintHelp(k.label);
+    for (const [title, value] of [["解法", k.desc], ["注目する場所", focus], ["実行する操作", action]]) {
+      const block = document.createElement("div");
+      block.className = "hm-desc-block";
+      const h = document.createElement("p");
+      h.className = "hm-desc-label";
+      h.textContent = title;
+      const d = document.createElement("span");
+      d.textContent = value;
+      block.append(h, d);
+      desc.appendChild(block);
+    }
     desc.hidden = true;
     q.addEventListener("click", () => {
       const open = desc.hidden;
