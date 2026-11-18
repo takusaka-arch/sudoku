@@ -78,15 +78,15 @@
       let tech = "", techLv = 0;
       let basis = [];  // その手の元になったマス（正解への道筋の説明で色を付ける）
       const log = [];
-      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { const oldMask = cand[i] & m; if (start) log.push({ i, m: cand[i] & m, tech, lv: techLv, basis: [...new Set(basis)] }); cand[i] &= ~m; if (trace) trace.push({ kind: "elim", i, m: oldMask, tech, basis: basis.slice(), after: traceSnap() }); return true; } return false; };
+      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { const oldMask = cand[i] & m; const beforeStep = trace ? traceSnap() : null; if (start) log.push({ i, m: cand[i] & m, tech, lv: techLv, basis: [...new Set(basis)] }); cand[i] &= ~m; if (trace) trace.push({ kind: "elim", i, m: oldMask, tech, basis: basis.slice(), before: beforeStep, after: traceSnap() }); return true; } return false; };
       const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
       // 初級: そのマスに入る数字が1つだけ／その行・列・ブロックでその数字が入るマスが1つだけ
       function singles() {
-        for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 1) { const d = bits(cand[i])[0]; place(i, d); if (trace) trace.push({ kind: "single", i, d, after: traceSnap() }); return true; }
+        for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 1) { const d = bits(cand[i])[0]; const beforeStep = trace ? traceSnap() : null; place(i, d); if (trace) trace.push({ kind: "single", i, d, before: beforeStep, after: traceSnap() }); return true; }
         for (const u of units) for (let d = 1; d <= 9; d++) {
           if (u.some((i) => v[i] === d)) continue;
           const w = where(u, d);
-          if (w.length === 1) { place(w[0], d); if (trace) trace.push({ kind: "single", i: w[0], d, after: traceSnap() }); return true; }
+          if (w.length === 1) { const beforeStep = trace ? traceSnap() : null; place(w[0], d); if (trace) trace.push({ kind: "single", i: w[0], d, before: beforeStep, after: traceSnap() }); return true; }
         }
         return false;
       }
