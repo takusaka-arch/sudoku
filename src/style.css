@@ -762,3 +762,13 @@ body.path-open { overflow: hidden; }
 }
 .path-nav #path-close { margin-left: auto; }
 .path-nav button:disabled { opacity: 0.4; cursor: default; }
+
+/* 正解への道筋：表示方式と背理法の途中手順 */
+.path-choice-setting { display: flex; gap: 8px; align-items: flex-start; line-height: 1.6; text-align: left; }
+.path-choice-setting input { margin-top: .35em; flex-shrink: 0; }
+.path-choice-note { font-size: .85rem; color: var(--muted); }
+.path-proof { margin: 12px 0; padding: 10px; border: 1px solid var(--line-cell); border-radius: 8px; }
+.path-proof summary { cursor: pointer; font-weight: 700; }
+.path-proof-label { margin: 12px 0 6px; font-weight: 700; font-size: .9rem; }
+.path-proof-step { display: block; width: 100%; margin: 3px 0; padding: 7px; text-align: left; background: var(--paper); color: var(--ink); border: 1px solid var(--line-cell); border-radius: 5px; font: inherit; font-size: .85rem; cursor: pointer; }
+.path-proof-step[aria-pressed="true"] { border-color: var(--sel); background: var(--sel-bg); }
