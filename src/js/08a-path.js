@@ -1,6 +1,6 @@
   // ===== 08a-path.js：正解への道筋（表示方法変更のメニューから）=====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
-  // 正解までの解き方を1ページずつ見せる。盤と解説だけの画面で、「戻る」「進む」「終わる」で動かす。
+  // 正解までの解き方を1ページずつ見せる。盤と解説だけの画面で、「前へ」「次へ」「閉じる」で動かす。
   // ページの中身（どの解き方で、どのマスが決まり、どの候補が消えるか）は 15-puzzle-maker.js の solvePath() が作る。
   // ここは見せるだけ。回答中の盤・ヒントの回数・目標時間には何も触らない（タイマーは見ている間だけ止める）。
   const pathView = document.getElementById("path-view"), pathBoard = document.getElementById("path-board");
@@ -103,7 +103,7 @@
   }
   document.getElementById("path-close").addEventListener("click", closePath);
   pathPrev.addEventListener("click", () => { if (path && pathAt > 0) { pathAt--; pathProofActive = null; drawPath(); } });
-  pathNext.addEventListener("click", () => { if (path && pathAt < path.pages.length) { pathAt++; pathProofActive = null; drawPath(); } });
+  pathNext.addEventListener("click", () => { if (!path) return; if (pathAt >= path.pages.length && path.solved) pathAt = 0; else if (pathAt < path.pages.length) pathAt++; else return; pathProofActive = null; drawPath(); });
   document.addEventListener("keydown", (e) => {
     if (pathView.hidden) return;
     if (e.key === "Escape") closePath();
@@ -182,7 +182,10 @@
     const pages = path.pages, total = pages.length;
     const given = path.given;
     pathPrev.disabled = pathAt === 0;
-    pathNext.disabled = pathAt >= total;
+    // 完成したときだけ「次へ」を「最初から見る」に切り替え、ボタン数を増やさない。
+    const complete = pathAt >= total && path.solved;
+    pathNext.textContent = complete ? "最初から見る" : "次へ ▶";
+    pathNext.disabled = pathAt >= total && !complete;
     pathText.textContent = "";
     const say = (html) => { const p = document.createElement("p"); p.innerHTML = html; pathText.appendChild(p); };
     const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -192,7 +195,7 @@
       const last = pages[total - 1];
       drawPathBoard(last.after, { given });
       pathHead.textContent = `${total}／${total}　${path.solved ? "完成" : "ここまで"}`;
-      say(path.solved ? "これで全部のマスが埋まりました。「戻る」で、もう一度たどれます。" : (path.logicalOnly ? "ここから先は、利用できる論理手順では進められませんでした。必要なら最初の画面で「正解データも使う」を選んでください。" : "ここから先は、この道筋では進められませんでした。"));
+      say(path.solved ? "これですべてのマスが埋まりました。「最初から見る」で、正解への道筋を初めから確認できます。" : (path.logicalOnly ? "ここから先は、利用できる論理手順では進められませんでした。必要なら最初の画面で「正解データも使う」を選んでください。" : "ここから先は、この道筋では進められませんでした。"));
       return;
     }
     const pg = pages[pathAt];
