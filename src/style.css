@@ -778,3 +778,12 @@ body.path-open { overflow: hidden; }
 .path-proof-label { margin: 12px 0 6px; font-weight: 700; font-size: .9rem; }
 .path-proof-step { display: block; width: 100%; margin: 3px 0; padding: 7px; text-align: left; background: var(--paper); color: var(--ink); border: 1px solid var(--line-cell); border-radius: 5px; font: inherit; font-size: .85rem; cursor: pointer; }
 .path-proof-step[aria-pressed="true"] { border-color: var(--sel); background: var(--sel-bg); }
+
+/* 道筋とヒントの説明見出し。ボタンの幅・高さ・配列ルールは変更しない。 */
+.path-explain-section { margin: 0 0 10px; }
+.path-explain-label, #hint-menu .hm-desc-label {
+  margin: 0 0 2px; font-size: .78rem; font-weight: 700; color: var(--muted);
+}
+.path-explain-section > p:last-child { margin: 0; }
+#hint-menu .hm-desc-block { margin: 0 0 6px; }
+#hint-menu .hm-desc-block:last-child { margin-bottom: 0; }
