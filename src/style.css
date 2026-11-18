@@ -709,22 +709,25 @@ body.fold .head { flex-wrap: wrap; row-gap: 6px; }
 body.fold .head h1 { font-size: min(1.2rem, 2.1vw); column-gap: 4px; }
 body.fold .head button { flex-shrink: 0; }
 /* ===== 正解への道筋（08a-path.js）: 盤と解説だけの画面。盤は読むだけの別の盤 ===== */
+/* 盤は動かさず、説明（.path-side）だけをスクロールする。下の 84px は固定のボタンの分 */
 .path-view {
-  position: fixed; inset: 0; z-index: 70; background: var(--bg); color: var(--ink); overflow: auto;
-  display: grid; gap: 16px; padding: 16px 16px calc(84px + env(safe-area-inset-bottom)); box-sizing: border-box;
-  grid-template-columns: minmax(0, 1fr); align-content: start; justify-items: center;
+  position: fixed; inset: 0; z-index: 70; background: var(--bg); color: var(--ink); overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 16px 16px calc(84px + env(safe-area-inset-bottom)); box-sizing: border-box;
 }
 .path-view[hidden] { display: none; }
 body.path-open { overflow: hidden; }
 @media (min-width: 900px) {
-  .path-view { grid-template-columns: auto minmax(280px, 460px); align-items: start; justify-content: center; align-content: center; }
+  .path-view { flex-direction: row; align-items: stretch; justify-content: center; gap: 20px; }
+  .path-view .path-board { align-self: flex-start; }
+  .path-view .path-side { width: min(460px, 36vw); }
 }
 .path-board {
   --size: min(calc(100vw - 32px), 58vh, 560px);
-  width: var(--size); height: var(--size); display: grid; grid-template: repeat(9, 1fr) / repeat(9, 1fr);
+  flex: none; width: var(--size); height: var(--size); display: grid; grid-template: repeat(9, 1fr) / repeat(9, 1fr);
   border: var(--thick) solid var(--ink); background: var(--paper); box-sizing: border-box; container-type: inline-size;
 }
-@media (min-width: 900px) { .path-board { --size: min(calc(100vh - 32px), 56vw, 720px); } }
+@media (min-width: 900px) { .path-board { --size: min(calc(100dvh - 116px), 56vw, 720px); } }
 .pv-cell {
   border-right: var(--cell) solid var(--line-cell); border-bottom: var(--cell) solid var(--line-cell);
   display: grid; grid-template: repeat(3, 1fr) / repeat(3, 1fr); position: relative; min-width: 0; min-height: 0;
@@ -749,7 +752,10 @@ body.path-open { overflow: hidden; }
 .pv-new .pv-big { color: var(--ink); font-weight: 700; }
 .pv-cand { display: grid; place-items: center; font: 2.4cqw/1 var(--font-num); color: var(--cand); }
 .pv-gone { color: var(--pv-gone-fg); background: var(--pv-gone-bg); border-radius: 50%; font-weight: 700; width: 86%; height: 86%; margin: auto; text-decoration: line-through 1.5px; }
-.path-side { width: min(100%, 560px); display: grid; gap: 10px; }
+.path-side {
+  width: min(100%, 560px); flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  display: flex; flex-direction: column; gap: 10px; padding-right: 4px; box-sizing: border-box;
+}
 .path-head { margin: 0; font-weight: 700; font-size: 1.05rem; }
 .path-text { line-height: 1.7; }
 .path-text p { margin: 0 0 8px; }
