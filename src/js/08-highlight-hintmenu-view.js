@@ -129,7 +129,7 @@
     q.textContent = "？";
     q.setAttribute("aria-label", `${k.label}の説明`);
     q.setAttribute("aria-expanded", "false");
-    const desc = document.createElement("p");
+    const desc = document.createElement("div");
     desc.className = "hm-desc";
     // 「？」の説明は道筋と同じ「解法 → 注目する場所 → 実行する操作」の順。
     // ヒントボタン自体の文字数・配置は変えず、詳細を開いたときだけ表示する。
