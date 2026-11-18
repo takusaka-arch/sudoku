@@ -103,7 +103,7 @@
   }
   document.getElementById("path-close").addEventListener("click", closePath);
   pathPrev.addEventListener("click", () => { if (path && pathAt > 0) { pathAt--; pathProofActive = null; drawPath(); } });
-  pathNext.addEventListener("click", () => { if (path && pathAt < path.pages.length) { pathAt++; pathProofActive = null; drawPath(); } });
+  pathNext.addEventListener("click", () => { if (!path) return; if (pathAt >= path.pages.length && path.solved) pathAt = 0; else if (pathAt < path.pages.length) pathAt++; else return; pathProofActive = null; drawPath(); });
   document.addEventListener("keydown", (e) => {
     if (pathView.hidden) return;
     if (e.key === "Escape") closePath();
@@ -182,7 +182,10 @@
     const pages = path.pages, total = pages.length;
     const given = path.given;
     pathPrev.disabled = pathAt === 0;
-    pathNext.disabled = pathAt >= total;
+    // 完成したときだけ「次へ」を「最初から見る」に切り替え、ボタン数を増やさない。
+    const complete = pathAt >= total && path.solved;
+    pathNext.textContent = complete ? "最初から見る" : "次へ ▶";
+    pathNext.disabled = pathAt >= total && !complete;
     pathText.textContent = "";
     const say = (html) => { const p = document.createElement("p"); p.innerHTML = html; pathText.appendChild(p); };
     const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -192,7 +195,7 @@
       const last = pages[total - 1];
       drawPathBoard(last.after, { given });
       pathHead.textContent = `${total}／${total}　${path.solved ? "完成" : "ここまで"}`;
-      say(path.solved ? "これで全部のマスが埋まりました。「前へ」で、もう一度たどれます。" : (path.logicalOnly ? "ここから先は、利用できる論理手順では進められませんでした。必要なら最初の画面で「正解データも使う」を選んでください。" : "ここから先は、この道筋では進められませんでした。"));
+      say(path.solved ? "これですべてのマスが埋まりました。「最初から見る」で、正解への道筋を初めから確認できます。" : (path.logicalOnly ? "ここから先は、利用できる論理手順では進められませんでした。必要なら最初の画面で「正解データも使う」を選んでください。" : "ここから先は、この道筋では進められませんでした。"));
       return;
     }
     const pg = pages[pathAt];
