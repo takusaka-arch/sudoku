@@ -761,16 +761,21 @@ body.path-open { overflow: hidden; }
 .pv-cell.pv-r { border-right: var(--thick) solid var(--ink); }
 .pv-cell.pv-b { border-bottom: var(--thick) solid var(--ink); }
 .pv-cell.pv-given { background: var(--given-bg); }
-.pv-cell.pv-basis { background: color-mix(in srgb, var(--pc) 22%, var(--paper)); }
+/* 組の色: マスを色の枠で囲み、背景も塗る。ダークモードは塗りを濃く（--pv-mix）、消す候補は赤い丸で目立たせる */
+.path-view { --pv-mix: 24%; --pv-gone-bg: #d32f2f; --pv-gone-fg: #fff; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .path-view { --pv-mix: 45%; --pv-gone-bg: #ff5252; --pv-gone-fg: #111; } }
+:root[data-theme="dark"] .path-view { --pv-mix: 45%; --pv-gone-bg: #ff5252; --pv-gone-fg: #111; }
+.pv-cell.pv-basis { background: color-mix(in srgb, var(--pc) var(--pv-mix), var(--paper)); box-shadow: inset 0 0 0 3px var(--pc); }
+.pv-cell.pv-basis .pv-cand:not(.pv-gone) { color: var(--ink); font-weight: 600; }
 .pv-big {
   grid-area: 1 / 1 / 4 / 4; display: grid; place-items: center;
   font: 500 6.2cqw/1 var(--font-num); color: var(--answer);
 }
 .pv-given .pv-big { color: var(--ink); font-weight: 600; }
-.pv-new { background: color-mix(in srgb, var(--pc) 18%, var(--paper)); }
-.pv-new .pv-big { color: var(--pc); font-weight: 700; }
+.pv-new { background: color-mix(in srgb, var(--pc) var(--pv-mix), var(--paper)); box-shadow: inset 0 0 0 3px var(--pc); }
+.pv-new .pv-big { color: var(--ink); font-weight: 700; }
 .pv-cand { display: grid; place-items: center; font: 2.4cqw/1 var(--font-num); color: var(--cand); }
-.pv-gone { color: var(--error); font-weight: 700; text-decoration: line-through 2px; }
+.pv-gone { color: var(--pv-gone-fg); background: var(--pv-gone-bg); border-radius: 50%; font-weight: 700; width: 86%; height: 86%; margin: auto; text-decoration: line-through 1.5px; }
 .path-side { width: min(100%, 560px); display: grid; gap: 10px; }
 .path-head { margin: 0; font-weight: 700; font-size: 1.05rem; }
 .path-text { line-height: 1.7; }
@@ -798,7 +803,7 @@ body.path-open { overflow: hidden; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.252</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.253</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
