@@ -267,7 +267,7 @@
       if (pathProofActive) {
         const active = branches.find((x) => x.key === pathProofActive.branch);
         const step = active && active.steps[pathProofActive.index];
-        if (step) drawPathBoard(step.after, {
+        if (step) drawPathBoard(step.before, {
           given,
           placed: step.kind === "single" ? [{ i: step.i, d: step.d, g: 0 }] : [],
           gone: step.kind === "elim" ? [{ i: step.i, m: step.m, g: 0 }] : [],
