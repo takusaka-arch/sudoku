@@ -805,6 +805,15 @@ body.path-open { overflow: hidden; }
 .path-proof-label { margin: 12px 0 6px; font-weight: 700; font-size: .9rem; }
 .path-proof-step { display: block; width: 100%; margin: 3px 0; padding: 7px; text-align: left; background: var(--paper); color: var(--ink); border: 1px solid var(--line-cell); border-radius: 5px; font: inherit; font-size: .85rem; cursor: pointer; }
 .path-proof-step[aria-pressed="true"] { border-color: var(--sel); background: var(--sel-bg); }
+
+/* 道筋とヒントの説明見出し。ボタンの幅・高さ・配列ルールは変更しない。 */
+.path-explain-section { margin: 0 0 10px; }
+.path-explain-label, #hint-menu .hm-desc-label {
+  margin: 0 0 2px; font-size: .78rem; font-weight: 700; color: var(--muted);
+}
+.path-explain-section > p:last-child { margin: 0; }
+#hint-menu .hm-desc-block { margin: 0 0 6px; }
+#hint-menu .hm-desc-block:last-child { margin-bottom: 0; }
 </style>
 
 <main>
@@ -825,7 +834,7 @@ body.path-open { overflow: hidden; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.257</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.258</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1208,9 +1217,9 @@ body.path-open { overflow: hidden; }
     <p class="path-head" id="path-head"></p>
     <div class="path-text" id="path-text"></div>
     <div class="path-nav">
-      <button type="button" class="btn sub" id="path-prev">◀ 戻る</button>
-      <button type="button" class="btn" id="path-next">進む ▶</button>
-      <button type="button" class="btn sub" id="path-close">終わる</button>
+      <button type="button" class="btn sub" id="path-prev">◀ 前へ</button>
+      <button type="button" class="btn" id="path-next">次へ ▶</button>
+      <button type="button" class="btn sub" id="path-close">閉じる</button>
     </div>
   </div>
 </section>
@@ -3559,7 +3568,27 @@ body.path-open { overflow: hidden; }
     q.setAttribute("aria-expanded", "false");
     const desc = document.createElement("p");
     desc.className = "hm-desc";
-    desc.textContent = k.desc;
+    // 「？」の説明は道筋と同じ「解法 → 注目する場所 → 実行する操作」の順。
+    // ヒントボタン自体の文字数・配置は変えず、詳細を開いたときだけ表示する。
+    const hintHelp = (label) => {
+      if (label === "ヒントを消す") return ["現在表示されているヒント", "色と説明を消します"];
+      if (label === "注目するマス") return ["次に考えるとよいマス", "色が付いたマスを手がかりに考えます"];
+      if (label === "答えと理由") return ["ヒントが示すマスや候補", "示された理由を確認し、数字の確定または候補の除外を考えます"];
+      if (label === "背理法") return ["仮に数字を置くマスと、矛盾する場所", "仮定から矛盾を確認し、候補を除外または確定します"];
+      return ["ヒント実行後に盤上で色が付いたマス・候補", "表示された根拠を確認し、除外できる候補を判断します"];
+    };
+    const [focus, action] = hintHelp(k.label);
+    for (const [title, value] of [["解法", k.desc], ["注目する場所", focus], ["実行する操作", action]]) {
+      const block = document.createElement("div");
+      block.className = "hm-desc-block";
+      const h = document.createElement("p");
+      h.className = "hm-desc-label";
+      h.textContent = title;
+      const d = document.createElement("span");
+      d.textContent = value;
+      block.append(h, d);
+      desc.appendChild(block);
+    }
     desc.hidden = true;
     q.addEventListener("click", () => {
       const open = desc.hidden;
@@ -3894,6 +3923,18 @@ body.path-open { overflow: hidden; }
   // 解き方の説明（ヒントメニューの説明と同じ文）
   const techDesc = (name) => (hintKinds.find((k) => k.label === name) || {}).desc || "";
   const goneText = (list) => list.map((x) => `${cellNm(x.i)}の「${digitsOf(x.m).join("・")}」`).join("、");
+  // ヒントメニューと同じ情報の順序で、盤面の説明を整理する。ボタンの寸法・配置は変えない。
+  const pathSection = (label, html) => {
+    const block = document.createElement("div");
+    block.className = "path-explain-section";
+    const title = document.createElement("p");
+    title.className = "path-explain-label";
+    title.textContent = label;
+    const body = document.createElement("p");
+    body.innerHTML = html;
+    block.append(title, body);
+    pathText.appendChild(block);
+  };
 
   function drawPath() {
     const pages = path.pages, total = pages.length;
@@ -3917,8 +3958,9 @@ body.path-open { overflow: hidden; }
     if (pg.kind === "start") {
       drawPathBoard(pg.before, { gone: pg.gone, given });
       pathHead.textContent = `${no}　問題の数字で候補を消す`;
-      say(path.fromNow ? "今の盤から始めます。まず、盤の数字と同じ行・列・ブロックにあるマスから、その数字の候補を消します（赤い線）。" : "まず、問題の数字と同じ行・列・ブロックにあるマスから、その数字の候補を消します（赤い線）。");
-      say(path.fromNow ? "今の盤で除外した候補も引き継いでいます。残った小さな数字が候補です。" : "残った小さな数字が、そのマスに入る可能性のある数字（候補）です。");
+      pathSection("解法", "確定済みの数字から、同じ行・列・ブロックに入れられない候補を除外します。");
+      pathSection("注目する場所", path.fromNow ? "今の盤の確定数字と、除外済み候補を確認します。" : "問題の最初から入っている数字に注目します。");
+      pathSection("実行する操作", "赤い丸の候補を除外します。残った小さな数字が候補です。");
     } else if (pg.kind === "single") {
       const placed = pg.placed.map((x) => ({ ...x, g: 0 }));
       drawPathBoard(pg.before, { placed, given });
@@ -3927,20 +3969,18 @@ body.path-open { overflow: hidden; }
         box: [2, "ブロックに注目", "ブロックの中で、ある数字を入れられるマスが1つしかなければ、その数字はそのマスに決まります。"],
         cell: [-1, "マスに注目", "候補が1つしか残っていないマスは、その数字に決まります。"] }[pg.key];
       pathHead.textContent = `${no}　${K[1]}（シングル ★）`;
-      say(K[2]);
-      say(pg.placed.map((x) => K[0] < 0 ? `${cellNm(x.i)}は「${x.d}」` : `${unitNm(K[0], x.unit)}の「${x.d}」→ ${cellNm(x.i)}`).map(esc).join("<br>"));
-      say(`決まった${pg.placed.length}マスを${sw(0)}の数字で埋めました。決まった数字は、同じ行・列・ブロックの候補から消えます。`);
+      pathSection("解法", esc(K[2]));
+      pathSection("注目する場所", pg.placed.map((x) => esc(K[0] < 0 ? cellNm(x.i) : `${unitNm(K[0], x.unit)} → ${cellNm(x.i)}`)).join("、"));
+      pathSection("実行する操作", pg.placed.map((x) => esc(`${cellNm(x.i)}を「${x.d}」に確定`)).join("、") + `。${sw(0)}の数字で表示しています。確定した数字は同じ行・列・ブロックの候補から除外されます。`);
     } else if (pg.kind === "tech") {
       const gone = pg.groups.flatMap((g, n) => g.gone.map((x) => ({ ...x, g: n })));
       const basis = pg.groups.map((g, n) => ({ cells: g.basis, g: n }));
       drawPathBoard(pg.before, { gone, basis, given });
       pathHead.textContent = `${no}　${pg.tech}（${"★".repeat(pg.lv)}）`;
-      say("シングルで決まるマスがなくなったので、次にやさしい解き方を使います。");
-      say(esc(techDesc(pg.tech)));
-      const many = pg.groups.length > 1;
-      say(pg.groups.map((g, n) => (g.basis.length ? `${sw(n)}のマス（${esc(g.basis.map(cellNm).join("・"))}）を使うと、` : "") + `${esc(goneText(g.gone))}を消せます。`).join("<br>"));
-      if (many) say("同じ解き方を使える所がいくつかあるので、組ごとに色を分けています。");
-      say("消す候補は赤い線です。消した結果、決まるマスは次のページで埋めます。");
+      pathSection("解法", "シングルでは進めないため、次の解法を使います。" + esc(techDesc(pg.tech)));
+      pathSection("注目する場所", pg.groups.map((g, n) => g.basis.length ? `${sw(n)}のマス（${esc(g.basis.map(cellNm).join("・"))}）` : "候補の配置").join("、"));
+      pathSection("実行する操作", pg.groups.map((g, n) => `${sw(n)}：${esc(goneText(g.gone))}を除外します。`).join("<br>") + "赤い丸が除外する候補です。確定するマスは次のページで表示します。");
+      if (pg.groups.length > 1) say("同じ解法を使う複数の組は、色を分けて表示しています。");
     } else if (pg.kind === "contra") {
       // 背理法。depth 1 = 1回の仮定、depth 2 = 仮定の中でもう1回仮定する（2段の仮定）
       const whatOf = (w) => !w ? "矛盾が出ます"
@@ -3952,13 +3992,18 @@ body.path-open { overflow: hidden; }
       drawPathBoard(pg.before, { gone: pg.gone.map((x) => ({ ...x, g: 0 })), basis, given });
       pathHead.textContent = `${no}　背理法${deep ? "（2段の仮定）" : ""}（${"★".repeat(TECH_LV["背理法"])}）`;
       const all = digitsOf(pg.before.cand[pg.i]);
-      say(esc(`ほかの解き方では進めないので、仮に置いて確かめます。${cellNm(pg.i)}の候補は「${all.join("・")}」です。`));
+      pathSection("解法", "ほかの解法で進めないため、仮に数字を置いて矛盾が起こるか調べる背理法を使います。");
+      pathSection("注目する場所", esc(`${cellNm(pg.i)}の候補「${all.join("・")}」を調べます。`));
+      let proofExplanation;
       if (!deep) {
-        say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めていくと${esc(whatOf(pg.why))}${cellOf(pg.why).length ? `（${sw(1)}）` : ""}。`);
+        proofExplanation = `もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」なら、推論を進めると${esc(whatOf(pg.why))}${cellOf(pg.why).length ? `（${sw(1)}）` : ""}。`;
       } else {
-        say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めた盤で${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。`);
-        say(esc(`そこでもう一度仮に置くと、「${pg.a}」なら${whatOf(pg.whyA)}。「${pg.b}」なら${whatOf(pg.whyB)}。どちらでも矛盾します。`));
+        proofExplanation = `もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」なら、推論後に${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。` +
+          esc(`さらに仮定すると「${pg.a}」なら${whatOf(pg.whyA)}、「${pg.b}」なら${whatOf(pg.whyB)}。両方で矛盾します。`);
       }
+      const rest = pg.left || [];
+      const result = esc(`このため、${cellNm(pg.i)}の「${pg.d}」を候補から除外します` + (rest.length === 1 ? `。残る「${rest[0]}」に確定します。` : `（残りは「${rest.join("・")}」）。`));
+      pathSection("実行する操作", proofExplanation + " " + result);
       // 仮定後の実際の推論手順。各ボタンでその直後の盤面を確認できる。
       const branches = deep
         ? [{ key: "outer", title: "最初の仮定からの推論", steps: pg.outerTrace || [] },
@@ -4003,12 +4048,13 @@ body.path-open { overflow: hidden; }
           basis: [{ cells: step.kind === "elim" ? step.basis || [] : [step.i], g: 0 }]
         });
       }
-      const rest = pg.left || [];
-      say(esc(`これは矛盾なので、${cellNm(pg.i)}は「${pg.d}」ではありません。候補から「${pg.d}」を消します` + (rest.length === 1 ? `。残るのは「${rest[0]}」だけなので、「${rest[0]}」に決まります。` : `（残りは「${rest.join("・")}」）。`)));
+
     } else if (pg.kind === "answer") {
       drawPathBoard(pg.before, { placed: [{ i: pg.i, d: pg.d, g: 0 }], given });
       pathHead.textContent = `${no}　正解から決める`;
-      say(esc(`ここは、これまでの解き方や2段までの仮定（背理法）では決められません。正解から、${cellNm(pg.i)}は「${pg.d}」です。`));
+      pathSection("解法", "正解データからの補完です。論理的に導いた手順ではありません。");
+      pathSection("注目する場所", esc(cellNm(pg.i)));
+      pathSection("実行する操作", esc(`${cellNm(pg.i)}を「${pg.d}」に確定します。`));
     }
   }
   // ===== 09-hints-basic.js：ヒント：ペア・3つの組・ポインティング・クレーミング =====
