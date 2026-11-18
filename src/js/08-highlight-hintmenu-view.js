@@ -211,6 +211,7 @@
     { key: "blank", label: "未確定のマスを空白にする", desc: "大きな数字が入っていないマスの小さな数字を、すべて隠します" },
     { key: "", label: "未確定のマスの候補を表示する", desc: "小さな数字を表示する、いつもの表示です" },
     { key: "answer", label: "正解を表示する", desc: "確定していないマスに正解を緑で表示します。違う確定候補は赤い背景になります。ほかの表示を選ぶと元に戻ります" },
+    { key: "path", label: "正解への道筋", desc: "正解までの解き方を、やさしい解き方から順に1ページずつ説明します" },
   ];
   function applyView(v) {
     board.toggleAttribute("data-view-blank", !!v.blank);
@@ -220,7 +221,8 @@
     if (v.answer) drawAnswer(); else if (was) board.querySelectorAll(".cell.check-wrong").forEach((c) => c.classList.remove("check-wrong"));
     try { localStorage.setItem(VIEW_KEY, JSON.stringify({ blank: !!v.blank })); } catch {}
     viewMenu.querySelectorAll("button").forEach((b) => {
-      const on = b.dataset.key === "answer" ? !!v.answer : b.dataset.key ? !!v.blank && !v.answer : !v.blank && !v.answer;
+      const key = b.dataset.key;
+      const on = key === "path" ? false : key === "answer" ? !!v.answer : key ? !!v.blank && !v.answer : !v.blank && !v.answer;
       b.setAttribute("aria-checked", String(on));
       b.querySelector(".hm-check").textContent = on ? "✓" : "";
     });
@@ -237,6 +239,7 @@
     b.querySelector(".hm-desc").textContent = k.desc;
     b.addEventListener("click", () => {
       closeViewMenu();
+      if (k.key === "path") return openPathChoice();
       if (k.key === "answer") {
         if (board.hasAttribute("data-view-answer")) return;
         if (!solution || !solution.n) { workMsg.classList.remove("err"); workMsg.textContent = "この問題は答えがないため、正解を表示できません。"; return; }

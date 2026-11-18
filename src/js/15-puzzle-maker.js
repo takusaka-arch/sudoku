@@ -74,8 +74,9 @@
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
       if (!start) for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
       let tech = "", techLv = 0;
+      let basis = [];  // その手の元になったマス（正解への道筋の説明で色を付ける）
       const log = [];
-      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { if (start) log.push({ i, m: cand[i] & m, tech, lv: techLv }); cand[i] &= ~m; return true; } return false; };
+      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { if (start) log.push({ i, m: cand[i] & m, tech, lv: techLv, basis: [...new Set(basis)] }); cand[i] &= ~m; return true; } return false; };
       const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
       // 初級: そのマスに入る数字が1つだけ／その行・列・ブロックでその数字が入るマスが1つだけ
       function singles() {
@@ -95,14 +96,14 @@
         for (const u of units) {
           const e = u.filter((i) => !v[i]);
           for (const a of e) if (pop(cand[a]) === 2) for (const b of e) if (b > a && cand[b] === cand[a]) {
-            for (const i of e) if (i !== a && i !== b) ch = elim(i, cand[a]) || ch;
+            basis = [a, b]; for (const i of e) if (i !== a && i !== b) ch = elim(i, cand[a]) || ch;
           }
           if (ch) return true;
           for (let d1 = 1; d1 <= 9; d1++) for (let d2 = d1 + 1; d2 <= 9; d2++) {
             const w1 = where(u, d1), w2 = where(u, d2);
             if (w1.length === 2 && w2.length === 2 && w1[0] === w2[0] && w1[1] === w2[1]) {
               const keep = (1 << d1) | (1 << d2);
-              for (const i of w1) ch = elim(i, ALL & ~keep) || ch;
+              basis = w1; for (const i of w1) ch = elim(i, ALL & ~keep) || ch;
             }
           }
           if (ch) return true;
@@ -120,7 +121,7 @@
             for (const [f, k] of [[rowOf, 0], [colOf, 1]]) {
               if (!w.every((i) => f(i) === f(w[0]))) continue;
               const line = units[f(w[0]) * 3 + k];
-              for (const i of line) if (!box.includes(i)) ch = elim(i, 1 << d) || ch;
+              basis = w; for (const i of line) if (!box.includes(i)) ch = elim(i, 1 << d) || ch;
             }
           }
         }
@@ -134,7 +135,7 @@
           for (let d = 1; d <= 9; d++) {
             const w = where(line, d);
             if (w.length < 2 || !w.every((i) => boxOf(i) === boxOf(w[0]))) continue;
-            for (const i of units[boxOf(w[0]) * 3 + 2]) if (!line.includes(i)) ch = elim(i, 1 << d) || ch;
+            basis = w; for (const i of units[boxOf(w[0]) * 3 + 2]) if (!line.includes(i)) ch = elim(i, 1 << d) || ch;
           }
         }
         return ch;
@@ -147,7 +148,7 @@
           for (let x = 0; x < e.length; x++) for (let y = x + 1; y < e.length; y++) for (let z = y + 1; z < e.length; z++) {
             const m = cand[e[x]] | cand[e[y]] | cand[e[z]];
             if (pop(m) !== 3) continue;
-            for (const i of u) if (i !== e[x] && i !== e[y] && i !== e[z]) ch = elim(i, m) || ch;
+            basis = [e[x], e[y], e[z]]; for (const i of u) if (i !== e[x] && i !== e[y] && i !== e[z]) ch = elim(i, m) || ch;
           }
           if (ch) return true;
           const ds = [];
@@ -156,7 +157,7 @@
             const cells = new Set([...ds[x][1], ...ds[y][1], ...ds[z][1]]);
             if (cells.size !== 3) continue;
             const keep = (1 << ds[x][0]) | (1 << ds[y][0]) | (1 << ds[z][0]);
-            for (const i of cells) ch = elim(i, ALL & ~keep) || ch;
+            basis = [...cells]; for (const i of cells) ch = elim(i, ALL & ~keep) || ch;
           }
           if (ch) return true;
         }
@@ -176,7 +177,7 @@
             if (A.at[0] !== B.at[0] || A.at[1] !== B.at[1]) continue;
             for (const o of A.at) for (const i of units[o * 3 + (k ? 0 : 1)]) {
               const L = k ? colOf(i) : rowOf(i);
-              if (L !== A.L && L !== B.L) ch = elim(i, 1 << d) || ch;
+              basis = [A.L, B.L].flatMap((L) => where(units[L * 3 + k], d)); if (L !== A.L && L !== B.L) ch = elim(i, 1 << d) || ch;
             }
           }
           if (ch) return true;
@@ -197,7 +198,7 @@
             if (at.size !== 3) continue;
             const own = [lines[x].L, lines[y].L, lines[z].L];
             for (const o of at) for (const i of units[o * 3 + (k ? 0 : 1)]) {
-              if (!own.includes(k ? colOf(i) : rowOf(i))) ch = elim(i, 1 << d) || ch;
+              basis = own.flatMap((L) => where(units[L * 3 + k], d)); if (!own.includes(k ? colOf(i) : rowOf(i))) ch = elim(i, 1 << d) || ch;
             }
           }
           if (ch) return true;
@@ -215,7 +216,7 @@
           for (const a of wa) for (const b of wb) {
             const zm = cand[a] & ~(1 << x);
             if (zm !== (cand[b] & ~(1 << y))) continue;
-            for (let i = 0; i < 81; i++) if (i !== a && i !== b && i !== p && sees(i, a) && sees(i, b)) ch = elim(i, zm) || ch;
+            basis = [p, a, b]; for (let i = 0; i < 81; i++) if (i !== a && i !== b && i !== p && sees(i, a) && sees(i, b)) ch = elim(i, zm) || ch;
             if (ch) return true;
           }
         }
@@ -231,7 +232,7 @@
             const m = cand[e[a]] | cand[e[b]] | cand[e[c]] | cand[e[d]];
             if (pop(m) !== 4) continue;
             const set = [e[a], e[b], e[c], e[d]];
-            for (const i of u) if (!set.includes(i)) ch = elim(i, m) || ch;
+            basis = set; for (const i of u) if (!set.includes(i)) ch = elim(i, m) || ch;
           }
           if (ch) return true;
           const ds = [];
@@ -241,7 +242,7 @@
             const cells = new Set([...ds[a][1], ...ds[b][1], ...ds[c][1], ...ds[d][1]]);
             if (cells.size !== 4) continue;
             const keep = (1 << ds[a][0]) | (1 << ds[b][0]) | (1 << ds[c][0]) | (1 << ds[d][0]);
-            for (const i of cells) ch = elim(i, ALL & ~keep) || ch;
+            basis = [...cells]; for (const i of cells) ch = elim(i, ALL & ~keep) || ch;
           }
           if (ch) return true;
         }
@@ -259,7 +260,7 @@
             if (cand[a] === cand[b]) continue;
             const z = cand[a] & cand[b];
             if (pop(z) !== 1) continue;
-            for (let i = 0; i < 81; i++) if (i !== p && i !== a && i !== b && sees(i, p) && sees(i, a) && sees(i, b)) ch = elim(i, z) || ch;
+            basis = [p, a, b]; for (let i = 0; i < 81; i++) if (i !== p && i !== a && i !== b && sees(i, p) && sees(i, a) && sees(i, b)) ch = elim(i, z) || ch;
             if (ch) return true;
           }
         }
@@ -276,7 +277,7 @@
             const A = lines[x], B = lines[y];
             for (const [ab, ae] of [[0, 1], [1, 0]]) for (const [bb, be] of [[0, 1], [1, 0]]) {
               if (pos(A[ab]) !== pos(B[bb]) || pos(A[ae]) === pos(B[be])) continue;
-              for (let i = 0; i < 81; i++) if (sees(i, A[ae]) && sees(i, B[be])) ch = elim(i, 1 << d) || ch;
+              basis = [...A, ...B]; for (let i = 0; i < 81; i++) if (sees(i, A[ae]) && sees(i, B[be])) ch = elim(i, 1 << d) || ch;
               if (ch) return true;
             }
           }
@@ -298,11 +299,11 @@
             if (comp.length < 3) continue;
             for (const k of [0, 1]) {
               const side = comp.filter((i) => color[i] === k);
-              if (side.some((a) => side.some((b) => sees(a, b)))) { for (const i of side) ch = elim(i, 1 << d) || ch; return true; }
+              basis = comp; if (side.some((a) => side.some((b) => sees(a, b)))) { for (const i of side) ch = elim(i, 1 << d) || ch; return true; }
             }
             for (let i = 0; i < 81; i++) {
               if (v[i] || color[i] >= 0 || !(cand[i] & (1 << d))) continue;
-              if (comp.some((a) => color[a] === 0 && sees(a, i)) && comp.some((b) => color[b] === 1 && sees(b, i))) ch = elim(i, 1 << d) || ch;
+              basis = comp; if (comp.some((a) => color[a] === 0 && sees(a, i)) && comp.some((b) => color[b] === 1 && sees(b, i))) ch = elim(i, 1 << d) || ch;
             }
             if (ch) return true;
           }
@@ -323,7 +324,7 @@
               if (n === cur.c || !sees(cur.c, n) || !(cand[n] & (1 << cur.out))) continue;
               const out = bits(cand[n] & ~(1 << cur.out))[0];
               if (out === z && n !== s0) {
-                for (let i = 0; i < 81; i++) if (i !== s0 && i !== n && sees(i, s0) && sees(i, n)) ch = elim(i, 1 << z) || ch;
+                basis = [s0, n]; for (let i = 0; i < 81; i++) if (i !== s0 && i !== n && sees(i, s0) && sees(i, n)) ch = elim(i, 1 << z) || ch;
                 if (ch) return true;
               }
               const key = n * 10 + out;
@@ -362,7 +363,7 @@
                 nq.push(ns);
                 if (on || len < 3) continue;
                 const m0 = Math.floor(m / 10), md = m % 10;
-                if (sd === md && s0 !== m0) {
+                basis = [s0, m0]; if (sd === md && s0 !== m0) {
                   for (let i = 0; i < 81; i++) if (i !== s0 && i !== m0 && sees(i, s0) && sees(i, m0)) ch = elim(i, 1 << sd) || ch;
                 } else if (s0 === m0 && sd !== md) {
                   ch = elim(s0, ALL & ~((1 << sd) | (1 << md))) || ch;
@@ -390,17 +391,17 @@
           for (let x = 0; x < ds.length; x++) for (let y = x + 1; y < ds.length; y++) {
             const a = ds[x], b = ds[y], ab = (1 << a) | (1 << b);
             const two = four.filter((i) => cand[i] === ab), rest = four.filter((i) => cand[i] !== ab);
-            if (two.length === 3) { if (elim(rest[0], ab)) return true; continue; }
+            basis = four; if (two.length === 3) { if (elim(rest[0], ab)) return true; continue; }
             if (two.length !== 2) continue;
             const [p, q] = rest;
             if (rowOf(p) !== rowOf(q) && colOf(p) !== colOf(q)) continue;  // 対角の2マスは対象外
             let ch = false;
             const xp = cand[p] & ~ab;
-            if (xp === (cand[q] & ~ab) && pop(xp) === 1) {
+            basis = four; if (xp === (cand[q] & ~ab) && pop(xp) === 1) {
               for (let i = 0; i < 81; i++) if (i !== p && i !== q && sees(i, p) && sees(i, q)) ch = elim(i, xp) || ch;
               if (ch) return true;
             }
-            const us = units.filter((u) => u.includes(p) && u.includes(q));
+            basis = four; const us = units.filter((u) => u.includes(p) && u.includes(q));
             for (const [d, e] of [[a, b], [b, a]]) {
               if (!us.some((u) => u.every((i) => i === p || i === q || !(cand[i] & (1 << d))))) continue;
               ch = elim(p, 1 << e) || ch;
@@ -429,7 +430,7 @@
           let ch = false;
           for (let i = 0; i < 81; i++) {
             if (color.has(i)) continue;
-            if (order.some((j) => color.get(j) === 0 && sees(i, j)) && order.some((j) => color.get(j) === 1 && sees(i, j))) ch = elim(i, cand[s0]) || ch;
+            basis = order; if (order.some((j) => color.get(j) === 0 && sees(i, j)) && order.some((j) => color.get(j) === 1 && sees(i, j))) ch = elim(i, cand[s0]) || ch;
           }
           if (ch) return true;
         }
@@ -467,6 +468,15 @@
           if (!k) return { steps, log };
           steps.push(k);
         }
+      }
+      if (start && start.once) {
+        // 正解への道筋用: 解き方を1回だけ使う（start.only があればその解き方だけ）。消した候補と、使った後の盤を返す
+        for (const t of TECHS) {
+          if (start.only && t.name !== start.only) continue;
+          tech = t.name; techLv = t.lv;
+          if (t.run()) return { log, tech: t.name, lv: t.lv, v, cand };
+        }
+        return { log, none: true, v, cand };
       }
       if (start) {
         // 答えの決まるマスが出るまで、やさしい解き方から順に候補を消していく（マスに数字は入れない）
@@ -526,6 +536,81 @@
         }
       }
       return null;
+    }
+    // 正解への道筋: 盤（v: 81個の数字、0 = 空き）から最後まで、ページごとの解き方を返す。sol（81文字の正解）があれば背理法でも進めない所を補う
+    // ページ: { kind, before: {v, cand}, after: {v, cand}, ... }
+    //   start  … 盤の数字で消える候補を消す（gone）
+    //   single … key = row / col / box / cell。シングルで決まるマス（placed: [{ i, d, unit }]）
+    //   tech   … tech・lv。groups: [{ gone: [{ i, m }], basis: [マス] }]（同じ解き方を何回か使ったら組ごとに色分け）
+    //   contra … 背理法。i・d（仮定）・answer・why（矛盾した所）・gone
+    //   answer … 背理法でも見つからないとき、正解から1マス決める（i・d）
+    function solvePath(v0, sol) {
+      const pages = [];
+      let v = v0.slice(), cand = new Array(81).fill(ALL);
+      const snap = () => ({ v: v.slice(), cand: cand.slice() });
+      const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
+      {
+        const before = { v: v.slice(), cand: v.map((x) => (x ? 0 : ALL)) };
+        for (let i = 0; i < 81; i++) if (v[i]) { cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << v[i]); }
+        const gone = [];
+        for (let i = 0; i < 81; i++) if (!v[i] && (ALL & ~cand[i])) gone.push({ i, m: ALL & ~cand[i] });
+        pages.push({ kind: "start", before, after: snap(), gone });
+      }
+      const SINGLE_KINDS = [["row", 0], ["col", 1], ["box", 2], ["cell", -1]];
+      const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
+      const broken = () => v.some((x, i) => !x && !cand[i]);
+      for (let guard = 0; guard < 500 && !v.every((x) => x) && !broken(); guard++) {
+        // シングル: 行 → 列 → ブロック → マス の順に、決まるマスを全部まとめて1ページ
+        let moved = false;
+        for (const [key, k] of SINGLE_KINDS) {
+          const found = [], seenCell = new Set();
+          if (k < 0) {
+            for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 1) { found.push({ i, d: bits(cand[i])[0] }); seenCell.add(i); }
+          } else {
+            for (let n = 0; n < 9; n++) {
+              const u = units[n * 3 + k];
+              for (let d = 1; d <= 9; d++) {
+                if (u.some((i) => v[i] === d)) continue;
+                const w = where(u, d);
+                if (w.length === 1 && !seenCell.has(w[0])) { found.push({ i: w[0], d, unit: n }); seenCell.add(w[0]); }
+              }
+            }
+          }
+          if (!found.length) continue;
+          const before = snap();
+          for (const f of found) if (!v[f.i]) place(f.i, f.d);
+          pages.push({ kind: "single", key, placed: found, before, after: snap() });
+          moved = true;
+          if (broken()) break;
+        }
+        if (moved) continue;
+        // シングルで進めなくなった: 使えるいちばんやさしい解き方を、使えなくなるまで（7回まで。組ごとに色を変える）続けて1ページ
+        const before = snap();
+        let r = grade(null, { v, cand, once: true });
+        if (!r.none) {
+          const name = r.tech, lv = r.lv, groups = [];
+          while (!r.none && groups.length < 7) {
+            groups.push({ gone: r.log.map((e) => ({ i: e.i, m: e.m })), basis: [...new Set(r.log.flatMap((e) => e.basis || []))] });
+            v = r.v; cand = r.cand;
+            r = grade(null, { v, cand, once: true, only: name });
+          }
+          pages.push({ kind: "tech", tech: name, lv, groups, before, after: snap() });
+          continue;
+        }
+        const proof = contradiction({ v, cand });
+        if (proof) {
+          cand[proof.i] &= ~(1 << proof.d);
+          pages.push({ kind: "contra", i: proof.i, d: proof.d, answer: proof.answer, why: proof.contradiction, gone: [{ i: proof.i, m: 1 << proof.d }], before, after: snap() });
+          continue;
+        }
+        if (sol && sol.length === 81) {
+          let best = -1;
+          for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || pop(cand[i]) < pop(cand[best]))) best = i;
+          if (best >= 0) { place(best, +sol[best]); pages.push({ kind: "answer", i: best, d: +sol[best], before, after: snap() }); continue; }
+        }
+        break;
+      }
+      return { pages, solved: v.every((x) => x), broken: broken() };
     }
     // 1回だけ作ってみる。レベルが合えば問題（81桁の文字列）、合わなければ null
     function attempt(level) {
@@ -587,6 +672,6 @@
       else if (m.type === "hunt") hunt = !!m.on;
       kick();
     };
-    return { grade, count, attempt, contradiction };
+    return { grade, count, attempt, contradiction, solvePath };
   }
 
