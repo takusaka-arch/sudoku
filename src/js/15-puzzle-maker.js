@@ -71,20 +71,22 @@
     // start を渡すと「答えと理由」用。trial は仮定後の盤をすべての論理解法で検証する（仮定は重ねない）。
     function grade(g, start, timing, trial = false) {
       const v = start ? start.v.slice() : g.slice(), cand = start ? start.cand.slice() : new Array(81).fill(ALL);
+      const trace = trial ? [] : null;
+      const traceSnap = () => ({ v: v.slice(), cand: cand.slice() });
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
       if (!start) for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
       let tech = "", techLv = 0;
       let basis = [];  // その手の元になったマス（正解への道筋の説明で色を付ける）
       const log = [];
-      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { if (start) log.push({ i, m: cand[i] & m, tech, lv: techLv, basis: [...new Set(basis)] }); cand[i] &= ~m; return true; } return false; };
+      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { const oldMask = cand[i] & m; const beforeStep = trace ? traceSnap() : null; if (start) log.push({ i, m: cand[i] & m, tech, lv: techLv, basis: [...new Set(basis)] }); cand[i] &= ~m; if (trace) trace.push({ kind: "elim", i, m: oldMask, tech, basis: basis.slice(), before: beforeStep, after: traceSnap() }); return true; } return false; };
       const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
       // 初級: そのマスに入る数字が1つだけ／その行・列・ブロックでその数字が入るマスが1つだけ
       function singles() {
-        for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 1) { place(i, bits(cand[i])[0]); return true; }
+        for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 1) { const d = bits(cand[i])[0]; const beforeStep = trace ? traceSnap() : null; place(i, d); if (trace) trace.push({ kind: "single", i, d, before: beforeStep, after: traceSnap() }); return true; }
         for (const u of units) for (let d = 1; d <= 9; d++) {
           if (u.some((i) => v[i] === d)) continue;
           const w = where(u, d);
-          if (w.length === 1) { place(w[0], d); return true; }
+          if (w.length === 1) { const beforeStep = trace ? traceSnap() : null; place(w[0], d); if (trace) trace.push({ kind: "single", i: w[0], d, before: beforeStep, after: traceSnap() }); return true; }
         }
         return false;
       }
@@ -458,14 +460,14 @@
         // 仮定後に実際に使った手順だけを返す。通常の grade.steps は上書きしない。
         const steps = [];
         for (;;) {
-          for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) return { steps, log, contradiction: { kind: "cell", i } };
+          for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) return { steps, log, trace, contradiction: { kind: "cell", i } };
           for (let unit = 0; unit < units.length; unit++) for (let d = 1; d <= 9; d++) {
             const u = units[unit];
-            if (!u.some((i) => v[i] === d) && !where(u, d).length) return { steps, log, contradiction: { kind: "unit", unit, d } };
+            if (!u.some((i) => v[i] === d) && !where(u, d).length) return { steps, log, trace, contradiction: { kind: "unit", unit, d } };
           }
           if (singles()) { steps.push(1); continue; }
           const k = advance();
-          if (!k) return { steps, log, v, cand };
+          if (!k) return { steps, log, trace, v, cand };
           steps.push(k);
         }
       }
@@ -550,7 +552,7 @@
       const order = [...Array(81).keys()].filter((i) => !start.v[i] && pop(start.cand[i]) >= 2).sort((a, b) => pop(start.cand[a]) - pop(start.cand[b]));
       for (const i of order) for (const d of bits(start.cand[i])) {
         const r = trial(start.v, start.cand, i, d);
-        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction };
+        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction, trace: r.trace };
       }
       for (const i of order) for (const d of bits(start.cand[i])) {
         const r = trial(start.v, start.cand, i, d);
@@ -561,7 +563,7 @@
           const ra = trial(r.v, r.cand, j, a);
           if (!ra.contradiction) continue;
           const rb = trial(r.v, r.cand, j, b);
-          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction };
+          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction, outerTrace: r.trace, traceA: ra.trace, traceB: rb.trace, outerState: { v: r.v.slice(), cand: r.cand.slice() } };
         }
       }
       return null;
@@ -573,17 +575,21 @@
     //   tech   … tech・lv。groups: [{ gone: [{ i, m }], basis: [マス] }]（同じ解き方を何回か使ったら組ごとに色分け）
     //   contra … 背理法。i・d（仮定）・answer・why（矛盾した所）・gone
     //   answer … 背理法でも見つからないとき、正解から1マス決める（i・d）
-    function solvePath(v0, sol) {
+    function solvePath(v0, sol, options = {}) {
       const pages = [];
       let v = v0.slice(), cand = new Array(81).fill(ALL);
+      const initialOff = options.off || new Array(81).fill(0);
+      const allowAnswers = !!options.allowAnswers;
       const snap = () => ({ v: v.slice(), cand: cand.slice() });
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
       {
         const before = { v: v.slice(), cand: v.map((x) => (x ? 0 : ALL)) };
         for (let i = 0; i < 81; i++) if (v[i]) { cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << v[i]); }
+        const givenGone = cand.slice();
+        for (let i = 0; i < 81; i++) if (!v[i]) cand[i] &= ~(initialOff[i] || 0);
         const gone = [];
         for (let i = 0; i < 81; i++) if (!v[i] && (ALL & ~cand[i])) gone.push({ i, m: ALL & ~cand[i] });
-        pages.push({ kind: "start", before, after: snap(), gone });
+        pages.push({ kind: "start", before, after: snap(), gone, manual: v.map((d, i) => d ? 0 : (givenGone[i] & (initialOff[i] || 0))) });
       }
       const SINGLE_KINDS = [["row", 0], ["col", 1], ["box", 2], ["cell", -1]];
       const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
@@ -629,7 +635,7 @@
         const proof = contradiction({ v, cand });
         if (proof) {
           cand[proof.i] &= ~(1 << proof.d);
-          pages.push({ kind: "contra", depth: 1, i: proof.i, d: proof.d, left: [proof.answer], why: proof.contradiction, gone: [{ i: proof.i, m: 1 << proof.d }], before, after: snap() });
+          pages.push({ kind: "contra", depth: 1, i: proof.i, d: proof.d, left: [proof.answer], why: proof.contradiction, trace: proof.trace, gone: [{ i: proof.i, m: 1 << proof.d }], before, after: snap() });
           continue;
         }
         const deep = deepContradiction({ v, cand });
@@ -638,14 +644,14 @@
           pages.push({ kind: "contra", ...deep, left: bits(cand[deep.i]), gone: [{ i: deep.i, m: 1 << deep.d }], before, after: snap() });
           continue;
         }
-        if (sol && sol.length === 81) {
+        if (allowAnswers && sol && sol.length === 81) {
           let best = -1;
           for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || pop(cand[i]) < pop(cand[best]))) best = i;
           if (best >= 0) { place(best, +sol[best]); pages.push({ kind: "answer", i: best, d: +sol[best], before, after: snap() }); continue; }
         }
         break;
       }
-      return { pages, solved: v.every((x) => x), broken: broken() };
+      return { pages, solved: v.every((x) => x), broken: broken(), logicalOnly: !allowAnswers };
     }
     // 1回だけ作ってみる。レベルが合えば問題（81桁の文字列）、合わなければ null
     function attempt(level) {

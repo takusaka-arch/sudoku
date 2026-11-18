@@ -14,6 +14,8 @@
   const unitNm = (k, n) => (k === 0 ? `${n + 1}行目` : k === 1 ? `${n + 1}列目` : `${BOX_NAMES[n]}のブロック`);
   const digitsOf = (m) => [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => m & (1 << d));
   let path = null, pathAt = 0, pathWasRunning = false;
+  const pathAllowAnswers = document.getElementById("path-allow-answers");
+  let pathProofActive = null;
 
   // 盤の確定している数字（問題の数字・確定候補）。0 = 空き
   function boardFixed() {
@@ -23,6 +25,16 @@
       v[i] = Number(o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : 0)) || 0;
     });
     return v;
+  }
+  // 現在の盤で利用者が明示的に除外した候補。未選択（書き込み方式）は除外扱いにしない。
+  function boardOff() {
+    const off = new Array(81).fill(0);
+    board.querySelectorAll(".cell").forEach((o) => {
+      const i = +o.dataset.row * 9 + +o.dataset.col;
+      if (o.dataset.value || o.classList.contains("tent")) return;
+      o.querySelectorAll(".cand.off").forEach((c) => { off[i] |= 1 << Number(c.dataset.n); });
+    });
+    return off;
   }
   function boardGivens() {
     const v = new Array(81).fill(0);
@@ -40,7 +52,7 @@
     pathConfirm.hidden = false;
   }
   document.getElementById("path-cancel").addEventListener("click", () => { pathConfirm.hidden = true; viewBtn.focus(); });
-  document.getElementById("path-from-start").addEventListener("click", () => startPath(boardGivens(), false));
+  document.getElementById("path-from-start").addEventListener("click", () => startPath(boardGivens(), false, null));
   document.getElementById("path-from-now").addEventListener("click", () => {
     const v = boardFixed();
     const wrong = v.findIndex((d, i) => d && String(d) !== solution.sol[i]);
@@ -50,20 +62,29 @@
       workMsg.textContent = `今の盤に正解と違う数字があります（${cellNm(wrong)}など）。直してから選ぶか、「問題の最初から」を選んでください。`;
       return;
     }
-    startPath(v, true);
+    const off = boardOff();
+    const falseOff = off.findIndex((mask, i) => !v[i] && (mask & (1 << Number(solution.sol[i]))));
+    if (falseOff >= 0) {
+      pathConfirm.hidden = true;
+      workMsg.classList.add("err");
+      workMsg.textContent = `${cellNm(falseOff)}で正解の候補が除外されています。候補を戻してから選ぶか、「問題の最初から」を選んでください。`;
+      return;
+    }
+    startPath(v, true, off);
   });
 
-  function startPath(v, fromNow) {
+  function startPath(v, fromNow, off) {
     pathConfirm.hidden = true;
     workMsg.classList.remove("err");
     workMsg.textContent = "正解への道筋を計算しています…";
     // 文字を出してから計算する（難しい問題は少し時間がかかる）
     setTimeout(() => {
       if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
-      path = hintEngine.solvePath(v, solution.sol);
+      path = hintEngine.solvePath(v, solution.sol, { off, allowAnswers: pathAllowAnswers.checked });
       path.fromNow = fromNow;
       path.given = boardGivens();
       pathAt = 0;
+      pathProofActive = null;
       workMsg.textContent = "";
       pathWasRunning = board.dataset.mode === "solve" && !!startedAt;
       if (board.dataset.mode === "solve") pause.click();
@@ -81,13 +102,26 @@
     viewBtn.focus({ preventScroll: true });
   }
   document.getElementById("path-close").addEventListener("click", closePath);
-  pathPrev.addEventListener("click", () => { if (path && pathAt > 0) { pathAt--; drawPath(); } });
-  pathNext.addEventListener("click", () => { if (path && pathAt < path.pages.length) { pathAt++; drawPath(); } });
+  pathPrev.addEventListener("click", () => { if (path && pathAt > 0) { pathAt--; pathProofActive = null; drawPath(); } });
+  pathNext.addEventListener("click", () => { if (path && pathAt < path.pages.length) { pathAt++; pathProofActive = null; drawPath(); } });
   document.addEventListener("keydown", (e) => {
     if (pathView.hidden) return;
     if (e.key === "Escape") closePath();
     else if (e.key === "ArrowRight") pathNext.click();
     else if (e.key === "ArrowLeft") pathPrev.click();
+  });
+
+  // 背理法の途中手順を選ぶと、閲覧用の盤だけをその時点へ切り替える。
+  pathText.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-proof-branch]");
+    if (!btn || !path || pathAt >= path.pages.length) return;
+    const pg = path.pages[pathAt];
+    if (pg.kind !== "contra") return;
+    const branch = btn.dataset.proofBranch, index = Number(btn.dataset.proofStep);
+    const series = branch === "main" ? pg.trace : branch === "outer" ? pg.outerTrace : branch === "a" ? pg.traceA : pg.traceB;
+    if (!series || !series[index]) return;
+    pathProofActive = { branch, index };
+    drawPath();
   });
 
   // 盤を描く。cand の数字を小さく出し、gone（[{i, m, g}]）は赤い線で消し、placed（[{i, d, g}]）は大きな数字を組の色で、
@@ -146,7 +180,7 @@
       const last = pages[total - 1];
       drawPathBoard(last.after, { given });
       pathHead.textContent = `${total}／${total}　${path.solved ? "完成" : "ここまで"}`;
-      say(path.solved ? "これで全部のマスが埋まりました。「戻る」で、もう一度たどれます。" : "ここから先は、この道筋では進められませんでした。");
+      say(path.solved ? "これで全部のマスが埋まりました。「戻る」で、もう一度たどれます。" : (path.logicalOnly ? "ここから先は、利用できる論理手順では進められませんでした。必要なら最初の画面で「正解データも使う」を選んでください。" : "ここから先は、この道筋では進められませんでした。"));
       return;
     }
     const pg = pages[pathAt];
@@ -155,7 +189,7 @@
       drawPathBoard(pg.before, { gone: pg.gone, given });
       pathHead.textContent = `${no}　問題の数字で候補を消す`;
       say(path.fromNow ? "今の盤から始めます。まず、盤の数字と同じ行・列・ブロックにあるマスから、その数字の候補を消します（赤い線）。" : "まず、問題の数字と同じ行・列・ブロックにあるマスから、その数字の候補を消します（赤い線）。");
-      say("残った小さな数字が、そのマスに入る可能性のある数字（候補）です。");
+      say(path.fromNow ? "今の盤で除外した候補も引き継いでいます。残った小さな数字が候補です。" : "残った小さな数字が、そのマスに入る可能性のある数字（候補）です。");
     } else if (pg.kind === "single") {
       const placed = pg.placed.map((x) => ({ ...x, g: 0 }));
       drawPathBoard(pg.before, { placed, given });
@@ -195,6 +229,50 @@
       } else {
         say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めた盤で${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。`);
         say(esc(`そこでもう一度仮に置くと、「${pg.a}」なら${whatOf(pg.whyA)}。「${pg.b}」なら${whatOf(pg.whyB)}。どちらでも矛盾します。`));
+      }
+      // 仮定後の実際の推論手順。各ボタンでその直後の盤面を確認できる。
+      const branches = deep
+        ? [{ key: "outer", title: "最初の仮定からの推論", steps: pg.outerTrace || [] },
+           { key: "a", title: `2段目「${pg.a}」の場合`, steps: pg.traceA || [] },
+           { key: "b", title: `2段目「${pg.b}」の場合`, steps: pg.traceB || [] }]
+        : [{ key: "main", title: "仮定から矛盾までの推論", steps: pg.trace || [] }];
+      const detail = document.createElement("details");
+      detail.className = "path-proof";
+      detail.open = !!pathProofActive;
+      const caption = document.createElement("summary");
+      caption.textContent = "矛盾に至る途中の手順を表示";
+      detail.appendChild(caption);
+      for (const branch of branches) {
+        const h = document.createElement("p");
+        h.className = "path-proof-label";
+        h.textContent = branch.title;
+        detail.appendChild(h);
+        if (!branch.steps.length) {
+          const empty = document.createElement("p");
+          empty.textContent = "仮定直後に矛盾が見つかりました。";
+          detail.appendChild(empty);
+        }
+        branch.steps.forEach((step, i) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "path-proof-step";
+          btn.dataset.proofBranch = branch.key;
+          btn.dataset.proofStep = String(i);
+          btn.textContent = `${i + 1}. ${step.kind === "single" ? `${cellNm(step.i)}を「${step.d}」に確定` : `${step.tech || "候補除外"}：${cellNm(step.i)}の「${digitsOf(step.m).join("・")}」を除外`}`;
+          btn.setAttribute("aria-pressed", String(!!pathProofActive && pathProofActive.branch === branch.key && pathProofActive.index === i));
+          detail.appendChild(btn);
+        });
+      }
+      pathText.appendChild(detail);
+      if (pathProofActive) {
+        const active = branches.find((x) => x.key === pathProofActive.branch);
+        const step = active && active.steps[pathProofActive.index];
+        if (step) drawPathBoard(step.before, {
+          given,
+          placed: step.kind === "single" ? [{ i: step.i, d: step.d, g: 0 }] : [],
+          gone: step.kind === "elim" ? [{ i: step.i, m: step.m, g: 0 }] : [],
+          basis: [{ cells: step.kind === "elim" ? step.basis || [] : [step.i], g: 0 }]
+        });
       }
       const rest = pg.left || [];
       say(esc(`これは矛盾なので、${cellNm(pg.i)}は「${pg.d}」ではありません。候補から「${pg.d}」を消します` + (rest.length === 1 ? `。残るのは「${rest[0]}」だけなので、「${rest[0]}」に決まります。` : `（残りは「${rest.join("・")}」）。`)));

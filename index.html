@@ -789,6 +789,16 @@ body.path-open { overflow: hidden; }
 }
 .path-nav #path-close { margin-left: auto; }
 .path-nav button:disabled { opacity: 0.4; cursor: default; }
+
+/* 正解への道筋：表示方式と背理法の途中手順 */
+.path-choice-setting { display: flex; gap: 8px; align-items: flex-start; line-height: 1.6; text-align: left; }
+.path-choice-setting input { margin-top: .35em; flex-shrink: 0; }
+.path-choice-note { font-size: .85rem; color: var(--muted); }
+.path-proof { margin: 12px 0; padding: 10px; border: 1px solid var(--line-cell); border-radius: 8px; }
+.path-proof summary { cursor: pointer; font-weight: 700; }
+.path-proof-label { margin: 12px 0 6px; font-weight: 700; font-size: .9rem; }
+.path-proof-step { display: block; width: 100%; margin: 3px 0; padding: 7px; text-align: left; background: var(--paper); color: var(--ink); border: 1px solid var(--line-cell); border-radius: 5px; font: inherit; font-size: .85rem; cursor: pointer; }
+.path-proof-step[aria-pressed="true"] { border-color: var(--sel); background: var(--sel-bg); }
 </style>
 
 <main>
@@ -809,7 +819,7 @@ body.path-open { overflow: hidden; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.255</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.256</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -1037,6 +1047,8 @@ body.path-open { overflow: hidden; }
   </div>
   <div class="confirm" id="path-confirm" role="alertdialog" aria-labelledby="path-confirm-msg" hidden>
     <p id="path-confirm-msg">正解への道筋を、どこから見ますか？</p>
+    <label class="path-choice-setting"><input type="checkbox" id="path-allow-answers"> 論理で進めない場合は正解データも使って最後まで表示する</label>
+    <p class="path-choice-note">チェックしない場合、論理的に導ける手順だけを表示します。</p>
     <button type="button" id="path-from-start">問題の最初から</button>
     <button type="button" id="path-from-now">今の盤から</button>
     <button type="button" id="path-cancel">キャンセル</button>
@@ -3725,6 +3737,8 @@ body.path-open { overflow: hidden; }
   const unitNm = (k, n) => (k === 0 ? `${n + 1}行目` : k === 1 ? `${n + 1}列目` : `${BOX_NAMES[n]}のブロック`);
   const digitsOf = (m) => [1, 2, 3, 4, 5, 6, 7, 8, 9].filter((d) => m & (1 << d));
   let path = null, pathAt = 0, pathWasRunning = false;
+  const pathAllowAnswers = document.getElementById("path-allow-answers");
+  let pathProofActive = null;
 
   // 盤の確定している数字（問題の数字・確定候補）。0 = 空き
   function boardFixed() {
@@ -3734,6 +3748,16 @@ body.path-open { overflow: hidden; }
       v[i] = Number(o.dataset.value || (o.classList.contains("tent") ? o.querySelector(".big").textContent : 0)) || 0;
     });
     return v;
+  }
+  // 現在の盤で利用者が明示的に除外した候補。未選択（書き込み方式）は除外扱いにしない。
+  function boardOff() {
+    const off = new Array(81).fill(0);
+    board.querySelectorAll(".cell").forEach((o) => {
+      const i = +o.dataset.row * 9 + +o.dataset.col;
+      if (o.dataset.value || o.classList.contains("tent")) return;
+      o.querySelectorAll(".cand.off").forEach((c) => { off[i] |= 1 << Number(c.dataset.n); });
+    });
+    return off;
   }
   function boardGivens() {
     const v = new Array(81).fill(0);
@@ -3751,7 +3775,7 @@ body.path-open { overflow: hidden; }
     pathConfirm.hidden = false;
   }
   document.getElementById("path-cancel").addEventListener("click", () => { pathConfirm.hidden = true; viewBtn.focus(); });
-  document.getElementById("path-from-start").addEventListener("click", () => startPath(boardGivens(), false));
+  document.getElementById("path-from-start").addEventListener("click", () => startPath(boardGivens(), false, null));
   document.getElementById("path-from-now").addEventListener("click", () => {
     const v = boardFixed();
     const wrong = v.findIndex((d, i) => d && String(d) !== solution.sol[i]);
@@ -3761,20 +3785,29 @@ body.path-open { overflow: hidden; }
       workMsg.textContent = `今の盤に正解と違う数字があります（${cellNm(wrong)}など）。直してから選ぶか、「問題の最初から」を選んでください。`;
       return;
     }
-    startPath(v, true);
+    const off = boardOff();
+    const falseOff = off.findIndex((mask, i) => !v[i] && (mask & (1 << Number(solution.sol[i]))));
+    if (falseOff >= 0) {
+      pathConfirm.hidden = true;
+      workMsg.classList.add("err");
+      workMsg.textContent = `${cellNm(falseOff)}で正解の候補が除外されています。候補を戻してから選ぶか、「問題の最初から」を選んでください。`;
+      return;
+    }
+    startPath(v, true, off);
   });
 
-  function startPath(v, fromNow) {
+  function startPath(v, fromNow, off) {
     pathConfirm.hidden = true;
     workMsg.classList.remove("err");
     workMsg.textContent = "正解への道筋を計算しています…";
     // 文字を出してから計算する（難しい問題は少し時間がかかる）
     setTimeout(() => {
       if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
-      path = hintEngine.solvePath(v, solution.sol);
+      path = hintEngine.solvePath(v, solution.sol, { off, allowAnswers: pathAllowAnswers.checked });
       path.fromNow = fromNow;
       path.given = boardGivens();
       pathAt = 0;
+      pathProofActive = null;
       workMsg.textContent = "";
       pathWasRunning = board.dataset.mode === "solve" && !!startedAt;
       if (board.dataset.mode === "solve") pause.click();
@@ -3792,13 +3825,26 @@ body.path-open { overflow: hidden; }
     viewBtn.focus({ preventScroll: true });
   }
   document.getElementById("path-close").addEventListener("click", closePath);
-  pathPrev.addEventListener("click", () => { if (path && pathAt > 0) { pathAt--; drawPath(); } });
-  pathNext.addEventListener("click", () => { if (path && pathAt < path.pages.length) { pathAt++; drawPath(); } });
+  pathPrev.addEventListener("click", () => { if (path && pathAt > 0) { pathAt--; pathProofActive = null; drawPath(); } });
+  pathNext.addEventListener("click", () => { if (path && pathAt < path.pages.length) { pathAt++; pathProofActive = null; drawPath(); } });
   document.addEventListener("keydown", (e) => {
     if (pathView.hidden) return;
     if (e.key === "Escape") closePath();
     else if (e.key === "ArrowRight") pathNext.click();
     else if (e.key === "ArrowLeft") pathPrev.click();
+  });
+
+  // 背理法の途中手順を選ぶと、閲覧用の盤だけをその時点へ切り替える。
+  pathText.addEventListener("click", (event) => {
+    const btn = event.target.closest("button[data-proof-branch]");
+    if (!btn || !path || pathAt >= path.pages.length) return;
+    const pg = path.pages[pathAt];
+    if (pg.kind !== "contra") return;
+    const branch = btn.dataset.proofBranch, index = Number(btn.dataset.proofStep);
+    const series = branch === "main" ? pg.trace : branch === "outer" ? pg.outerTrace : branch === "a" ? pg.traceA : pg.traceB;
+    if (!series || !series[index]) return;
+    pathProofActive = { branch, index };
+    drawPath();
   });
 
   // 盤を描く。cand の数字を小さく出し、gone（[{i, m, g}]）は赤い線で消し、placed（[{i, d, g}]）は大きな数字を組の色で、
@@ -3857,7 +3903,7 @@ body.path-open { overflow: hidden; }
       const last = pages[total - 1];
       drawPathBoard(last.after, { given });
       pathHead.textContent = `${total}／${total}　${path.solved ? "完成" : "ここまで"}`;
-      say(path.solved ? "これで全部のマスが埋まりました。「戻る」で、もう一度たどれます。" : "ここから先は、この道筋では進められませんでした。");
+      say(path.solved ? "これで全部のマスが埋まりました。「戻る」で、もう一度たどれます。" : (path.logicalOnly ? "ここから先は、利用できる論理手順では進められませんでした。必要なら最初の画面で「正解データも使う」を選んでください。" : "ここから先は、この道筋では進められませんでした。"));
       return;
     }
     const pg = pages[pathAt];
@@ -3866,7 +3912,7 @@ body.path-open { overflow: hidden; }
       drawPathBoard(pg.before, { gone: pg.gone, given });
       pathHead.textContent = `${no}　問題の数字で候補を消す`;
       say(path.fromNow ? "今の盤から始めます。まず、盤の数字と同じ行・列・ブロックにあるマスから、その数字の候補を消します（赤い線）。" : "まず、問題の数字と同じ行・列・ブロックにあるマスから、その数字の候補を消します（赤い線）。");
-      say("残った小さな数字が、そのマスに入る可能性のある数字（候補）です。");
+      say(path.fromNow ? "今の盤で除外した候補も引き継いでいます。残った小さな数字が候補です。" : "残った小さな数字が、そのマスに入る可能性のある数字（候補）です。");
     } else if (pg.kind === "single") {
       const placed = pg.placed.map((x) => ({ ...x, g: 0 }));
       drawPathBoard(pg.before, { placed, given });
@@ -3906,6 +3952,50 @@ body.path-open { overflow: hidden; }
       } else {
         say(`もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めた盤で${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。`);
         say(esc(`そこでもう一度仮に置くと、「${pg.a}」なら${whatOf(pg.whyA)}。「${pg.b}」なら${whatOf(pg.whyB)}。どちらでも矛盾します。`));
+      }
+      // 仮定後の実際の推論手順。各ボタンでその直後の盤面を確認できる。
+      const branches = deep
+        ? [{ key: "outer", title: "最初の仮定からの推論", steps: pg.outerTrace || [] },
+           { key: "a", title: `2段目「${pg.a}」の場合`, steps: pg.traceA || [] },
+           { key: "b", title: `2段目「${pg.b}」の場合`, steps: pg.traceB || [] }]
+        : [{ key: "main", title: "仮定から矛盾までの推論", steps: pg.trace || [] }];
+      const detail = document.createElement("details");
+      detail.className = "path-proof";
+      detail.open = !!pathProofActive;
+      const caption = document.createElement("summary");
+      caption.textContent = "矛盾に至る途中の手順を表示";
+      detail.appendChild(caption);
+      for (const branch of branches) {
+        const h = document.createElement("p");
+        h.className = "path-proof-label";
+        h.textContent = branch.title;
+        detail.appendChild(h);
+        if (!branch.steps.length) {
+          const empty = document.createElement("p");
+          empty.textContent = "仮定直後に矛盾が見つかりました。";
+          detail.appendChild(empty);
+        }
+        branch.steps.forEach((step, i) => {
+          const btn = document.createElement("button");
+          btn.type = "button";
+          btn.className = "path-proof-step";
+          btn.dataset.proofBranch = branch.key;
+          btn.dataset.proofStep = String(i);
+          btn.textContent = `${i + 1}. ${step.kind === "single" ? `${cellNm(step.i)}を「${step.d}」に確定` : `${step.tech || "候補除外"}：${cellNm(step.i)}の「${digitsOf(step.m).join("・")}」を除外`}`;
+          btn.setAttribute("aria-pressed", String(!!pathProofActive && pathProofActive.branch === branch.key && pathProofActive.index === i));
+          detail.appendChild(btn);
+        });
+      }
+      pathText.appendChild(detail);
+      if (pathProofActive) {
+        const active = branches.find((x) => x.key === pathProofActive.branch);
+        const step = active && active.steps[pathProofActive.index];
+        if (step) drawPathBoard(step.before, {
+          given,
+          placed: step.kind === "single" ? [{ i: step.i, d: step.d, g: 0 }] : [],
+          gone: step.kind === "elim" ? [{ i: step.i, m: step.m, g: 0 }] : [],
+          basis: [{ cells: step.kind === "elim" ? step.basis || [] : [step.i], g: 0 }]
+        });
       }
       const rest = pg.left || [];
       say(esc(`これは矛盾なので、${cellNm(pg.i)}は「${pg.d}」ではありません。候補から「${pg.d}」を消します` + (rest.length === 1 ? `。残るのは「${rest[0]}」だけなので、「${rest[0]}」に決まります。` : `（残りは「${rest.join("・")}」）。`)));
@@ -5958,20 +6048,22 @@ body.path-open { overflow: hidden; }
     // start を渡すと「答えと理由」用。trial は仮定後の盤をすべての論理解法で検証する（仮定は重ねない）。
     function grade(g, start, timing, trial = false) {
       const v = start ? start.v.slice() : g.slice(), cand = start ? start.cand.slice() : new Array(81).fill(ALL);
+      const trace = trial ? [] : null;
+      const traceSnap = () => ({ v: v.slice(), cand: cand.slice() });
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
       if (!start) for (let i = 0; i < 81; i++) if (v[i]) { const d = v[i]; v[i] = 0; place(i, d); }
       let tech = "", techLv = 0;
       let basis = [];  // その手の元になったマス（正解への道筋の説明で色を付ける）
       const log = [];
-      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { if (start) log.push({ i, m: cand[i] & m, tech, lv: techLv, basis: [...new Set(basis)] }); cand[i] &= ~m; return true; } return false; };
+      const elim = (i, m) => { if (!v[i] && (cand[i] & m)) { const oldMask = cand[i] & m; const beforeStep = trace ? traceSnap() : null; if (start) log.push({ i, m: cand[i] & m, tech, lv: techLv, basis: [...new Set(basis)] }); cand[i] &= ~m; if (trace) trace.push({ kind: "elim", i, m: oldMask, tech, basis: basis.slice(), before: beforeStep, after: traceSnap() }); return true; } return false; };
       const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
       // 初級: そのマスに入る数字が1つだけ／その行・列・ブロックでその数字が入るマスが1つだけ
       function singles() {
-        for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 1) { place(i, bits(cand[i])[0]); return true; }
+        for (let i = 0; i < 81; i++) if (!v[i] && pop(cand[i]) === 1) { const d = bits(cand[i])[0]; const beforeStep = trace ? traceSnap() : null; place(i, d); if (trace) trace.push({ kind: "single", i, d, before: beforeStep, after: traceSnap() }); return true; }
         for (const u of units) for (let d = 1; d <= 9; d++) {
           if (u.some((i) => v[i] === d)) continue;
           const w = where(u, d);
-          if (w.length === 1) { place(w[0], d); return true; }
+          if (w.length === 1) { const beforeStep = trace ? traceSnap() : null; place(w[0], d); if (trace) trace.push({ kind: "single", i: w[0], d, before: beforeStep, after: traceSnap() }); return true; }
         }
         return false;
       }
@@ -6345,14 +6437,14 @@ body.path-open { overflow: hidden; }
         // 仮定後に実際に使った手順だけを返す。通常の grade.steps は上書きしない。
         const steps = [];
         for (;;) {
-          for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) return { steps, log, contradiction: { kind: "cell", i } };
+          for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) return { steps, log, trace, contradiction: { kind: "cell", i } };
           for (let unit = 0; unit < units.length; unit++) for (let d = 1; d <= 9; d++) {
             const u = units[unit];
-            if (!u.some((i) => v[i] === d) && !where(u, d).length) return { steps, log, contradiction: { kind: "unit", unit, d } };
+            if (!u.some((i) => v[i] === d) && !where(u, d).length) return { steps, log, trace, contradiction: { kind: "unit", unit, d } };
           }
           if (singles()) { steps.push(1); continue; }
           const k = advance();
-          if (!k) return { steps, log, v, cand };
+          if (!k) return { steps, log, trace, v, cand };
           steps.push(k);
         }
       }
@@ -6437,7 +6529,7 @@ body.path-open { overflow: hidden; }
       const order = [...Array(81).keys()].filter((i) => !start.v[i] && pop(start.cand[i]) >= 2).sort((a, b) => pop(start.cand[a]) - pop(start.cand[b]));
       for (const i of order) for (const d of bits(start.cand[i])) {
         const r = trial(start.v, start.cand, i, d);
-        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction };
+        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction, trace: r.trace };
       }
       for (const i of order) for (const d of bits(start.cand[i])) {
         const r = trial(start.v, start.cand, i, d);
@@ -6448,7 +6540,7 @@ body.path-open { overflow: hidden; }
           const ra = trial(r.v, r.cand, j, a);
           if (!ra.contradiction) continue;
           const rb = trial(r.v, r.cand, j, b);
-          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction };
+          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction, outerTrace: r.trace, traceA: ra.trace, traceB: rb.trace, outerState: { v: r.v.slice(), cand: r.cand.slice() } };
         }
       }
       return null;
@@ -6460,17 +6552,21 @@ body.path-open { overflow: hidden; }
     //   tech   … tech・lv。groups: [{ gone: [{ i, m }], basis: [マス] }]（同じ解き方を何回か使ったら組ごとに色分け）
     //   contra … 背理法。i・d（仮定）・answer・why（矛盾した所）・gone
     //   answer … 背理法でも見つからないとき、正解から1マス決める（i・d）
-    function solvePath(v0, sol) {
+    function solvePath(v0, sol, options = {}) {
       const pages = [];
       let v = v0.slice(), cand = new Array(81).fill(ALL);
+      const initialOff = options.off || new Array(81).fill(0);
+      const allowAnswers = !!options.allowAnswers;
       const snap = () => ({ v: v.slice(), cand: cand.slice() });
       const place = (i, d) => { v[i] = d; cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << d); };
       {
         const before = { v: v.slice(), cand: v.map((x) => (x ? 0 : ALL)) };
         for (let i = 0; i < 81; i++) if (v[i]) { cand[i] = 0; for (const p of peers[i]) cand[p] &= ~(1 << v[i]); }
+        const givenGone = cand.slice();
+        for (let i = 0; i < 81; i++) if (!v[i]) cand[i] &= ~(initialOff[i] || 0);
         const gone = [];
         for (let i = 0; i < 81; i++) if (!v[i] && (ALL & ~cand[i])) gone.push({ i, m: ALL & ~cand[i] });
-        pages.push({ kind: "start", before, after: snap(), gone });
+        pages.push({ kind: "start", before, after: snap(), gone, manual: v.map((d, i) => d ? 0 : (givenGone[i] & (initialOff[i] || 0))) });
       }
       const SINGLE_KINDS = [["row", 0], ["col", 1], ["box", 2], ["cell", -1]];
       const where = (u, d) => u.filter((i) => !v[i] && (cand[i] & (1 << d)));
@@ -6516,7 +6612,7 @@ body.path-open { overflow: hidden; }
         const proof = contradiction({ v, cand });
         if (proof) {
           cand[proof.i] &= ~(1 << proof.d);
-          pages.push({ kind: "contra", depth: 1, i: proof.i, d: proof.d, left: [proof.answer], why: proof.contradiction, gone: [{ i: proof.i, m: 1 << proof.d }], before, after: snap() });
+          pages.push({ kind: "contra", depth: 1, i: proof.i, d: proof.d, left: [proof.answer], why: proof.contradiction, trace: proof.trace, gone: [{ i: proof.i, m: 1 << proof.d }], before, after: snap() });
           continue;
         }
         const deep = deepContradiction({ v, cand });
@@ -6525,14 +6621,14 @@ body.path-open { overflow: hidden; }
           pages.push({ kind: "contra", ...deep, left: bits(cand[deep.i]), gone: [{ i: deep.i, m: 1 << deep.d }], before, after: snap() });
           continue;
         }
-        if (sol && sol.length === 81) {
+        if (allowAnswers && sol && sol.length === 81) {
           let best = -1;
           for (let i = 0; i < 81; i++) if (!v[i] && (best < 0 || pop(cand[i]) < pop(cand[best]))) best = i;
           if (best >= 0) { place(best, +sol[best]); pages.push({ kind: "answer", i: best, d: +sol[best], before, after: snap() }); continue; }
         }
         break;
       }
-      return { pages, solved: v.every((x) => x), broken: broken() };
+      return { pages, solved: v.every((x) => x), broken: broken(), logicalOnly: !allowAnswers };
     }
     // 1回だけ作ってみる。レベルが合えば問題（81桁の文字列）、合わなければ null
     function attempt(level) {
