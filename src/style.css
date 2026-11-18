@@ -711,7 +711,7 @@ body.fold .head button { flex-shrink: 0; }
 /* ===== 正解への道筋（08a-path.js）: 盤と解説だけの画面。盤は読むだけの別の盤 ===== */
 .path-view {
   position: fixed; inset: 0; z-index: 70; background: var(--bg); color: var(--ink); overflow: auto;
-  display: grid; gap: 16px; padding: 16px; box-sizing: border-box;
+  display: grid; gap: 16px; padding: 16px 16px calc(84px + env(safe-area-inset-bottom)); box-sizing: border-box;
   grid-template-columns: minmax(0, 1fr); align-content: start; justify-items: center;
 }
 .path-view[hidden] { display: none; }
@@ -754,5 +754,11 @@ body.path-open { overflow: hidden; }
 .path-text { line-height: 1.7; }
 .path-text p { margin: 0 0 8px; }
 .pv-sw { display: inline-block; width: 0.9em; height: 0.9em; border-radius: 3px; background: var(--pc); vertical-align: -0.1em; margin-right: 2px; }
-.path-nav { display: flex; flex-wrap: wrap; gap: 8px; position: sticky; bottom: -16px; background: var(--bg); padding: 8px 0 calc(16px + env(safe-area-inset-bottom)); }
+/* 戻る・進むは画面の一番下に固定（説明の長さで位置が変わらない）。終わるは押し間違えないように右端に離す */
+.path-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 71; display: flex; gap: 10px; align-items: center;
+  padding: 10px max(16px, calc((100vw - 1200px) / 2)) calc(10px + env(safe-area-inset-bottom));
+  background: var(--bg); border-top: 1px solid var(--line-cell);
+}
+.path-nav #path-close { margin-left: auto; }
 .path-nav button:disabled { opacity: 0.4; cursor: default; }
