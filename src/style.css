@@ -793,3 +793,37 @@ body.path-open { overflow: hidden; }
   .path-nav { gap: 6px; padding-left: 8px; padding-right: 8px; }
   .path-nav button { padding-left: 7px; padding-right: 7px; }
 }
+
+/* ヒント一覧だけをスマホで固定オーバーレイ化。盤・本体のスクロール位置を変更しない。 */
+.hm-overlay-head, .hm-overlay-note { display: none; }
+@media (max-width: 760px) {
+  body.hint-overlay-open { overflow: hidden; }
+  body.hint-overlay-open::before {
+    content: ""; position: fixed; inset: 0; z-index: 79;
+    background: rgba(0, 0, 0, 0.32);
+  }
+  #hint-menu {
+    position: fixed;
+    top: calc(env(safe-area-inset-top) + 12px);
+    left: 12px; right: 12px; bottom: calc(env(safe-area-inset-bottom) + 12px);
+    width: auto; max-width: none; height: auto; max-height: none;
+    overflow-y: auto; overscroll-behavior: contain; z-index: 80;
+    align-content: start; box-sizing: border-box;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.3);
+  }
+  #hint-menu .hm-overlay-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 4px 6px 6px; }
+  #hint-menu .hm-overlay-head strong { font-size: 1rem; }
+  #hint-menu .hm-overlay-close {
+    display: block; padding: 5px 10px; border: 1px solid var(--line-cell); border-radius: 6px;
+    background: var(--paper); color: var(--ink); font: inherit; font-weight: 700;
+  }
+  #hint-menu .hm-overlay-note { display: block; margin: 0 4px 6px; color: var(--muted); font-size: .75rem; }
+}
+/* 控える設定の対象は淡く表示。ただし操作自体は従来どおり可能。 */
+#hint-menu .hm-go.hm-restrained { background: var(--hover); }
+#hint-menu .hm-go.hm-restrained .hm-label,
+#hint-menu .hm-go.hm-restrained .hm-no,
+#hint-menu .hm-go.hm-restrained .hm-lv { opacity: .48; }
+#hint-menu .hm-go.hm-restrained:focus-visible .hm-label { opacity: 1; }
+
+#hint-menu .hm-overlay-note[hidden] { display: none; }

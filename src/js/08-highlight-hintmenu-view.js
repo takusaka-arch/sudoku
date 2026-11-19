@@ -75,6 +75,22 @@
     hintKinds.forEach((k, i) => { if (k.lv) hintKinds[i] = leveled[n++]; });
   }
   const hintMenu = document.getElementById("hint-menu");
+  // スマホでは盤面を動かさず、ヒント一覧をフローティング表示する。
+  const hintOverlayHead = document.createElement("div");
+  hintOverlayHead.className = "hm-overlay-head";
+  const hintOverlayTitle = document.createElement("strong");
+  hintOverlayTitle.textContent = "ヒントを選ぶ";
+  const hintOverlayClose = document.createElement("button");
+  hintOverlayClose.type = "button";
+  hintOverlayClose.className = "hm-overlay-close";
+  hintOverlayClose.textContent = "閉じる";
+  hintOverlayClose.setAttribute("aria-label", "ヒント一覧を閉じる");
+  hintOverlayHead.append(hintOverlayTitle, hintOverlayClose);
+  const hintOverlayNote = document.createElement("p");
+  hintOverlayNote.className = "hm-overlay-note";
+  hintOverlayNote.textContent = "薄い表示は控える設定の対象です（選ぶと確認できます）。";
+  hintMenu.append(hintOverlayHead, hintOverlayNote);
+  hintOverlayClose.addEventListener("click", () => { closeHintMenu(); hintBtn.focus({ preventScroll: true }); });
   // ヒントを控える設定: 控えるレベル以下のヒントは「もう少しがんばりましょう」を出し、「それでもヒントを見る」で表示する
   // 見せてよければ true を返す。控えるときは go を覚えておき、「それでもヒントを見る」で go を呼ぶ
   const hintGateBox = document.getElementById("hint-gate");
@@ -188,6 +204,7 @@
   }
   function closeHintMenu() {
     hintMenu.hidden = true;
+    document.body.classList.remove("hint-overlay-open");
     hintMenu.querySelectorAll(".hm-desc").forEach((x) => { x.hidden = true; });
     hintMenu.querySelectorAll(".hm-q").forEach((x) => x.setAttribute("aria-expanded", "false"));
     hintBtn.setAttribute("aria-expanded", "false");
@@ -199,16 +216,28 @@
     // 注目するマスを示した後、盤が同じなら「次に注目するマス」にする
     const fl = hintMenu.querySelector(".hm-go[data-kind=\"注目するマス\"] .hm-label");
     if (fl) fl.textContent = focusState.seen.size && focusState.sig === focusSig() ? "次に注目するマス" : "注目するマス";
+    // 控える設定はメニューを開くたびに反映。押せなくはせず、従来の確認画面を使う。
+    const restricted = hintLimit();
+    hintOverlayNote.hidden = !restricted;
+    hintMenu.querySelectorAll(".hm-go").forEach((b) => {
+      const kind = hintKinds.find((k) => k.label === b.dataset.kind);
+      const isRestrained = !!(restricted && kind && kind.lv && kind.lv <= restricted);
+      b.classList.toggle("hm-restrained", isRestrained);
+      if (isRestrained) b.setAttribute("aria-description", "控える設定の対象です。選ぶと確認画面が出ます。");
+      else b.removeAttribute("aria-description");
+    });
     hintMenu.hidden = false;
+    hintMenu.scrollTop = 0;
     hintBtn.setAttribute("aria-expanded", "true");
+    document.body.classList.toggle("hint-overlay-open", !isPcMenu());
     placeHintMenu();
-    hintMenu.querySelector("button").focus({ preventScroll: true });
-    if (!isPcMenu()) hintMenu.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    hintMenu.querySelector(".hm-go")?.focus({ preventScroll: true });
   });
   // パソコン（横幅761px以上）では、一覧を「ヒント」ボタンのすぐ下に出す
   const isPcMenu = () => window.matchMedia("(min-width: 761px)").matches;
   function placeHintMenu() {
     if (hintMenu.hidden) return;
+    document.body.classList.toggle("hint-overlay-open", !isPcMenu());
     if (!isPcMenu()) { hintMenu.style.left = hintMenu.style.top = hintMenu.style.maxHeight = ""; return; }
     const r = hintBtn.getBoundingClientRect(), vw = document.documentElement.clientWidth;
     const w = Math.min(360, vw - 16);
