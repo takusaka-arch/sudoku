@@ -785,8 +785,6 @@ body.path-open { overflow: hidden; }
   margin: 0 0 2px; font-size: .78rem; font-weight: 700; color: var(--muted);
 }
 .path-explain-section > p:last-child { margin: 0; }
-#hint-menu .hm-desc-block { margin: 0 0 6px; }
-#hint-menu .hm-desc-block:last-child { margin-bottom: 0; }
 
 /* 完成時は「次へ」が「最初から見る」に変わる。狭い画面のみ間隔を縮める。 */
 @media (max-width: 380px) {
@@ -795,7 +793,9 @@ body.path-open { overflow: hidden; }
 }
 
 /* ヒント一覧だけをスマホで固定オーバーレイ化。盤・本体のスクロール位置を変更しない。 */
-.hm-overlay-head, .hm-overlay-note { display: none; }
+.hm-overlay-head { display: none; }
+/* 控える設定の注記はパソコンでもスマホでも出す（控える設定がオフのときは hidden） */
+#hint-menu .hm-overlay-note { margin: 0 4px 6px; color: var(--muted); font-size: .75rem; }
 @media (max-width: 760px) {
   body.hint-overlay-open { overflow: hidden; }
   body.hint-overlay-open::before {
@@ -817,7 +817,6 @@ body.path-open { overflow: hidden; }
     display: block; padding: 5px 10px; border: 1px solid var(--line-cell); border-radius: 6px;
     background: var(--paper); color: var(--ink); font: inherit; font-weight: 700;
   }
-  #hint-menu .hm-overlay-note { display: block; margin: 0 4px 6px; color: var(--muted); font-size: .75rem; }
 }
 /* 控える設定の対象は淡く表示。ただし操作自体は従来どおり可能。 */
 #hint-menu .hm-go.hm-restrained { background: var(--hover); }
