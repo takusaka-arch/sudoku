@@ -873,7 +873,7 @@ body.path-open { overflow: hidden; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.261</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.263</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -940,6 +940,7 @@ body.path-open { overflow: hidden; }
           <option value="4">レベル4（★4つ）まで</option>
           <option value="5">レベル5（★5つ）まで</option>
           <option value="6">レベル6（★6つ）まで</option>
+          <option value="7">レベル7（★7つ）まで</option>
         </select>
       </label>
       <p class="gd-note">控えるレベルのヒント（「答えと理由」は理由のレベル）を選ぶと「もう少しがんばりましょう」と出ます。それでも見たいときは「それでもヒントを見る」を押します。</p>
@@ -1548,11 +1549,14 @@ body.path-open { overflow: hidden; }
       desc: "「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぎ、両端のどちらかが正しいことを使って候補を消します" },
     { name: "背理法", lv: 6,
       desc: "候補が2つのマスに片方を仮に入れ、ほかの解き方で進めます。矛盾が出たらもう一方が答えだと分かります（仮定は重ねません）" },
+    { name: "深い背理法", lv: 7,
+      desc: "背理法で進めないときに使います。候補が3つ以上のマスにも仮に入れて確かめ、それでも矛盾が出なければ、仮に入れて進めた盤で候補が2つのマスにもう一度仮に入れます。どちらを入れても矛盾すれば、最初に入れた数字は入らないと分かります（仮定は2段まで）" },
   ];
   const TECH_LV = Object.fromEntries(TECHNIQUES.map((t) => [t.name, t.lv]));
 
   // 目標完成時間：1手ごとに、その手のレベルの秒数を足す
-  const TARGET_SEC = { 1: 5, 2: 90, 3: 180, 4: 300, 5: 420, 6: 600 };
+  // 背理法（6）・深い背理法（7）は仮定1回ごとの時間。仮定の後に解き進めた手は、それぞれ実際に使った解き方のレベルの時間を足す
+  const TARGET_SEC = { 1: 5, 2: 90, 3: 180, 4: 300, 5: 420, 6: 600, 7: 1200 };
 
   // 自動作成の難易度。maxLv = 使ってよい一番高いレベル（その1つ下の難易度の maxLv より上のレベルが、少なくとも1手は必要）
   // minGivens = 問題の数字をこれより少なくはしない
@@ -1674,7 +1678,7 @@ body.path-open { overflow: hidden; }
   const HINTLIMIT_KEY = "sudoku-hintlimit";
   const snapTimerBack = () => false;
   try { localStorage.removeItem("sudoku-snaptimer"); } catch (e) {}
-  const hintLimit = () => { try { return Math.max(0, Math.min(6, +localStorage.getItem(HINTLIMIT_KEY) || 0)); } catch (e) { return 0; } };
+  const hintLimit = () => { try { return Math.max(0, Math.min(7, +localStorage.getItem(HINTLIMIT_KEY) || 0)); } catch (e) { return 0; } };
   const autoErase = () => { try { return localStorage.getItem(AUTOERASE_KEY) === "1"; } catch (e) { return false; } };
   function toggleSure(cell, target) {
     if (board.dataset.mode !== "solve" || cell.classList.contains("fixed")) return;
@@ -1982,8 +1986,8 @@ body.path-open { overflow: hidden; }
   // 秒数（TARGET_SEC）は 01a-levels.js で決める
   const targetEl = document.getElementById("target-time");
   // 1手ずつのレベルの並びから、目標の秒数を出す。
-  // 背理法は仮定する手だけをレベル6とし、仮定後は実際に使った解法のレベルを記録する。
-  // 別の仮定は、直前の手にかかわらず改めてレベル6の時間を加算する。
+  // 背理法は仮定する手だけをレベル6、深い背理法（2段までの仮定）は仮定する手だけをレベル7とし、
+  // 仮定後は実際に使った解き方のレベルを記録する。別の仮定は、直前の手にかかわらず改めてその時間を足す。
   function targetSeconds(levels) {
     return levels.reduce((sec, k) => sec + (TARGET_SEC[k] || 0), 0);
   }
@@ -1994,14 +1998,21 @@ body.path-open { overflow: hidden; }
     targetEl.textContent = "目標：" + t;
     targetEl.hidden = false;
   }
+  const targetCache = { key: "", rec: [] };
   // 目標（標準回答）時間の文字列。求められないときは ""
   function targetText() {
     if (!solution) return "";
     const g = [...board.querySelectorAll(".cell")].sort((a, b) => (a.dataset.row * 9 + +a.dataset.col) - (b.dataset.row * 9 + +b.dataset.col)).map((c) => +((c.classList.contains("given") && c.dataset.value) || 0));
     try {
-      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
-      hintEngine.grade(g, null, solution.sol || true);
-      const rec = hintEngine.grade.steps || [];
+      // 深い背理法まで調べると時間がかかるので、同じ問題の結果は覚えておく（回答を始めるたび・完成のたびに計算し直さない）
+      const key = g.join("") + (solution.sol || "");
+      if (targetCache.key !== key) {
+        if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
+        hintEngine.grade(g, null, solution.sol || true, false, true);
+        targetCache.key = key;
+        targetCache.rec = (hintEngine.grade.steps || []).slice();
+      }
+      const rec = targetCache.rec;
       let sec = targetSeconds(rec);
       if (!sec) return "";
       sec = sec < 600 ? Math.round(sec / 30) * 30 : Math.round(sec / 60) * 60;
@@ -3560,7 +3571,8 @@ body.path-open { overflow: hidden; }
     { label: "XYチェーン", run: () => showXYChain() },
     { label: "チェーン", run: () => showChain() },
     { label: "背理法", run: () => showContradiction() },
-    { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法が必要なら答えだけ示します）", run: () => runHint(true) },
+    { label: "深い背理法", run: () => showDeepContradiction() },
+    { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法・深い背理法が必要なら答えだけ示します）", run: () => runHint(true) },
   ];
   // レベルを付け、レベルの順に並べ直す（「ヒントを消す」は一番上、「答えと理由」は一番下のまま）
   hintKinds.forEach((k) => {
@@ -3627,7 +3639,7 @@ body.path-open { overflow: hidden; }
     b.type = "button";
     b.className = "hm-go";
     b.setAttribute("role", "menuitem");
-    b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"[i]}</span><span class="hm-label"></span>`;
+    b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔"[i]}</span><span class="hm-label"></span>`;
     b.querySelector(".hm-label").textContent = k.label;
     b.dataset.kind = k.label;
     if (k.lv) {
@@ -4100,9 +4112,13 @@ body.path-open { overflow: hidden; }
       const deep = pg.depth === 2;
       const basis = [{ cells: [pg.i], g: 0 }, ...(deep ? [{ cells: [pg.j], g: 1 }] : [{ cells: cellOf(pg.why), g: 1 }])];
       drawPathBoard(pg.before, { gone: pg.gone.map((x) => ({ ...x, g: 0 })), basis, given });
-      pathHead.textContent = `${no}　背理法${deep ? "（2段の仮定）" : ""}（${"★".repeat(TECH_LV["背理法"])}）`;
+      // 候補が3つ以上のマスでの仮定と2段の仮定は「深い背理法」（★7つ）
+      const cname = pg.deepTech ? "深い背理法" : "背理法";
+      pathHead.textContent = `${no}　${cname}${deep ? "（2段の仮定）" : ""}（${"★".repeat(TECH_LV[cname])}）`;
       const all = digitsOf(pg.before.cand[pg.i]);
-      pathSection("解き方", "ほかの解き方では進めないので、仮に数字を置いて、矛盾が出るか確かめます（背理法）。");
+      pathSection("解き方", pg.deepTech
+        ? "ほかの解き方や、候補が2つのマスでの背理法では進めないので、候補が3つ以上のマスや2段までの仮定で、矛盾が出るか確かめます（深い背理法）。"
+        : "ほかの解き方では進めないので、仮に数字を置いて、矛盾が出るか確かめます（背理法）。");
       pathSection("見る所", esc(`${cellNm(pg.i)}の候補「${all.join("・")}」です。`));
       let proofExplanation;
       if (!deep) {
@@ -4162,7 +4178,7 @@ body.path-open { overflow: hidden; }
     } else if (pg.kind === "answer") {
       drawPathBoard(pg.before, { placed: [{ i: pg.i, d: pg.d, g: 0 }], given });
       pathHead.textContent = `${no}　正解から決める`;
-      pathSection("解き方", "ここは、これまでの解き方や2段までの仮定（背理法）では決められないので、正解から決めます。");
+      pathSection("解き方", "ここは、これまでの解き方や2段までの仮定（深い背理法）では決められないので、正解から決めます。");
       pathSection("見る所", esc(cellNm(pg.i)));
       pathSection("すること", esc(`${cellNm(pg.i)}に「${pg.d}」を入れます。`));
     }
@@ -4767,10 +4783,44 @@ body.path-open { overflow: hidden; }
         { cells: [i] });
     }
     workMsg.classList.remove("err");
-    workMsg.textContent = "ヒント：今は、候補が2つのマスで1つ仮定し、すべての論理解法で進めても矛盾が見つかりません（仮定は重ねません）。";
-    function unitsName(k) {
-      return k % 3 === 2 ? `${BOX_NAMES[Math.floor(k / 3)]}のブロック` : `${Math.floor(k / 3) + 1}${k % 3 === 0 ? "行目" : "列目"}`;
+    workMsg.textContent = "ヒント：今は、候補が2つのマスで1つ仮定し、ほかの解き方で進めても矛盾が見つかりません（仮定は重ねません）。「深い背理法」のヒントも試してみてください。";
+  }
+  // 矛盾した所の説明（背理法・深い背理法で共通）
+  function unitsName(k) {
+    return k % 3 === 2 ? `${BOX_NAMES[Math.floor(k / 3)]}のブロック` : `${Math.floor(k / 3) + 1}${k % 3 === 0 ? "行目" : "列目"}`;
+  }
+  const contraWhy = (bad) => bad.kind === "cell" ? `${cellName(bad.i)}のマスに入る数字がなくなり` : `${unitsName(bad.unit)}に「${bad.d}」を入れる場所がなくなり`;
+  const toMasks = (cand) => cand.map((ds) => ds.reduce((m, d) => m | (1 << d), 0));
+  // 深い背理法（レベル7）：背理法で進めないとき、候補が3つ以上のマスでも仮定し、それでもだめなら2段まで仮定する
+  function showDeepContradiction() {
+    const st = hintState();
+    if (!st) return;
+    const { fixed, cand } = st;
+    if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
+    const masks = toMasks(cand);
+    workMsg.classList.remove("err");
+    if (hintEngine.contradiction({ v: fixed, cand: masks })) {
+      workMsg.textContent = "ヒント：今は、ふつうの「背理法」（★6つ）で進められます。先に「背理法」のヒントを使ってください。";
+      return;
     }
+    const proof = hintEngine.deepContradiction({ v: fixed, cand: masks });
+    if (!proof) {
+      workMsg.textContent = "ヒント：今は、2段までの仮定（深い背理法）でも矛盾が見つかりません。";
+      return;
+    }
+    const { i, d } = proof;
+    const left = cand[i].map(Number).filter((x) => x !== d);
+    const rest = left.length === 1 ? `このマスは「${left[0]}」です（色の付いた数字）` : `このマスの候補は「${left.join("・")}」になります`;
+    const how = ["シングル", ...new Set(proof.log.map((e) => e.tech))].join("・");
+    if (proof.depth === 1) {
+      return paintHint(st, [{ marks: left.length === 1 ? [[i, left[0]]] : [] }], [[i, d]],
+        `薄い赤のマスに「${d}」を入れたと仮定して、${how}で進めると、${contraWhy(proof.why)}、矛盾します。なので「${d}」（赤い枠）は入らず、${rest}。`,
+        { cells: [i] });
+    }
+    const { j, a, b } = proof;
+    paintHint(st, [{ marks: left.length === 1 ? [[i, left[0]]] : [] }], [[i, d]],
+      `薄い赤のマスのうち${cellName(i)}に「${d}」を入れたと仮定して進めると、${cellName(j)}は「${a}」か「${b}」になります。そこでもう一度仮に入れると、「${a}」なら${contraWhy(proof.whyA)}、「${b}」でも${contraWhy(proof.whyB)}、どちらでも矛盾します（使った解き方：${how}）。なので${cellName(i)}の「${d}」（赤い枠）は入らず、${rest}。`,
+      { cells: [i, j] });
   }
   // Xウイング: ある数字が、2つの行でどちらも同じ2列にしか入らないとき、その2列のほかの行の同じ数字は消せる（行と列を入れ替えても同じ）
   // 消せる候補があるものだけを、4つの角を組ごとの色、消せる候補を赤い枠で示す
@@ -4989,21 +5039,24 @@ body.path-open { overflow: hidden; }
         if (best >= 0) {
           const skey = "s" + best;
           if (!full && seen.has(skey)) return focusDone();
-          if (!hintGate(TECH_LV["背理法"], () => runHint(full))) return;
+          // 背理法（★6）で進めるか、深い背理法（★7）が要るか（深い背理法でも進めないときも★7とする）
+          const masks = cand.slice();
+          const cname = hintEngine.contradiction({ v, cand: masks }) ? "背理法" : "深い背理法";
+          if (!hintGate(TECH_LV[cname], () => runHint(full))) return;
           if (!full) {
             seen.add(skey);
             countHint(true, TECH_LV["注目するマス"], skey);
             at(best).classList.add("hint-cell");
             renderPad();
             workMsg.classList.remove("err");
-            workMsg.textContent = "ヒント：薄い赤のマスに注目してください。（ここから先は背理法が必要です）";
+            workMsg.textContent = `ヒント：薄い赤のマスに注目してください。（ここから先は${cname}が必要です）`;
             return;
           }
-          countHint(true, 2 * TECH_LV["背理法"]);
+          countHint(true, 2 * TECH_LV[cname]);
           mark(best, solution.sol[best]);
           renderPad();
           workMsg.classList.remove("err");
-          workMsg.textContent = `ヒント：ここから先は、ヒントの解き方だけでは進めず、背理法が必要です。${name(best)}の答えは「${solution.sol[best]}」です（紫の数字。「背理法」のヒントで確かめられます）。`;
+          workMsg.textContent = `ヒント：ここから先は、ヒントの解き方だけでは進めず、${cname}が必要です。${name(best)}の答えは「${solution.sol[best]}」です（紫の数字。「${cname}」のヒントで確かめられます）。`;
           return;
         }
       }
@@ -6146,7 +6199,8 @@ body.path-open { overflow: hidden; }
     const TOP = rules.difficulties.length;  // 一番上の難易度（最難関）
     const EXTREME = rules.difficulties[TOP - 1];
     const lvOf = (name) => (rules.techniques.find((t) => t.name === name) || {}).lv;
-    const CONTRA_LV = lvOf("背理法");
+    const CONTRA_LV = lvOf("背理法"), DEEP_LV = lvOf("深い背理法") || CONTRA_LV;
+    const DEEP_BUDGET = 1000;  // 目標時間の計算で、深い背理法で仮に入れて試してよい回数（回答を始めるときに画面が止まらないように）
     // 1手のレベル → その手が必要になる難易度（1 = 初級 …）
     const diffOf = (k) => rules.difficulties.findIndex((d) => k <= d.maxLv) + 1;
     const units = [];
@@ -6208,7 +6262,8 @@ body.path-open { overflow: hidden; }
     }
     // 人の解き方で解いて、必要だった一番難しい解き方のレベルを返す（解き切れなければ 4）
     // start を渡すと「答えと理由」用。trial は仮定後の盤をすべての論理解法で検証する（仮定は重ねない）。
-    function grade(g, start, timing, trial = false) {
+    // deep: 目標時間で、背理法で進めないとき深い背理法も使う（自動作成の難易度の判定では使わない）
+    function grade(g, start, timing, trial = false, deep = false) {
       const v = start ? start.v.slice() : g.slice(), cand = start ? start.cand.slice() : new Array(81).fill(ALL);
       const trace = trial ? [] : null;
       const traceSnap = () => ({ v: v.slice(), cand: cand.slice() });
@@ -6638,6 +6693,7 @@ body.path-open { overflow: hidden; }
       const steps = [];
       grade.steps = steps;
       let level = 1;
+      const deepBudget = { left: DEEP_BUDGET };
       for (;;) {
         if (v.every((x) => x)) return level;
         for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) { steps.length = 0; return TOP; }
@@ -6652,13 +6708,24 @@ body.path-open { overflow: hidden; }
             steps.push(CONTRA_LV, ...proof.steps);
             continue;
           }
-          // すべての論理解法でも矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める
+          // 背理法で進めないとき: 深い背理法（レベル7）。背理法と同じく、仮定に20分、仮定の後の手順はそれぞれ実際に使った解き方のレベルの時間
+          // （2段の仮定では、最初の仮定の後と、2段目の両方の場合の手順をすべて足す）
+          // 計算が長くなりすぎないよう、深い背理法で仮に入れて試すのは1問で DEEP_BUDGET 回まで。超えたら下の「正解から1マス」（レベル7の時間）にする
+          // （回数で決めるので、どの端末でも同じ目標時間になる）
+          const dp = deep ? deepContradiction({ v, cand }, deepBudget) : null;
+          if (dp) {
+            cand[dp.i] &= ~(1 << dp.d);
+            steps.push(DEEP_LV, ...dp.steps);
+            continue;
+          }
+          // 深い背理法でも矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを1手で決める（一番上のレベルの時間）
+          const lastLv = deep ? DEEP_LV : CONTRA_LV;
           if (timing.length === 81) {
             let best = -1;
             for (let i = 0; i < 81; i++) if (!v[i] && (cand[i] & (1 << +timing[i])) && (best < 0 || pop(cand[i]) < pop(cand[best]))) best = i;
-            if (best >= 0) { place(best, +timing[best]); steps.push(CONTRA_LV); continue; }
+            if (best >= 0) { place(best, +timing[best]); steps.push(lastLv); continue; }
           }
-          for (let k = v.filter((x) => !x).length; k > 0; k--) steps.push(CONTRA_LV);
+          for (let k = v.filter((x) => !x).length; k > 0; k--) steps.push(lastLv);
         }
         // 背理法を使わずに進めなくなった。最難関は、このとき minLeft マス以上残っているものだけ（少なければ TOP - 0.5 = どのレベルにもしない）
         return v.filter((x) => !x).length >= EXTREME.minLeft ? TOP : TOP - 0.5;
@@ -6678,11 +6745,15 @@ body.path-open { overflow: hidden; }
       }
       return null;
     }
-    // 正解への道筋だけで使う、もっと深い背理法（ヒント・目標時間・難易度の判定には使わない）
+    // 深い背理法（レベル7）。背理法（候補2つのマスで1回だけ仮定）で進めないときに、ヒント・目標時間・正解への道筋で使う（難易度の判定には使わない）
+    //  steps: 仮定の後に解き進めた手のレベル（2段のときは、最初の仮定の後と、2段目の両方の場合を合わせたもの）
     //  深さ1: 候補が3つ以上のマスも含めて、どの候補でも仮に置いて矛盾すれば、その候補を消す
     //  深さ2: 仮に置いて解き進めた盤で、さらに候補が2つのマスを両方試し、どちらも矛盾すれば、最初の仮定が違う（2段の仮定）
-    function deepContradiction(start) {
+    //  budget: { left: 回数 } を渡すと、仮に入れて試すたびに1減らし、0になったら探すのをやめて null を返す（渡さなければ制限なし）
+    function deepContradiction(start, budget = null) {
+      const late = () => budget && budget.left <= 0;
       const trial = (v0, c0, i, d) => {
+        if (budget) budget.left--;
         const v = v0.slice(), cand = c0.slice();
         v[i] = d; cand[i] = 0;
         for (const p of peers[i]) cand[p] &= ~(1 << d);
@@ -6690,19 +6761,21 @@ body.path-open { overflow: hidden; }
       };
       const order = [...Array(81).keys()].filter((i) => !start.v[i] && pop(start.cand[i]) >= 2).sort((a, b) => pop(start.cand[a]) - pop(start.cand[b]));
       for (const i of order) for (const d of bits(start.cand[i])) {
+        if (late()) return null;
         const r = trial(start.v, start.cand, i, d);
-        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction, trace: r.trace };
+        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction, trace: r.trace, log: r.log, steps: r.steps };
       }
       for (const i of order) for (const d of bits(start.cand[i])) {
         const r = trial(start.v, start.cand, i, d);
         if (r.contradiction || !r.v) continue;
         for (let j = 0; j < 81; j++) {
           if (r.v[j] || pop(r.cand[j]) !== 2) continue;
+          if (late()) return null;
           const [a, b] = bits(r.cand[j]);
           const ra = trial(r.v, r.cand, j, a);
           if (!ra.contradiction) continue;
           const rb = trial(r.v, r.cand, j, b);
-          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction, outerTrace: r.trace, traceA: ra.trace, traceB: rb.trace, outerState: { v: r.v.slice(), cand: r.cand.slice() } };
+          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction, outerTrace: r.trace, traceA: ra.trace, traceB: rb.trace, outerState: { v: r.v.slice(), cand: r.cand.slice() }, log: [...r.log, ...ra.log, ...rb.log], steps: [...r.steps, ...ra.steps, ...rb.steps] };
         }
       }
       return null;
@@ -6780,7 +6853,7 @@ body.path-open { overflow: hidden; }
         const deep = deepContradiction({ v, cand });
         if (deep) {
           cand[deep.i] &= ~(1 << deep.d);
-          pages.push({ kind: "contra", ...deep, left: bits(cand[deep.i]), gone: [{ i: deep.i, m: 1 << deep.d }], before, after: snap() });
+          pages.push({ kind: "contra", ...deep, deepTech: true, left: bits(cand[deep.i]), gone: [{ i: deep.i, m: 1 << deep.d }], before, after: snap() });
           continue;
         }
         if (allowAnswers && sol && sol.length === 81) {
@@ -6852,7 +6925,7 @@ body.path-open { overflow: hidden; }
       else if (m.type === "hunt") hunt = !!m.on;
       kick();
     };
-    return { grade, count, attempt, contradiction, solvePath };
+    return { grade, count, attempt, contradiction, deepContradiction, solvePath };
   }
 
   // ===== 16-generator.js：問題を自動で作る画面・最難関の作り置き・起動するときの設定 =====

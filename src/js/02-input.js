@@ -105,7 +105,7 @@
   const HINTLIMIT_KEY = "sudoku-hintlimit";
   const snapTimerBack = () => false;
   try { localStorage.removeItem("sudoku-snaptimer"); } catch (e) {}
-  const hintLimit = () => { try { return Math.max(0, Math.min(6, +localStorage.getItem(HINTLIMIT_KEY) || 0)); } catch (e) { return 0; } };
+  const hintLimit = () => { try { return Math.max(0, Math.min(7, +localStorage.getItem(HINTLIMIT_KEY) || 0)); } catch (e) { return 0; } };
   const autoErase = () => { try { return localStorage.getItem(AUTOERASE_KEY) === "1"; } catch (e) { return false; } };
   function toggleSure(cell, target) {
     if (board.dataset.mode !== "solve" || cell.classList.contains("fixed")) return;

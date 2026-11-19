@@ -7,7 +7,8 @@
     const TOP = rules.difficulties.length;  // 一番上の難易度（最難関）
     const EXTREME = rules.difficulties[TOP - 1];
     const lvOf = (name) => (rules.techniques.find((t) => t.name === name) || {}).lv;
-    const CONTRA_LV = lvOf("背理法");
+    const CONTRA_LV = lvOf("背理法"), DEEP_LV = lvOf("深い背理法") || CONTRA_LV;
+    const DEEP_BUDGET = 1000;  // 目標時間の計算で、深い背理法で仮に入れて試してよい回数（回答を始めるときに画面が止まらないように）
     // 1手のレベル → その手が必要になる難易度（1 = 初級 …）
     const diffOf = (k) => rules.difficulties.findIndex((d) => k <= d.maxLv) + 1;
     const units = [];
@@ -69,7 +70,8 @@
     }
     // 人の解き方で解いて、必要だった一番難しい解き方のレベルを返す（解き切れなければ 4）
     // start を渡すと「答えと理由」用。trial は仮定後の盤をすべての論理解法で検証する（仮定は重ねない）。
-    function grade(g, start, timing, trial = false) {
+    // deep: 目標時間で、背理法で進めないとき深い背理法も使う（自動作成の難易度の判定では使わない）
+    function grade(g, start, timing, trial = false, deep = false) {
       const v = start ? start.v.slice() : g.slice(), cand = start ? start.cand.slice() : new Array(81).fill(ALL);
       const trace = trial ? [] : null;
       const traceSnap = () => ({ v: v.slice(), cand: cand.slice() });
@@ -499,6 +501,7 @@
       const steps = [];
       grade.steps = steps;
       let level = 1;
+      const deepBudget = { left: DEEP_BUDGET };
       for (;;) {
         if (v.every((x) => x)) return level;
         for (let i = 0; i < 81; i++) if (!v[i] && !cand[i]) { steps.length = 0; return TOP; }
@@ -513,13 +516,24 @@
             steps.push(CONTRA_LV, ...proof.steps);
             continue;
           }
-          // すべての論理解法でも矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを背理法1手で決める
+          // 背理法で進めないとき: 深い背理法（レベル7）。背理法と同じく、仮定に20分、仮定の後の手順はそれぞれ実際に使った解き方のレベルの時間
+          // （2段の仮定では、最初の仮定の後と、2段目の両方の場合の手順をすべて足す）
+          // 計算が長くなりすぎないよう、深い背理法で仮に入れて試すのは1問で DEEP_BUDGET 回まで。超えたら下の「正解から1マス」（レベル7の時間）にする
+          // （回数で決めるので、どの端末でも同じ目標時間になる）
+          const dp = deep ? deepContradiction({ v, cand }, deepBudget) : null;
+          if (dp) {
+            cand[dp.i] &= ~(1 << dp.d);
+            steps.push(DEEP_LV, ...dp.steps);
+            continue;
+          }
+          // 深い背理法でも矛盾が見つからないとき: 正解が分かっていれば、候補の一番少ないマスを1手で決める（一番上のレベルの時間）
+          const lastLv = deep ? DEEP_LV : CONTRA_LV;
           if (timing.length === 81) {
             let best = -1;
             for (let i = 0; i < 81; i++) if (!v[i] && (cand[i] & (1 << +timing[i])) && (best < 0 || pop(cand[i]) < pop(cand[best]))) best = i;
-            if (best >= 0) { place(best, +timing[best]); steps.push(CONTRA_LV); continue; }
+            if (best >= 0) { place(best, +timing[best]); steps.push(lastLv); continue; }
           }
-          for (let k = v.filter((x) => !x).length; k > 0; k--) steps.push(CONTRA_LV);
+          for (let k = v.filter((x) => !x).length; k > 0; k--) steps.push(lastLv);
         }
         // 背理法を使わずに進めなくなった。最難関は、このとき minLeft マス以上残っているものだけ（少なければ TOP - 0.5 = どのレベルにもしない）
         return v.filter((x) => !x).length >= EXTREME.minLeft ? TOP : TOP - 0.5;
@@ -539,11 +553,15 @@
       }
       return null;
     }
-    // 正解への道筋だけで使う、もっと深い背理法（ヒント・目標時間・難易度の判定には使わない）
+    // 深い背理法（レベル7）。背理法（候補2つのマスで1回だけ仮定）で進めないときに、ヒント・目標時間・正解への道筋で使う（難易度の判定には使わない）
+    //  steps: 仮定の後に解き進めた手のレベル（2段のときは、最初の仮定の後と、2段目の両方の場合を合わせたもの）
     //  深さ1: 候補が3つ以上のマスも含めて、どの候補でも仮に置いて矛盾すれば、その候補を消す
     //  深さ2: 仮に置いて解き進めた盤で、さらに候補が2つのマスを両方試し、どちらも矛盾すれば、最初の仮定が違う（2段の仮定）
-    function deepContradiction(start) {
+    //  budget: { left: 回数 } を渡すと、仮に入れて試すたびに1減らし、0になったら探すのをやめて null を返す（渡さなければ制限なし）
+    function deepContradiction(start, budget = null) {
+      const late = () => budget && budget.left <= 0;
       const trial = (v0, c0, i, d) => {
+        if (budget) budget.left--;
         const v = v0.slice(), cand = c0.slice();
         v[i] = d; cand[i] = 0;
         for (const p of peers[i]) cand[p] &= ~(1 << d);
@@ -551,19 +569,21 @@
       };
       const order = [...Array(81).keys()].filter((i) => !start.v[i] && pop(start.cand[i]) >= 2).sort((a, b) => pop(start.cand[a]) - pop(start.cand[b]));
       for (const i of order) for (const d of bits(start.cand[i])) {
+        if (late()) return null;
         const r = trial(start.v, start.cand, i, d);
-        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction, trace: r.trace };
+        if (r.contradiction) return { i, d, depth: 1, why: r.contradiction, trace: r.trace, log: r.log, steps: r.steps };
       }
       for (const i of order) for (const d of bits(start.cand[i])) {
         const r = trial(start.v, start.cand, i, d);
         if (r.contradiction || !r.v) continue;
         for (let j = 0; j < 81; j++) {
           if (r.v[j] || pop(r.cand[j]) !== 2) continue;
+          if (late()) return null;
           const [a, b] = bits(r.cand[j]);
           const ra = trial(r.v, r.cand, j, a);
           if (!ra.contradiction) continue;
           const rb = trial(r.v, r.cand, j, b);
-          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction, outerTrace: r.trace, traceA: ra.trace, traceB: rb.trace, outerState: { v: r.v.slice(), cand: r.cand.slice() } };
+          if (rb.contradiction) return { i, d, depth: 2, j, a, b, whyA: ra.contradiction, whyB: rb.contradiction, outerTrace: r.trace, traceA: ra.trace, traceB: rb.trace, outerState: { v: r.v.slice(), cand: r.cand.slice() }, log: [...r.log, ...ra.log, ...rb.log], steps: [...r.steps, ...ra.steps, ...rb.steps] };
         }
       }
       return null;
@@ -641,7 +661,7 @@
         const deep = deepContradiction({ v, cand });
         if (deep) {
           cand[deep.i] &= ~(1 << deep.d);
-          pages.push({ kind: "contra", ...deep, left: bits(cand[deep.i]), gone: [{ i: deep.i, m: 1 << deep.d }], before, after: snap() });
+          pages.push({ kind: "contra", ...deep, deepTech: true, left: bits(cand[deep.i]), gone: [{ i: deep.i, m: 1 << deep.d }], before, after: snap() });
           continue;
         }
         if (allowAnswers && sol && sol.length === 81) {
@@ -713,6 +733,6 @@
       else if (m.type === "hunt") hunt = !!m.on;
       kick();
     };
-    return { grade, count, attempt, contradiction, solvePath };
+    return { grade, count, attempt, contradiction, deepContradiction, solvePath };
   }
 

@@ -14,8 +14,8 @@
   // 秒数（TARGET_SEC）は 01a-levels.js で決める
   const targetEl = document.getElementById("target-time");
   // 1手ずつのレベルの並びから、目標の秒数を出す。
-  // 背理法は仮定する手だけをレベル6とし、仮定後は実際に使った解法のレベルを記録する。
-  // 別の仮定は、直前の手にかかわらず改めてレベル6の時間を加算する。
+  // 背理法は仮定する手だけをレベル6、深い背理法（2段までの仮定）は仮定する手だけをレベル7とし、
+  // 仮定後は実際に使った解き方のレベルを記録する。別の仮定は、直前の手にかかわらず改めてその時間を足す。
   function targetSeconds(levels) {
     return levels.reduce((sec, k) => sec + (TARGET_SEC[k] || 0), 0);
   }
@@ -26,14 +26,21 @@
     targetEl.textContent = "目標：" + t;
     targetEl.hidden = false;
   }
+  const targetCache = { key: "", rec: [] };
   // 目標（標準回答）時間の文字列。求められないときは ""
   function targetText() {
     if (!solution) return "";
     const g = [...board.querySelectorAll(".cell")].sort((a, b) => (a.dataset.row * 9 + +a.dataset.col) - (b.dataset.row * 9 + +b.dataset.col)).map((c) => +((c.classList.contains("given") && c.dataset.value) || 0));
     try {
-      if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
-      hintEngine.grade(g, null, solution.sol || true);
-      const rec = hintEngine.grade.steps || [];
+      // 深い背理法まで調べると時間がかかるので、同じ問題の結果は覚えておく（回答を始めるたび・完成のたびに計算し直さない）
+      const key = g.join("") + (solution.sol || "");
+      if (targetCache.key !== key) {
+        if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
+        hintEngine.grade(g, null, solution.sol || true, false, true);
+        targetCache.key = key;
+        targetCache.rec = (hintEngine.grade.steps || []).slice();
+      }
+      const rec = targetCache.rec;
       let sec = targetSeconds(rec);
       if (!sec) return "";
       sec = sec < 600 ? Math.round(sec / 30) * 30 : Math.round(sec / 60) * 60;

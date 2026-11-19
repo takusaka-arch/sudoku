@@ -434,10 +434,44 @@
         { cells: [i] });
     }
     workMsg.classList.remove("err");
-    workMsg.textContent = "ヒント：今は、候補が2つのマスで1つ仮定し、すべての論理解法で進めても矛盾が見つかりません（仮定は重ねません）。";
-    function unitsName(k) {
-      return k % 3 === 2 ? `${BOX_NAMES[Math.floor(k / 3)]}のブロック` : `${Math.floor(k / 3) + 1}${k % 3 === 0 ? "行目" : "列目"}`;
+    workMsg.textContent = "ヒント：今は、候補が2つのマスで1つ仮定し、ほかの解き方で進めても矛盾が見つかりません（仮定は重ねません）。「深い背理法」のヒントも試してみてください。";
+  }
+  // 矛盾した所の説明（背理法・深い背理法で共通）
+  function unitsName(k) {
+    return k % 3 === 2 ? `${BOX_NAMES[Math.floor(k / 3)]}のブロック` : `${Math.floor(k / 3) + 1}${k % 3 === 0 ? "行目" : "列目"}`;
+  }
+  const contraWhy = (bad) => bad.kind === "cell" ? `${cellName(bad.i)}のマスに入る数字がなくなり` : `${unitsName(bad.unit)}に「${bad.d}」を入れる場所がなくなり`;
+  const toMasks = (cand) => cand.map((ds) => ds.reduce((m, d) => m | (1 << d), 0));
+  // 深い背理法（レベル7）：背理法で進めないとき、候補が3つ以上のマスでも仮定し、それでもだめなら2段まで仮定する
+  function showDeepContradiction() {
+    const st = hintState();
+    if (!st) return;
+    const { fixed, cand } = st;
+    if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
+    const masks = toMasks(cand);
+    workMsg.classList.remove("err");
+    if (hintEngine.contradiction({ v: fixed, cand: masks })) {
+      workMsg.textContent = "ヒント：今は、ふつうの「背理法」（★6つ）で進められます。先に「背理法」のヒントを使ってください。";
+      return;
     }
+    const proof = hintEngine.deepContradiction({ v: fixed, cand: masks });
+    if (!proof) {
+      workMsg.textContent = "ヒント：今は、2段までの仮定（深い背理法）でも矛盾が見つかりません。";
+      return;
+    }
+    const { i, d } = proof;
+    const left = cand[i].map(Number).filter((x) => x !== d);
+    const rest = left.length === 1 ? `このマスは「${left[0]}」です（色の付いた数字）` : `このマスの候補は「${left.join("・")}」になります`;
+    const how = ["シングル", ...new Set(proof.log.map((e) => e.tech))].join("・");
+    if (proof.depth === 1) {
+      return paintHint(st, [{ marks: left.length === 1 ? [[i, left[0]]] : [] }], [[i, d]],
+        `薄い赤のマスに「${d}」を入れたと仮定して、${how}で進めると、${contraWhy(proof.why)}、矛盾します。なので「${d}」（赤い枠）は入らず、${rest}。`,
+        { cells: [i] });
+    }
+    const { j, a, b } = proof;
+    paintHint(st, [{ marks: left.length === 1 ? [[i, left[0]]] : [] }], [[i, d]],
+      `薄い赤のマスのうち${cellName(i)}に「${d}」を入れたと仮定して進めると、${cellName(j)}は「${a}」か「${b}」になります。そこでもう一度仮に入れると、「${a}」なら${contraWhy(proof.whyA)}、「${b}」でも${contraWhy(proof.whyB)}、どちらでも矛盾します（使った解き方：${how}）。なので${cellName(i)}の「${d}」（赤い枠）は入らず、${rest}。`,
+      { cells: [i, j] });
   }
   // Xウイング: ある数字が、2つの行でどちらも同じ2列にしか入らないとき、その2列のほかの行の同じ数字は消せる（行と列を入れ替えても同じ）
   // 消せる候補があるものだけを、4つの角を組ごとの色、消せる候補を赤い枠で示す
@@ -656,21 +690,24 @@
         if (best >= 0) {
           const skey = "s" + best;
           if (!full && seen.has(skey)) return focusDone();
-          if (!hintGate(TECH_LV["背理法"], () => runHint(full))) return;
+          // 背理法（★6）で進めるか、深い背理法（★7）が要るか（深い背理法でも進めないときも★7とする）
+          const masks = cand.slice();
+          const cname = hintEngine.contradiction({ v, cand: masks }) ? "背理法" : "深い背理法";
+          if (!hintGate(TECH_LV[cname], () => runHint(full))) return;
           if (!full) {
             seen.add(skey);
             countHint(true, TECH_LV["注目するマス"], skey);
             at(best).classList.add("hint-cell");
             renderPad();
             workMsg.classList.remove("err");
-            workMsg.textContent = "ヒント：薄い赤のマスに注目してください。（ここから先は背理法が必要です）";
+            workMsg.textContent = `ヒント：薄い赤のマスに注目してください。（ここから先は${cname}が必要です）`;
             return;
           }
-          countHint(true, 2 * TECH_LV["背理法"]);
+          countHint(true, 2 * TECH_LV[cname]);
           mark(best, solution.sol[best]);
           renderPad();
           workMsg.classList.remove("err");
-          workMsg.textContent = `ヒント：ここから先は、ヒントの解き方だけでは進めず、背理法が必要です。${name(best)}の答えは「${solution.sol[best]}」です（紫の数字。「背理法」のヒントで確かめられます）。`;
+          workMsg.textContent = `ヒント：ここから先は、ヒントの解き方だけでは進めず、${cname}が必要です。${name(best)}の答えは「${solution.sol[best]}」です（紫の数字。「${cname}」のヒントで確かめられます）。`;
           return;
         }
       }
