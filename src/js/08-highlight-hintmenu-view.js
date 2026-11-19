@@ -46,29 +46,33 @@
   }
   // ヒントボタンでヒントの種類を選ぶメニューを開く（種類はこの一覧に足せば増やせる）
   const hintKinds = [
-    // ★の数（レベル）は 01a-levels.js の TECHNIQUES で決まり、メニューはレベルの順に並ぶ（label を TECHNIQUES の name と同じにする）
+    // ★の数（レベル）と「？」の説明は 01a-levels.js の TECHNIQUES で決まり、メニューはレベルの順に並ぶ（label を TECHNIQUES の name と同じにする）
+    // 解き方でない「ヒントを消す」「答えと理由」だけは、説明をここに書く
     { label: "ヒントを消す", desc: "表示しているヒントの色と説明を消します", run: () => {} },
-    { label: "注目するマス", desc: "次に考えるとよいマスに色を付けます。盤を変えずにもう一度選ぶと「次に注目するマス」になり、別のマスを示します", run: () => runHint(false) },
-    { label: "ポインティング", desc: "ブロックの中で1つの行（列）にしか入らない数字と、それでブロックの外から消せる候補を示します", run: () => showBoxLine("pointing") },
-    { label: "クレーミング", desc: "行（列）の中で1つのブロックにしか入らない数字と、それでそのブロックの中から消せる候補を示します", run: () => showBoxLine("claiming") },
-    { label: "2つの数字のペア", desc: "隠れペア（2つの数字が同じ2マスにしか入らない）と、ネイキッドペア（候補が同じ2つだけのマスが2つある）を、組ごとに色分けします", run: () => showPairs(2) },
-    { label: "3つの数字の組", desc: "隠れた3つの組と、ネイキッド3つの組（3マスの候補を合わせると3つの数字だけ）を、消せる候補と一緒に示します", run: () => showSubsets(3) },
-    { label: "Xウイング", desc: "2つの行（列）で長方形の角にしか入らない数字と、それで消せる候補を示します", run: () => showXWing() },
-    { label: "スカイスクレイパー", desc: "2か所にしか入らない行（列）を2本使い、端どうしの両方から見えるマスの候補を消します", run: () => showSkyscraper() },
-    { label: "4つの数字の組", desc: "3つの組と同じ考え方を、4つの数字と4マスで使います", run: () => showSubsets(4) },
-    { label: "ソードフィッシュ", desc: "Xウイングを3つの行（列）に広げたものです", run: () => showSwordfish() },
-    { label: "XYウイング", desc: "候補が2つのマス3つ（AB・AC・BC）を使い、両端から見えるマスのCを消します。Y-Wingとも呼びます", run: () => showWing(false) },
-    { label: "XYZウイング", desc: "軸のマスの候補が3つ（ABC）のXYウイングです。3マスすべてから見えるマスのCを消します", run: () => showWing(true) },
-    { label: "唯一解の原則", desc: "ユニークレクタングル。2つのブロックにまたがる長方形の4マスが同じ2つの候補だけになると答えが2通りになってしまうので、そうならないように候補を消します", run: () => showUR() },
-    { label: "シンプルカラーリング", desc: "ある数字が2か所にしか入らない所をたどって2色で塗り、どちらかの色が正解になることを使って候補を消します", run: () => showColoring() },
-    { label: "リモートペア", desc: "候補が同じ2つのマスが4つ以上つながるとき、交互に入る数字を使って候補を消します", run: () => showRemotePair() },
-    { label: "XYチェーン", desc: "候補が2つのマスを鎖のようにつなぎ、鎖の両端から見えるマスの候補を消します。順番を番号で示します", run: () => showXYChain() },
-    { label: "チェーン", desc: "「2か所にしか入らない数字」と「候補が2つのマス」を交互につなぎ、両端のどちらかが正しいことを使って候補を消します", run: () => showChain() },
-    { label: "背理法", desc: "候補が2つのマスに片方を仮に入れ、すべての論理解法で進めます。矛盾が出たらもう一方が答えだと分かります（仮定は重ねません）", run: () => showContradiction() },
+    { label: "注目するマス", notTech: true, run: () => runHint(false) },
+    { label: "ポインティング", run: () => showBoxLine("pointing") },
+    { label: "クレーミング", run: () => showBoxLine("claiming") },
+    { label: "2つの数字のペア", run: () => showPairs(2) },
+    { label: "3つの数字の組", run: () => showSubsets(3) },
+    { label: "Xウイング", run: () => showXWing() },
+    { label: "スカイスクレイパー", run: () => showSkyscraper() },
+    { label: "4つの数字の組", run: () => showSubsets(4) },
+    { label: "ソードフィッシュ", run: () => showSwordfish() },
+    { label: "XYウイング", run: () => showWing(false) },
+    { label: "XYZウイング", run: () => showWing(true) },
+    { label: "唯一解の原則", run: () => showUR() },
+    { label: "シンプルカラーリング", run: () => showColoring() },
+    { label: "リモートペア", run: () => showRemotePair() },
+    { label: "XYチェーン", run: () => showXYChain() },
+    { label: "チェーン", run: () => showChain() },
+    { label: "背理法", run: () => showContradiction() },
     { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法が必要なら答えだけ示します）", run: () => runHint(true) },
   ];
   // レベルを付け、レベルの順に並べ直す（「ヒントを消す」は一番上、「答えと理由」は一番下のまま）
-  hintKinds.forEach((k) => { if (TECH_LV[k.label]) k.lv = TECH_LV[k.label]; });
+  hintKinds.forEach((k) => {
+    const t = TECHNIQUES.find((x) => x.name === k.label);
+    if (t) { k.lv = t.lv; k.desc = t.desc || ""; }
+  });
   {
     const leveled = hintKinds.filter((k) => k.lv).sort((x, y) => x.lv - y.lv);
     let n = 0;
@@ -88,7 +92,7 @@
   hintOverlayHead.append(hintOverlayTitle, hintOverlayClose);
   const hintOverlayNote = document.createElement("p");
   hintOverlayNote.className = "hm-overlay-note";
-  hintOverlayNote.textContent = "薄い表示は控える設定の対象です（選ぶと確認できます）。";
+  hintOverlayNote.textContent = "薄い表示は、設定で控えているヒントです（選ぶと確認画面が出ます）。「注目するマス」「答えと理由」は、選んだときに示す手のレベルで判断します。";
   hintMenu.append(hintOverlayHead, hintOverlayNote);
   hintOverlayClose.addEventListener("click", () => { closeHintMenu(); hintBtn.focus({ preventScroll: true }); });
   // ヒントを控える設定: 控えるレベル以下のヒントは「もう少しがんばりましょう」を出し、「それでもヒントを見る」で表示する
@@ -147,27 +151,18 @@
     q.setAttribute("aria-expanded", "false");
     const desc = document.createElement("div");
     desc.className = "hm-desc";
-    // 「？」の説明は道筋と同じ「解法 → 注目する場所 → 実行する操作」の順。
-    // ヒントボタン自体の文字数・配置は変えず、詳細を開いたときだけ表示する。
-    const hintHelp = (label) => {
-      if (label === "ヒントを消す") return ["現在表示されているヒント", "色と説明を消します"];
-      if (label === "注目するマス") return ["次に考えるとよいマス", "色が付いたマスを手がかりに考えます"];
-      if (label === "答えと理由") return ["ヒントが示すマスや候補", "示された理由を確認し、数字の確定または候補の除外を考えます"];
-      if (label === "背理法") return ["仮に数字を置くマスと、矛盾する場所", "仮定から矛盾を確認し、候補を除外または確定します"];
-      return ["ヒント実行後に盤上で色が付いたマス・候補", "表示された根拠を確認し、除外できる候補を判断します"];
-    };
-    const [focus, action] = hintHelp(k.label);
-    for (const [title, value] of [["解法", k.desc], ["注目する場所", focus], ["実行する操作", action]]) {
-      const block = document.createElement("div");
-      block.className = "hm-desc-block";
+    // 「？」の説明。解き方には道筋と同じ「解き方」の見出しを付ける。
+    // 解き方でない項目（ヒントを消す・注目するマス・答えと理由）は見出しなしの1文。説明の文は 01a-levels.js（TECHNIQUES）
+    const isTech = !!k.lv && !k.notTech;
+    if (isTech) {
       const h = document.createElement("p");
       h.className = "hm-desc-label";
-      h.textContent = title;
-      const d = document.createElement("span");
-      d.textContent = value;
-      block.append(h, d);
-      desc.appendChild(block);
+      h.textContent = "解き方";
+      desc.appendChild(h);
     }
+    const d = document.createElement("span");
+    d.textContent = k.desc;
+    desc.appendChild(d);
     desc.hidden = true;
     q.addEventListener("click", () => {
       const open = desc.hidden;
@@ -221,7 +216,8 @@
     hintOverlayNote.hidden = !restricted;
     hintMenu.querySelectorAll(".hm-go").forEach((b) => {
       const kind = hintKinds.find((k) => k.label === b.dataset.kind);
-      const isRestrained = !!(restricted && kind && kind.lv && kind.lv <= restricted);
+      // 「注目するマス」「答えと理由」は、選んだときに示す手のレベルで判断するので薄くしない（確認画面は従来どおり出る）
+      const isRestrained = !!(restricted && kind && kind.lv && !kind.notTech && kind.lv <= restricted);
       b.classList.toggle("hm-restrained", isRestrained);
       if (isRestrained) b.setAttribute("aria-description", "控える設定の対象です。選ぶと確認画面が出ます。");
       else b.removeAttribute("aria-description");

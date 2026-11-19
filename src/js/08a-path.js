@@ -1,6 +1,7 @@
   // ===== 08a-path.js：正解への道筋（表示方法変更のメニューから）=====
   // （src/js/ の全ファイルで1つの (function () { … })(); になる。まとめ方は tools/build.py）
   // 正解までの解き方を1ページずつ見せる。盤と解説だけの画面で、「前へ」「次へ」「閉じる」で動かす。
+  // 最後のページの「次へ」は、完成なら「最初から見る」、論理で止まったなら「正解データも使って続ける」になる。
   // ページの中身（どの解き方で、どのマスが決まり、どの候補が消えるか）は 15-puzzle-maker.js の solvePath() が作る。
   // ここは見せるだけ。回答中の盤・ヒントの回数・目標時間には何も触らない（タイマーは見ている間だけ止める）。
   const pathView = document.getElementById("path-view"), pathBoard = document.getElementById("path-board");
@@ -67,7 +68,7 @@
     if (falseOff >= 0) {
       pathConfirm.hidden = true;
       workMsg.classList.add("err");
-      workMsg.textContent = `${cellNm(falseOff)}で正解の候補が除外されています。候補を戻してから選ぶか、「問題の最初から」を選んでください。`;
+      workMsg.textContent = `${cellNm(falseOff)}で正解の候補が消えています。候補を戻してから選ぶか、「問題の最初から」を選んでください。`;
       return;
     }
     startPath(v, true, off);
@@ -82,6 +83,8 @@
       if (!hintEngine) hintEngine = sudokuGen({ postMessage() {} }, GEN_RULES);
       path = hintEngine.solvePath(v, solution.sol, { off, allowAnswers: pathAllowAnswers.checked });
       path.fromNow = fromNow;
+      path.start = v;
+      path.startOff = off;
       path.given = boardGivens();
       pathAt = 0;
       pathProofActive = null;
@@ -103,11 +106,32 @@
   }
   document.getElementById("path-close").addEventListener("click", closePath);
   pathPrev.addEventListener("click", () => { if (path && pathAt > 0) { pathAt--; pathProofActive = null; drawPath(); } });
-  pathNext.addEventListener("click", () => { if (!path) return; if (pathAt >= path.pages.length && path.solved) pathAt = 0; else if (pathAt < path.pages.length) pathAt++; else return; pathProofActive = null; drawPath(); });
+  pathNext.addEventListener("click", () => {
+    if (!path) return;
+    if (pathAt < path.pages.length) pathAt++;
+    else if (path.solved) pathAt = 0;  // 完成：「最初から見る」
+    else if (path.logicalOnly) return continueWithAnswers();  // 止まった：「正解データも使って続ける」
+    else return;
+    pathProofActive = null;
+    drawPath();
+  });
+  // 論理で止まったページから、同じ始まりで正解データも使う道筋を作り直し、止まったページの続きから見せる
+  // （正解データは進めなくなったときだけ使うので、止まるまでのページは同じになる）
+  function continueWithAnswers() {
+    const at = path.pages.length;
+    const next = hintEngine.solvePath(path.start, solution.sol, { off: path.startOff, allowAnswers: true });
+    Object.assign(next, { fromNow: path.fromNow, given: path.given, start: path.start, startOff: path.startOff });
+    path = next;
+    pathAt = Math.min(at, path.pages.length);
+    pathProofActive = null;
+    drawPath();
+    pathNext.focus({ preventScroll: true });
+  }
   document.addEventListener("keydown", (e) => {
     if (pathView.hidden) return;
     if (e.key === "Escape") closePath();
-    else if (e.key === "ArrowRight") pathNext.click();
+    // 最後のページでは → キーで「最初から見る」「正解データも使って続ける」を押さない（ボタンだけで選ぶ）
+    else if (e.key === "ArrowRight") { if (path && pathAt < path.pages.length) pathNext.click(); }
     else if (e.key === "ArrowLeft") pathPrev.click();
   });
 
@@ -165,7 +189,7 @@
   // 解き方の説明（ヒントメニューの説明と同じ文）
   const techDesc = (name) => (hintKinds.find((k) => k.label === name) || {}).desc || "";
   const goneText = (list) => list.map((x) => `${cellNm(x.i)}の「${digitsOf(x.m).join("・")}」`).join("、");
-  // ヒントメニューと同じ情報の順序で、盤面の説明を整理する。ボタンの寸法・配置は変えない。
+  // 説明は「解き方」「見る所」「すること」の3つの見出しに分ける。
   const pathSection = (label, html) => {
     const block = document.createElement("div");
     block.className = "path-explain-section";
@@ -182,10 +206,11 @@
     const pages = path.pages, total = pages.length;
     const given = path.given;
     pathPrev.disabled = pathAt === 0;
-    // 完成したときだけ「次へ」を「最初から見る」に切り替え、ボタン数を増やさない。
-    const complete = pathAt >= total && path.solved;
-    pathNext.textContent = complete ? "最初から見る" : "次へ ▶";
-    pathNext.disabled = pathAt >= total && !complete;
+    // 最後のページでは「次へ」を、完成なら「最初から見る」、論理で止まったなら「正解データも使って続ける」に切り替える（ボタン数は増やさない）
+    const atEnd = pathAt >= total;
+    const canContinue = atEnd && !path.solved && path.logicalOnly;
+    pathNext.textContent = !atEnd ? "次へ ▶" : path.solved ? "最初から見る" : canContinue ? "正解データも使って続ける" : "次へ ▶";
+    pathNext.disabled = atEnd && !path.solved && !canContinue;
     pathText.textContent = "";
     const say = (html) => { const p = document.createElement("p"); p.innerHTML = html; pathText.appendChild(p); };
     const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
@@ -195,7 +220,7 @@
       const last = pages[total - 1];
       drawPathBoard(last.after, { given });
       pathHead.textContent = `${total}／${total}　${path.solved ? "完成" : "ここまで"}`;
-      say(path.solved ? "これですべてのマスが埋まりました。「最初から見る」で、正解への道筋を初めから確認できます。" : (path.logicalOnly ? "ここから先は、利用できる論理手順では進められませんでした。必要なら最初の画面で「正解データも使う」を選んでください。" : "ここから先は、この道筋では進められませんでした。"));
+      say(path.solved ? "これですべてのマスが埋まりました。「最初から見る」で、正解への道筋を初めから確認できます。" : (path.logicalOnly ? "ここから先は、解き方（2段までの仮定を含む）では進められませんでした。「正解データも使って続ける」を押すと、正解から1マスずつ決めて、最後まで見られます。" : "ここから先は、この道筋では進められませんでした。"));
       return;
     }
     const pg = pages[pathAt];
@@ -203,9 +228,9 @@
     if (pg.kind === "start") {
       drawPathBoard(pg.before, { gone: pg.gone, given });
       pathHead.textContent = `${no}　問題の数字で候補を消す`;
-      pathSection("解法", "確定済みの数字から、同じ行・列・ブロックに入れられない候補を除外します。");
-      pathSection("注目する場所", path.fromNow ? "今の盤の確定数字と、除外済み候補を確認します。" : "問題の最初から入っている数字に注目します。");
-      pathSection("実行する操作", "赤い丸の候補を除外します。残った小さな数字が候補です。");
+      pathSection("解き方", "盤に入っている数字と同じ行・列・ブロックのマスからは、その数字の候補を消せます。");
+      pathSection("見る所", path.fromNow ? "今の盤の数字と、もう消してある候補です（消した候補も引き継ぎます）。" : "問題の最初から入っている数字です。");
+      pathSection("すること", "赤い丸の候補を消します。残った小さな数字が、そのマスに入る可能性のある数字（候補）です。");
     } else if (pg.kind === "single") {
       const placed = pg.placed.map((x) => ({ ...x, g: 0 }));
       drawPathBoard(pg.before, { placed, given });
@@ -214,18 +239,18 @@
         box: [2, "ブロックに注目", "ブロックの中で、ある数字を入れられるマスが1つしかなければ、その数字はそのマスに決まります。"],
         cell: [-1, "マスに注目", "候補が1つしか残っていないマスは、その数字に決まります。"] }[pg.key];
       pathHead.textContent = `${no}　${K[1]}（シングル ★）`;
-      pathSection("解法", esc(K[2]));
-      pathSection("注目する場所", pg.placed.map((x) => esc(K[0] < 0 ? cellNm(x.i) : `${unitNm(K[0], x.unit)} → ${cellNm(x.i)}`)).join("、"));
-      pathSection("実行する操作", pg.placed.map((x) => esc(`${cellNm(x.i)}を「${x.d}」に確定`)).join("、") + `。${sw(0)}の数字で表示しています。確定した数字は同じ行・列・ブロックの候補から除外されます。`);
+      pathSection("解き方", esc(K[2]));
+      pathSection("見る所", pg.placed.map((x) => esc(K[0] < 0 ? cellNm(x.i) : `${unitNm(K[0], x.unit)} → ${cellNm(x.i)}`)).join("、"));
+      pathSection("すること", pg.placed.map((x) => esc(`${cellNm(x.i)}に「${x.d}」`)).join("、") + `を入れます。${sw(0)}の数字で埋めました。入れた数字は、同じ行・列・ブロックの候補から消えます。`);
     } else if (pg.kind === "tech") {
       const gone = pg.groups.flatMap((g, n) => g.gone.map((x) => ({ ...x, g: n })));
       const basis = pg.groups.map((g, n) => ({ cells: g.basis, g: n }));
       drawPathBoard(pg.before, { gone, basis, given });
       pathHead.textContent = `${no}　${pg.tech}（${"★".repeat(pg.lv)}）`;
-      pathSection("解法", "シングルでは進めないため、次の解法を使います。" + esc(techDesc(pg.tech)));
-      pathSection("注目する場所", pg.groups.map((g, n) => g.basis.length ? `${sw(n)}のマス（${esc(g.basis.map(cellNm).join("・"))}）` : "候補の配置").join("、"));
-      pathSection("実行する操作", pg.groups.map((g, n) => `${sw(n)}：${esc(goneText(g.gone))}を除外します。`).join("<br>") + "赤い丸が除外する候補です。確定するマスは次のページで表示します。");
-      if (pg.groups.length > 1) say("同じ解法を使う複数の組は、色を分けて表示しています。");
+      pathSection("解き方", "シングルで決まるマスがないので、次にやさしい解き方を使います。" + esc(techDesc(pg.tech)) + "。");
+      pathSection("見る所", pg.groups.map((g, n) => g.basis.length ? `${sw(n)}のマス（${esc(g.basis.map(cellNm).join("・"))}）` : "候補の配置").join("、"));
+      pathSection("すること", pg.groups.map((g, n) => `${sw(n)}：${esc(goneText(g.gone))}を消します。`).join("<br>") + "<br>赤い丸が消す候補です。消した結果、決まるマスは次のページで埋めます。");
+      if (pg.groups.length > 1) say("同じ解き方を使える所がいくつかあるので、組ごとに色を分けています。");
     } else if (pg.kind === "contra") {
       // 背理法。depth 1 = 1回の仮定、depth 2 = 仮定の中でもう1回仮定する（2段の仮定）
       const whatOf = (w) => !w ? "矛盾が出ます"
@@ -237,29 +262,29 @@
       drawPathBoard(pg.before, { gone: pg.gone.map((x) => ({ ...x, g: 0 })), basis, given });
       pathHead.textContent = `${no}　背理法${deep ? "（2段の仮定）" : ""}（${"★".repeat(TECH_LV["背理法"])}）`;
       const all = digitsOf(pg.before.cand[pg.i]);
-      pathSection("解法", "ほかの解法で進めないため、仮に数字を置いて矛盾が起こるか調べる背理法を使います。");
-      pathSection("注目する場所", esc(`${cellNm(pg.i)}の候補「${all.join("・")}」を調べます。`));
+      pathSection("解き方", "ほかの解き方では進めないので、仮に数字を置いて、矛盾が出るか確かめます（背理法）。");
+      pathSection("見る所", esc(`${cellNm(pg.i)}の候補「${all.join("・")}」です。`));
       let proofExplanation;
       if (!deep) {
-        proofExplanation = `もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」なら、推論を進めると${esc(whatOf(pg.why))}${cellOf(pg.why).length ? `（${sw(1)}）` : ""}。`;
+        proofExplanation = `もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めていくと${esc(whatOf(pg.why))}${cellOf(pg.why).length ? `（${sw(1)}）` : ""}。`;
       } else {
-        proofExplanation = `もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」なら、推論後に${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。` +
-          esc(`さらに仮定すると「${pg.a}」なら${whatOf(pg.whyA)}、「${pg.b}」なら${whatOf(pg.whyB)}。両方で矛盾します。`);
+        proofExplanation = `もし${esc(cellNm(pg.i))}（${sw(0)}）が「${pg.d}」だとすると、解き進めた盤で${esc(cellNm(pg.j))}（${sw(1)}）は「${pg.a}」か「${pg.b}」になります。` +
+          esc(`そこでもう一度仮に置くと、「${pg.a}」なら${whatOf(pg.whyA)}。「${pg.b}」なら${whatOf(pg.whyB)}。どちらでも矛盾します。`);
       }
       const rest = pg.left || [];
-      const result = esc(`このため、${cellNm(pg.i)}の「${pg.d}」を候補から除外します` + (rest.length === 1 ? `。残る「${rest[0]}」に確定します。` : `（残りは「${rest.join("・")}」）。`));
-      pathSection("実行する操作", proofExplanation + " " + result);
+      const result = esc(`これは矛盾なので、${cellNm(pg.i)}の候補から「${pg.d}」を消します` + (rest.length === 1 ? `。残るのは「${rest[0]}」だけなので、「${rest[0]}」に決まります。` : `（残りは「${rest.join("・")}」）。`));
+      pathSection("すること", proofExplanation + " " + result);
       // 仮定後の実際の推論手順。各ボタンでその直後の盤面を確認できる。
       const branches = deep
-        ? [{ key: "outer", title: "最初の仮定からの推論", steps: pg.outerTrace || [] },
+        ? [{ key: "outer", title: "最初の仮定から解き進めた手順", steps: pg.outerTrace || [] },
            { key: "a", title: `2段目「${pg.a}」の場合`, steps: pg.traceA || [] },
            { key: "b", title: `2段目「${pg.b}」の場合`, steps: pg.traceB || [] }]
-        : [{ key: "main", title: "仮定から矛盾までの推論", steps: pg.trace || [] }];
+        : [{ key: "main", title: "仮定から矛盾までに解き進めた手順", steps: pg.trace || [] }];
       const detail = document.createElement("details");
       detail.className = "path-proof";
       detail.open = !!pathProofActive;
       const caption = document.createElement("summary");
-      caption.textContent = "矛盾に至る途中の手順を表示";
+      caption.textContent = "矛盾が出るまでの手順を見る";
       detail.appendChild(caption);
       for (const branch of branches) {
         const h = document.createElement("p");
@@ -268,7 +293,7 @@
         detail.appendChild(h);
         if (!branch.steps.length) {
           const empty = document.createElement("p");
-          empty.textContent = "仮定直後に矛盾が見つかりました。";
+          empty.textContent = "仮に置いたすぐ後に矛盾が出ました。";
           detail.appendChild(empty);
         }
         branch.steps.forEach((step, i) => {
@@ -277,7 +302,7 @@
           btn.className = "path-proof-step";
           btn.dataset.proofBranch = branch.key;
           btn.dataset.proofStep = String(i);
-          btn.textContent = `${i + 1}. ${step.kind === "single" ? `${cellNm(step.i)}を「${step.d}」に確定` : `${step.tech || "候補除外"}：${cellNm(step.i)}の「${digitsOf(step.m).join("・")}」を除外`}`;
+          btn.textContent = `${i + 1}. ${step.kind === "single" ? `${cellNm(step.i)}に「${step.d}」を入れる` : `${step.tech || "候補を消す"}：${cellNm(step.i)}の「${digitsOf(step.m).join("・")}」を消す`}`;
           btn.setAttribute("aria-pressed", String(!!pathProofActive && pathProofActive.branch === branch.key && pathProofActive.index === i));
           detail.appendChild(btn);
         });
@@ -297,8 +322,8 @@
     } else if (pg.kind === "answer") {
       drawPathBoard(pg.before, { placed: [{ i: pg.i, d: pg.d, g: 0 }], given });
       pathHead.textContent = `${no}　正解から決める`;
-      pathSection("解法", "正解データからの補完です。論理的に導いた手順ではありません。");
-      pathSection("注目する場所", esc(cellNm(pg.i)));
-      pathSection("実行する操作", esc(`${cellNm(pg.i)}を「${pg.d}」に確定します。`));
+      pathSection("解き方", "ここは、これまでの解き方や2段までの仮定（背理法）では決められないので、正解から決めます。");
+      pathSection("見る所", esc(cellNm(pg.i)));
+      pathSection("すること", esc(`${cellNm(pg.i)}に「${pg.d}」を入れます。`));
     }
   }
