@@ -218,6 +218,7 @@
     if (fl) fl.textContent = focusState.seen.size && focusState.sig === focusSig() ? "次に注目するマス" : "注目するマス";
     // 控える設定はメニューを開くたびに反映。押せなくはせず、従来の確認画面を使う。
     const restricted = hintLimit();
+    hintOverlayNote.hidden = !restricted;
     hintMenu.querySelectorAll(".hm-go").forEach((b) => {
       const kind = hintKinds.find((k) => k.label === b.dataset.kind);
       const isRestrained = !!(restricted && kind && kind.lv && kind.lv <= restricted);
