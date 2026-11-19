@@ -825,3 +825,5 @@ body.path-open { overflow: hidden; }
 #hint-menu .hm-go.hm-restrained .hm-no,
 #hint-menu .hm-go.hm-restrained .hm-lv { opacity: .48; }
 #hint-menu .hm-go.hm-restrained:focus-visible .hm-label { opacity: 1; }
+
+#hint-menu .hm-overlay-note[hidden] { display: none; }
