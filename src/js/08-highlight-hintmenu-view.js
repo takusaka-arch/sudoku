@@ -66,7 +66,8 @@
     { label: "XYチェーン", run: () => showXYChain() },
     { label: "チェーン", run: () => showChain() },
     { label: "背理法", run: () => showContradiction() },
-    { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法が必要なら答えだけ示します）", run: () => runHint(true) },
+    { label: "深い背理法", run: () => showDeepContradiction() },
+    { label: "答えと理由", desc: "入る数字と、その理由を教えます。すぐ決まるマスがなければ、上級の解き方で候補を消してから答えを示します（背理法・深い背理法が必要なら答えだけ示します）", run: () => runHint(true) },
   ];
   // レベルを付け、レベルの順に並べ直す（「ヒントを消す」は一番上、「答えと理由」は一番下のまま）
   hintKinds.forEach((k) => {
@@ -133,7 +134,7 @@
     b.type = "button";
     b.className = "hm-go";
     b.setAttribute("role", "menuitem");
-    b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳"[i]}</span><span class="hm-label"></span>`;
+    b.innerHTML = `<span class="hm-no">${"①②③④⑤⑥⑦⑧⑨⑩⑪⑫⑬⑭⑮⑯⑰⑱⑲⑳㉑㉒㉓㉔"[i]}</span><span class="hm-label"></span>`;
     b.querySelector(".hm-label").textContent = k.label;
     b.dataset.kind = k.label;
     if (k.lv) {

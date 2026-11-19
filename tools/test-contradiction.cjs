@@ -9,8 +9,8 @@ const source = read('src/js/15-puzzle-maker.js');
 const timingSource = read('src/js/03-solve-modes.js').match(/  function targetSeconds\(levels\) \{[\s\S]*?\n  \}/)[0];
 const { rules, targetSeconds } = new Function(config + timingSource + '\nreturn {rules: GEN_RULES, targetSeconds};')();
 // Track only the existing oracle fallback; assertions below inspect the production proof and timing paths.
-let instrumented = source.replace('function grade(g, start, timing, trial = false) {',
-  'function grade(g, start, timing, trial = false) { if(timing) grade.audit={oracle:0,proofs:[]};');
+let instrumented = source.replace('function grade(g, start, timing, trial = false, deep = false) {',
+  'function grade(g, start, timing, trial = false, deep = false) { if(timing) grade.audit={oracle:0,proofs:[]};');
 instrumented = instrumented.replace('if (best >= 0) { place(best, +timing[best]);',
   'if (best >= 0) { grade.audit.oracle++; place(best, +timing[best]);');
 instrumented = instrumented.replace('if (proof) {\n            cand[proof.i]',
@@ -20,15 +20,15 @@ instrumented = instrumented.replace('if (v.every((x) => x)) return level;',
 const engine = new Function(instrumented + '\nreturn sudokuGen({postMessage(){}}, arguments[0]);')(rules);
 const cases = JSON.parse(read('tools/fixtures/extreme-50.json'));
 let referenceCases = 0, references = 0, proofs = 0, advancedProofs = 0;
-const logicalLevels = new Set(rules.techniques.filter((t) => t.name !== '背理法').map((t) => t.lv));
+const logicalLevels = new Set(rules.techniques.filter((t) => t.name !== '背理法' && t.name !== '深い背理法').map((t) => t.lv));
 let strongerProofs = 0, formerlyUnsolved = false;
 for (const [index, item] of cases.entries()) {
   engine.grade([...item.givens].map(Number), null, [...item.solution].map(Number));
   const { audit, steps } = engine.grade;
   assert.equal(audit.oracle, item.oracleReferences, `oracle count, puzzle ${index + 1}`);
   assert.equal(audit.solved, item.solution, `complete solution, puzzle ${index + 1}`);
-  assert.ok(steps.every((lv) => lv >= 1 && lv <= 6));
-  const total = steps.reduce((sec, lv) => sec + ({1:5,2:90,3:180,4:300,5:420,6:600}[lv]), 0);
+  assert.ok(steps.every((lv) => lv >= 1 && lv <= 6), 'without deep, no level 7 step');
+  const total = steps.reduce((sec, lv) => sec + ({1:5,2:90,3:180,4:300,5:420,6:600,7:1200}[lv]), 0);
   assert.equal(targetSeconds(steps), total);
   if (audit.oracle) referenceCases++;
   references += audit.oracle;
@@ -64,4 +64,23 @@ const solved = [...cases[0].solution].map(Number);
 assert.equal(engine.contradiction({v: solved, cand: Array(81).fill(0)}), null);
 engine.grade(solved, null, solved);
 assert.deepEqual(engine.grade.steps, []);
-console.log(JSON.stringify({puzzles: cases.length, referenceCases, references, proofs, advancedProofs, strongerProofs}));
+assert.equal(targetSeconds([7]), 1200, 'deep contradiction costs 20 minutes');
+assert.equal(targetSeconds([6, 7, 1]), 1805);
+// Deep contradiction (level 7): a puzzle where one assumption on a two-candidate cell is not enough.
+const platinum = '000000012000000003002300400001800005060070800000009000008500000900040500470006000';
+const platSol = (() => { const a = [...platinum].map(Number); const ok = (i, d) => { for (let j = 0; j < 81; j++) if (a[j] === d && (Math.floor(j / 9) === Math.floor(i / 9) || j % 9 === i % 9 || (Math.floor(j / 27) === Math.floor(i / 27) && Math.floor(j % 9 / 3) === Math.floor(i % 9 / 3)))) return false; return true; };
+  (function rec() { const i = a.indexOf(0); if (i < 0) return true; for (let d = 1; d <= 9; d++) if (ok(i, d)) { a[i] = d; if (rec()) return true; a[i] = 0; } return false; })(); return a.join(''); })();
+engine.grade([...platinum].map(Number), null, platSol, false, true);
+assert.ok(engine.grade.steps.includes(7), 'target time uses level 7 when level 6 is stuck');
+assert.ok(engine.grade.steps.every((lv) => lv >= 1 && lv <= 7));
+let deepChecked = 0;
+for (const pg of engine.solvePath([...platinum].map(Number), platSol).pages) {
+  if (pg.kind !== 'contra' || !pg.deepTech) continue;
+  assert.notEqual(pg.d, +platSol[pg.i], 'deep contradiction must not remove the correct digit');
+  assert.equal(engine.contradiction(pg.before), null, 'deep is used only when level 6 is stuck');
+  const again = engine.deepContradiction(pg.before);
+  assert.ok(again && again.steps && again.log, 'hint gets the same deep proof with steps and log');
+  deepChecked++;
+}
+assert.ok(deepChecked > 0, 'path shows deep contradiction pages');
+console.log(JSON.stringify({deepChecked, puzzles: cases.length, referenceCases, references, proofs, advancedProofs, strongerProofs}));

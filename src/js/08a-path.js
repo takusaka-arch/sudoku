@@ -260,9 +260,13 @@
       const deep = pg.depth === 2;
       const basis = [{ cells: [pg.i], g: 0 }, ...(deep ? [{ cells: [pg.j], g: 1 }] : [{ cells: cellOf(pg.why), g: 1 }])];
       drawPathBoard(pg.before, { gone: pg.gone.map((x) => ({ ...x, g: 0 })), basis, given });
-      pathHead.textContent = `${no}　背理法${deep ? "（2段の仮定）" : ""}（${"★".repeat(TECH_LV["背理法"])}）`;
+      // 候補が3つ以上のマスでの仮定と2段の仮定は「深い背理法」（★7つ）
+      const cname = pg.deepTech ? "深い背理法" : "背理法";
+      pathHead.textContent = `${no}　${cname}${deep ? "（2段の仮定）" : ""}（${"★".repeat(TECH_LV[cname])}）`;
       const all = digitsOf(pg.before.cand[pg.i]);
-      pathSection("解き方", "ほかの解き方では進めないので、仮に数字を置いて、矛盾が出るか確かめます（背理法）。");
+      pathSection("解き方", pg.deepTech
+        ? "ほかの解き方や、候補が2つのマスでの背理法では進めないので、候補が3つ以上のマスや2段までの仮定で、矛盾が出るか確かめます（深い背理法）。"
+        : "ほかの解き方では進めないので、仮に数字を置いて、矛盾が出るか確かめます（背理法）。");
       pathSection("見る所", esc(`${cellNm(pg.i)}の候補「${all.join("・")}」です。`));
       let proofExplanation;
       if (!deep) {
@@ -322,7 +326,7 @@
     } else if (pg.kind === "answer") {
       drawPathBoard(pg.before, { placed: [{ i: pg.i, d: pg.d, g: 0 }], given });
       pathHead.textContent = `${no}　正解から決める`;
-      pathSection("解き方", "ここは、これまでの解き方や2段までの仮定（背理法）では決められないので、正解から決めます。");
+      pathSection("解き方", "ここは、これまでの解き方や2段までの仮定（深い背理法）では決められないので、正解から決めます。");
       pathSection("見る所", esc(cellNm(pg.i)));
       pathSection("すること", esc(`${cellNm(pg.i)}に「${pg.d}」を入れます。`));
     }
