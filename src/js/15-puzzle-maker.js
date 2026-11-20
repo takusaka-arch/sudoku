@@ -738,6 +738,8 @@
     // 頼まれた問題を先に作り、手が空いたら最難関を探してストックに回す
     const jobs = [];
     let hunt = false, busy = false;
+    // 数字の少ない問題（初級〜難問）の作り置き：lowLevels のレベルを順に、lowMax 個以下になった問題を探す
+    let lowLevels = [], lowMax = 0, lowTurn = 0;
     function tick() {
       busy = false;
       const job = jobs[0];
@@ -750,9 +752,17 @@
           job.told = Date.now();
           self.postMessage({ type: "progress", id: job.id, tries: job.tries, bestN: job.best.n || 0, bestGivens: job.best.givens || "" });
         }
-      } else if (hunt) {
+      } else if (hunt && (!lowLevels.length || lowTurn++ % 2 === 0)) {
         const p = attempt(TOP);
         if (p) self.postMessage({ type: "stock", givens: p });
+      } else if (lowLevels.length) {
+        // 一番少ない数（17個）を目ざして減らし、lowMax 個以下まで減ったものを知らせる
+        const level = lowLevels[lowTurn % lowLevels.length], best = {};
+        lowTurn++;
+        const p = attempt(level, 17, best);
+        const g = p || best.givens;
+        const n = p ? 17 : best.n;
+        if (g && n <= lowMax) self.postMessage({ type: "stock-low", level, n, givens: g });
       } else return;
       busy = true;
       setTimeout(tick, 0);
@@ -763,6 +773,7 @@
       if (m.type === "make") jobs.push({ id: m.id, level: m.level, target: m.target || 0, best: {}, tries: 0, told: Date.now() });
       else if (m.type === "cancel") { const k = jobs.findIndex((j) => j.id === m.id); if (k >= 0) jobs.splice(k, 1); }
       else if (m.type === "hunt") hunt = !!m.on;
+      else if (m.type === "hunt-low") { lowLevels = m.levels || []; lowMax = m.max || 0; }
       kick();
     };
     return { grade, count, attempt, contradiction, deepContradiction, solvePath };

@@ -880,7 +880,7 @@ body.path-open { overflow: hidden; }
   </div>
   <div class="ctx" id="ctx" role="menu" hidden></div>
   <aside class="side">
-  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.264</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
+  <div class="head"><h1>数独回答支援アプリ <small class="ver">ver.265</small><button type="button" class="btn sub small home-btn help-btn" id="tut-open" aria-label="使い方"><svg class="help-ico" viewBox="0 0 20 20" aria-hidden="true"><defs><linearGradient id="help-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5aa0e6"/><stop offset="1" stop-color="#2f6fb5"/></linearGradient></defs><circle cx="10" cy="10" r="9" fill="url(#help-g)" stroke="#245a94" stroke-width="1"/><path d="M7.4 7.6a2.6 2.6 0 1 1 3.7 2.4c-.7.3-1.1.8-1.1 1.6v.4" fill="none" stroke="#fff" stroke-width="1.9" stroke-linecap="round"/><circle cx="10" cy="14.6" r="1.15" fill="#fff"/></svg></button></h1><div class="head-btns"><button type="button" class="btn sub small home-btn" id="home-btn" aria-label="ホーム（最初の画面）へ" hidden>🏠</button><button type="button" class="btn sub small home-btn" id="set-btn" aria-label="設定" hidden>⚙️</button></div></div>
   <section class="start" id="start" data-page="home">
     <div class="home-menu p-home">
       <button type="button" class="home-big" id="go-make"><span class="hb-icon" aria-hidden="true">✏️</span><span class="hb-text">問題を作る・登録する<small>自分で作る・自動で作る・修正する・ファイルを読み込む</small></span></button>
@@ -5773,7 +5773,7 @@ body.path-open { overflow: hidden; }
   // cells: 小さな盤のマス（数字 = 問題の数字）、target: 試してほしい候補 [マス, 数字]、goal: できたかの判定
   const tutSteps = [
     { part: 0, title: "使い方ガイド", text: "使い方を、実際に試しながら説明します。どこから見ますか？", pick: true },
-    { title: "1. 問題を登録する", text: `初級編（7ステップ）です。\n\n最初の画面の「問題を作る・登録する」から、次のどれかで問題を入れます。\n・自分で作る：数字を手で入力する（写真から読み取ることもできます）\n・自動で作る：レベルと問題の数字の数（17〜25個）を選ぶと新しい問題ができます\n・問題ファイルを読み込む\n\n手で入力するときは、小さな数字を${TAP}すると問題の数字になります。全部入れたら「問題登録完了」→「回答スタート」です。`, part: 1,
+    { title: "1. 問題を登録する", text: `初級編（7ステップ）です。\n\n最初の画面の「問題を作る・登録する」から、次のどれかで問題を入れます。\n・自分で作る：数字を手で入力する（写真から読み取ることもできます）\n・自動で作る：レベルと問題の数字の数（17〜25個）を選ぶと新しい問題ができます。20個以下の問題は、アプリを開いている間に裏で作り置きします\n・問題ファイルを読み込む\n\n手で入力するときは、小さな数字を${TAP}すると問題の数字になります。全部入れたら「問題登録完了」→「回答スタート」です。`, part: 1,
       cells: [0], register: true, target: [0, "3"], ask: `下のマスの「3」を${TAP}して、問題の数字として入れてみてください。`,
       goal: (d) => d.cell(0).dataset.value === "3", ok: "できました！ 問題の数字が入りました。" },
     { part: 1, title: `2. まずは数字を${MENU}`, text: `解くときは、小さな数字を${MENU}します。メニューが出るので、行いたい操作を選んでください。\nメニューの「○ と仮定する」（仮定モード）は、上級編で説明します。`, pressDemo: true },
@@ -6942,6 +6942,8 @@ body.path-open { overflow: hidden; }
     // 頼まれた問題を先に作り、手が空いたら最難関を探してストックに回す
     const jobs = [];
     let hunt = false, busy = false;
+    // 数字の少ない問題（初級〜難問）の作り置き：lowLevels のレベルを順に、lowMax 個以下になった問題を探す
+    let lowLevels = [], lowMax = 0, lowTurn = 0;
     function tick() {
       busy = false;
       const job = jobs[0];
@@ -6954,9 +6956,17 @@ body.path-open { overflow: hidden; }
           job.told = Date.now();
           self.postMessage({ type: "progress", id: job.id, tries: job.tries, bestN: job.best.n || 0, bestGivens: job.best.givens || "" });
         }
-      } else if (hunt) {
+      } else if (hunt && (!lowLevels.length || lowTurn++ % 2 === 0)) {
         const p = attempt(TOP);
         if (p) self.postMessage({ type: "stock", givens: p });
+      } else if (lowLevels.length) {
+        // 一番少ない数（17個）を目ざして減らし、lowMax 個以下まで減ったものを知らせる
+        const level = lowLevels[lowTurn % lowLevels.length], best = {};
+        lowTurn++;
+        const p = attempt(level, 17, best);
+        const g = p || best.givens;
+        const n = p ? 17 : best.n;
+        if (g && n <= lowMax) self.postMessage({ type: "stock-low", level, n, givens: g });
       } else return;
       busy = true;
       setTimeout(tick, 0);
@@ -6967,6 +6977,7 @@ body.path-open { overflow: hidden; }
       if (m.type === "make") jobs.push({ id: m.id, level: m.level, target: m.target || 0, best: {}, tries: 0, told: Date.now() });
       else if (m.type === "cancel") { const k = jobs.findIndex((j) => j.id === m.id); if (k >= 0) jobs.splice(k, 1); }
       else if (m.type === "hunt") hunt = !!m.on;
+      else if (m.type === "hunt-low") { lowLevels = m.levels || []; lowMax = m.max || 0; }
       kick();
     };
     return { grade, count, attempt, contradiction, deepContradiction, solvePath };
@@ -6990,6 +7001,7 @@ body.path-open { overflow: hidden; }
   const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");
   // 初級・中級・難問は、問題の数字の数を選べる（17〜25個、はじめは22個）。最難関は DIFFICULTIES の maxGivens 個以下のまま
   const GEN_COUNT_KEY = "sudoku-gen-count", GEN_COUNT_MIN = 17, GEN_COUNT_MAX = 25, GEN_COUNT_DEFAULT = 22;
+  const GEN_LOW_KEY = "sudoku-gen-low1", GEN_LOW_MAX = 20, GEN_LOW_PER = 10;  // 20個以下の作り置き（下の genLow）
   const genCountEl = document.getElementById("gen-count"), genCountNote = document.getElementById("gen-count-note"), genBestBtn = document.getElementById("gen-best");
   for (let n = GEN_COUNT_MIN; n <= GEN_COUNT_MAX; n++) {
     const o = document.createElement("option");
@@ -7008,7 +7020,8 @@ body.path-open { overflow: hidden; }
     const slow = n <= 19 ? "19個以下はとても少なく、何分もかかったり見つからなかったりします。いちばん近い問題で始めることもできます。"
       : n <= 21 ? "20〜21個は、作るのに数十秒〜数分かかることがあります。"
       : "";
-    genCountNote.textContent = `${slow}${top.label}はいつも${top.maxGivens}個以下です。`;
+    const stock = n <= GEN_LOW_MAX ? `アプリを開いている間、${GEN_LOW_MAX}個以下の問題を裏で作り置きしています。ちょうどの数があればすぐに開きます。` : "";
+    genCountNote.textContent = `${slow}${stock}${top.label}はいつも${top.maxGivens}個以下です。`;
   }
   genCountEl.value = String(genCount());
   drawGenCountNote();
@@ -7041,6 +7054,38 @@ body.path-open { overflow: hidden; }
     genWorker = { postMessage: (m) => { sent.push(m); if (sent.length > 50) sent.shift(); w.postMessage(m); } };
   } catch (e) { genOnPage(); }
   const genHunt = () => genWorker.postMessage({ type: "hunt", on: genStock().length < GEN_STOCK_MAX });
+  // 初級・中級・難問の、問題の数字が LOW_MAX 個以下の作り置き（作るのに時間がかかるので、最難関と同じく裏で作っておく）
+  // [{ l: レベル, g: 81桁 }]。レベルごとに GEN_LOW_PER 問まで、数字の少ないものを残す
+  const givensN = (g) => [...g].filter((c) => c !== "0").length;
+  const genLow = (list) => {
+    try {
+      if (list) localStorage.setItem(GEN_LOW_KEY, JSON.stringify(list));
+      const a = JSON.parse(localStorage.getItem(GEN_LOW_KEY) || "[]");
+      return Array.isArray(a) ? a.filter((x) => x && x.l >= 1 && x.l < DIFFICULTIES.length && /^[0-9]{81}$/.test(x.g)) : [];
+    } catch (e) { return []; }
+  };
+  const genLowOf = (level) => genLow().filter((x) => x.l === level);
+  // 作り置きがまだ GEN_LOW_PER 問ないレベルだけ探す（たまったら止める。使うとまた探す）
+  const genHuntLow = () => {
+    const levels = [];
+    for (let l = 1; l < DIFFICULTIES.length; l++) if (genLowOf(l).length < GEN_LOW_PER) levels.push(l);
+    genWorker.postMessage({ type: "hunt-low", levels, max: GEN_LOW_MAX });
+  };
+  genHandlers.push((m) => {
+    if (m.type !== "stock-low") return;
+    const list = genLow();
+    if (list.some((x) => x.g === m.givens)) return;
+    const mine = [...list.filter((x) => x.l === m.level), { l: m.level, g: m.givens }].sort((a, b) => givensN(a.g) - givensN(b.g)).slice(0, GEN_LOW_PER);
+    genLow([...list.filter((x) => x.l !== m.level), ...mine]);
+    genHuntLow();
+    if (!genBox.hidden && !genWaiting) drawGenLevels();
+  });
+  const lowSummary = (level) => {
+    const by = {};
+    genLowOf(level).forEach((x) => { const n = givensN(x.g); by[n] = (by[n] || 0) + 1; });
+    const parts = Object.keys(by).sort((a, b) => a - b).map((n) => `${n}個×${by[n]}`);
+    return `（${GEN_LOW_MAX}個以下の作り置き ${genLowOf(level).length}問${parts.length ? "：" + parts.join("・") : ""}）`;
+  };
   genHandlers.push((m) => {
     if (m.type !== "stock") return;
     const list = genStock();
@@ -7056,7 +7101,7 @@ body.path-open { overflow: hidden; }
       b.type = "button";
       b.textContent = lv.label;
       const sm = document.createElement("small");
-      sm.textContent = lv.desc + (i === DIFFICULTIES.length - 1 ? `（作り置き ${genStock().length}問）` : "");
+      sm.textContent = lv.desc + (i === DIFFICULTIES.length - 1 ? `（作り置き ${genStock().length}問）` : lowSummary(i + 1));
       b.appendChild(sm);
       b.disabled = !!genWaiting;
       if (genWaiting && genWaiting.level === i + 1) b.classList.add("busy");
@@ -7089,11 +7134,20 @@ body.path-open { overflow: hidden; }
         return finishGen(4, list[0]);
       }
     }
-    const id = ++genSeq;
     const target = level === 4 ? 0 : +genCountEl.value;
-    genWaiting = { id, level, target, start: Date.now(), best: null };
+    // 20個以下を選んだときは、作り置きにちょうどの数があればそれを使う。なければ作りながら、作り置きのいちばん近いものも選べるようにする
+    let fromStock = null;
+    if (level < 4 && target <= GEN_LOW_MAX) {
+      const mine = genLowOf(level);
+      const exact = mine.find((x) => givensN(x.g) === target);
+      if (exact) { takeLow(exact.g); genHuntLow(); return finishGen(level, exact.g); }
+      fromStock = mine.filter((x) => givensN(x.g) > target).sort((a, b) => givensN(a.g) - givensN(b.g))[0] || null;
+    }
+    const id = ++genSeq;
+    genWaiting = { id, level, target, start: Date.now(), best: null, bestN: 0, bestStock: false };
     genMsg.classList.remove("err");
     genBestBtn.hidden = true;
+    if (fromStock) setGenBest(fromStock.g, givensN(fromStock.g), true);
     genMsg.textContent = level === 4
       ? "最難関の問題を作っています。見つかるまで時間がかかることがあります（この画面のままお待ちください）…"
       : `${genLevels[level - 1].label}・数字${target}個の問題を作っています…`;
@@ -7105,18 +7159,22 @@ body.path-open { overflow: hidden; }
     if (m.type !== "progress" || !genWaiting || m.id !== genWaiting.id) return;
     const w = genWaiting, sec = Math.round((Date.now() - w.start) / 1000);
     const time = sec >= 60 ? `${Math.floor(sec / 60)}分${sec % 60}秒` : `${sec}秒`;
+    if (m.bestN && m.bestGivens && (!w.bestN || m.bestN < w.bestN)) setGenBest(m.bestGivens, m.bestN, false);
     genMsg.textContent = `${genLevels[w.level - 1].label}・数字${w.target}個の問題を作っています…（${time}・${m.tries}回試しました）`
-      + (m.bestN ? `\nまだ${w.target}個のものは見つかっていません。いちばん近いのは${m.bestN}個の問題です。` : "");
-    if (m.bestN && m.bestGivens) {
-      w.best = m.bestGivens;
-      genBestBtn.textContent = `${m.bestN}個の問題で始める`;
-      genBestBtn.hidden = false;
-    }
+      + (w.bestN ? `\nまだ${w.target}個のものは見つかっていません。いちばん近いのは${w.bestN}個の問題です。` : "");
   });
+  function setGenBest(givens, n, stock) {
+    const w = genWaiting;
+    w.best = givens; w.bestN = n; w.bestStock = stock;
+    genBestBtn.textContent = `${n}個の問題で始める${stock ? "（作り置き）" : ""}`;
+    genBestBtn.hidden = false;
+  }
+  const takeLow = (g) => genLow(genLow().filter((x) => x.g !== g));
   genBestBtn.addEventListener("click", () => {
     const w = genWaiting;
     if (!w || !w.best) return;
     genWorker.postMessage({ type: "cancel", id: w.id });
+    if (w.bestStock) { takeLow(w.best); genHuntLow(); }
     finishGen(w.level, w.best);
   });
   genHandlers.push((m) => {
@@ -7153,6 +7211,7 @@ body.path-open { overflow: hidden; }
   document.getElementById("gen-close").addEventListener("click", closeGen);
   // アプリを開いている間は、最難関の作り置きを続ける（10問たまったら止める）
   genHunt();
+  genHuntLow();
 
   showStart("home");
   // 前回、解いている途中で閉じた場合は一時停止の状態で続きを開く（ガイドの写真のお試しから戻ったときも）
