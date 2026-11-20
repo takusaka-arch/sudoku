@@ -342,12 +342,19 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 #gen-step2 { display: grid; gap: 8px; }
 #gen-step1[hidden], #gen-step2[hidden] { display: none; }
 #gen-step2 #gen-backstep { justify-self: start; }
+.gen-inner #gen-msg { white-space: pre-line; }
 .gen-inner .msg:empty { display: none; }
+.gen-inner .gen-count { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-weight: 700; }
+.gen-inner .gen-count select { font: 700 1rem var(--font-ui); padding: 4px 8px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); }
+.gen-inner .gen-note { margin: 0; font-size: 0.8rem; color: var(--muted); }
+.gen-inner .gen-note:empty { display: none; }
+.gen-inner #gen-best { justify-self: center; }
 .gen-levels { display: grid; gap: 6px; }
 .gen-levels button { display: grid; gap: 2px; text-align: left; padding: 10px 12px; border: 1.5px solid var(--line-cell); border-radius: 6px; background: var(--paper); color: var(--ink); font: 700 1rem var(--font-ui); cursor: pointer; }
 .gen-levels button small { font-weight: 500; font-size: 0.8rem; color: var(--muted); }
 .gen-levels button:hover { background: var(--hover); }
 .gen-levels button:disabled { opacity: 0.5; cursor: default; }
+.gen-levels button.busy { opacity: 1; border-color: var(--ink); }
 .clear-inner .btn { justify-self: center; }
 .clear-inner .clear-title { font-size: 1.5rem; font-weight: 700; }
 .clear-inner .clear-time { font: 700 1.1rem var(--font-num); color: var(--muted); }

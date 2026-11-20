@@ -674,18 +674,44 @@
       return { pages, solved: v.every((x) => x), broken: broken(), logicalOnly: !allowAnswers };
     }
     // 1回だけ作ってみる。レベルが合えば問題（81桁の文字列）、合わなければ null
-    function attempt(level) {
+    // target = 問題の数字の数（初級〜難問で指定したとき）。ちょうどその数の問題だけを返す
+    // best = target まで減らせなかったときに、いちばん少なかった問題を入れておく入れ物（{ n, givens }）
+    function attempt(level, target, best) {
       const g = full();
       const sol = g.slice();
+      const want = target || rules.difficulties[level - 1].minGivens;
+      const fits = (h) => count(h, 2) === 1 && (level === TOP || grade(h) <= level);
       let left = 81;
       for (const i of shuffle([...Array(81).keys()])) {
-        if (left <= rules.difficulties[level - 1].minGivens) break;
+        if (left <= want) break;
         const keep = g[i];
         g[i] = 0;
-        if (count(g, 2) !== 1 || (level < TOP && grade(g) > level)) g[i] = keep;
+        if (!fits(g)) g[i] = keep;
         else left--;
       }
+      // 数を指定したときは、1つ足して、ほかを消せるだけ消し、数が減れば採り入れる（同じ数でも形を変えて続ける）
+      if (target && level < TOP) {
+        for (let step = 0; step < 40 && left > want; step++) {
+          const blank = [...Array(81).keys()].filter((i) => !g[i]);
+          const a = blank[Math.floor(Math.random() * blank.length)];
+          const h = g.slice();
+          h[a] = sol[a];
+          let hl = left + 1;
+          for (const b of shuffle([...Array(81).keys()].filter((i) => h[i] && i !== a))) {
+            if (hl <= want) break;
+            const x = h[b];
+            h[b] = 0;
+            if (!fits(h)) h[b] = x;
+            else hl--;
+          }
+          if (hl <= left) { g.splice(0, 81, ...h); left = hl; }
+        }
+      }
       if (grade(g) !== level) return null;
+      if (target && level < TOP && left !== target) {
+        if (best && left > target && (!best.n || left < best.n)) { best.n = left; best.givens = g.join(""); }
+        return null;
+      }
       // 最難関は問題の数字を maxGivens 個以下にする。1つ足して、ほかを消せるだけ消し、最難関のまま数が減れば採り入れる
       if (level === TOP) {
         if (left > EXTREME.maxGivens + 2) return null;
@@ -716,8 +742,14 @@
       busy = false;
       const job = jobs[0];
       if (job) {
-        const p = attempt(job.level);
+        const p = attempt(job.level, job.target, job.best);
+        job.tries++;
         if (p) { jobs.shift(); self.postMessage({ type: "made", id: job.id, level: job.level, givens: p }); }
+        else if (job.target && Date.now() - job.told > 1000) {
+          // 数を指定したときは、1秒ごとに試した回数と、いちばん近かった問題を知らせる
+          job.told = Date.now();
+          self.postMessage({ type: "progress", id: job.id, tries: job.tries, bestN: job.best.n || 0, bestGivens: job.best.givens || "" });
+        }
       } else if (hunt) {
         const p = attempt(TOP);
         if (p) self.postMessage({ type: "stock", givens: p });
@@ -728,7 +760,7 @@
     const kick = () => { if (!busy) { busy = true; setTimeout(tick, 0); } };
     self.onmessage = (e) => {
       const m = e.data || {};
-      if (m.type === "make") jobs.push({ id: m.id, level: m.level });
+      if (m.type === "make") jobs.push({ id: m.id, level: m.level, target: m.target || 0, best: {}, tries: 0, told: Date.now() });
       else if (m.type === "cancel") { const k = jobs.findIndex((j) => j.id === m.id); if (k >= 0) jobs.splice(k, 1); }
       else if (m.type === "hunt") hunt = !!m.on;
       kick();

@@ -14,6 +14,34 @@
     return { label: d.label, desc: `${stars}の解き方（${names}）が必要です${noContra}` };
   });
   const genBox = document.getElementById("gen-box"), genMsg = document.getElementById("gen-msg"), genLevelsEl = document.getElementById("gen-levels");
+  // 初級・中級・難問は、問題の数字の数を選べる（17〜25個、はじめは22個）。最難関は DIFFICULTIES の maxGivens 個以下のまま
+  const GEN_COUNT_KEY = "sudoku-gen-count", GEN_COUNT_MIN = 17, GEN_COUNT_MAX = 25, GEN_COUNT_DEFAULT = 22;
+  const genCountEl = document.getElementById("gen-count"), genCountNote = document.getElementById("gen-count-note"), genBestBtn = document.getElementById("gen-best");
+  for (let n = GEN_COUNT_MIN; n <= GEN_COUNT_MAX; n++) {
+    const o = document.createElement("option");
+    o.value = String(n);
+    o.textContent = `${n}個`;
+    genCountEl.appendChild(o);
+  }
+  const genCount = () => {
+    let n = GEN_COUNT_DEFAULT;
+    try { n = +localStorage.getItem(GEN_COUNT_KEY) || GEN_COUNT_DEFAULT; } catch (e) {}
+    return Math.min(GEN_COUNT_MAX, Math.max(GEN_COUNT_MIN, n));
+  };
+  function drawGenCountNote() {
+    const n = +genCountEl.value;
+    const top = DIFFICULTIES[DIFFICULTIES.length - 1];
+    const slow = n <= 19 ? "19個以下はとても少なく、何分もかかったり見つからなかったりします。いちばん近い問題で始めることもできます。"
+      : n <= 21 ? "20〜21個は、作るのに数十秒〜数分かかることがあります。"
+      : "";
+    genCountNote.textContent = `${slow}${top.label}はいつも${top.maxGivens}個以下です。`;
+  }
+  genCountEl.value = String(genCount());
+  drawGenCountNote();
+  genCountEl.addEventListener("change", () => {
+    try { localStorage.setItem(GEN_COUNT_KEY, genCountEl.value); } catch (e) {}
+    drawGenCountNote();
+  });
   const genStock = (list) => {
     try {
       if (list) localStorage.setItem(GEN_STOCK_KEY, JSON.stringify(list.slice(0, GEN_STOCK_MAX)));
@@ -57,15 +85,19 @@
       sm.textContent = lv.desc + (i === DIFFICULTIES.length - 1 ? `（作り置き ${genStock().length}問）` : "");
       b.appendChild(sm);
       b.disabled = !!genWaiting;
+      if (genWaiting && genWaiting.level === i + 1) b.classList.add("busy");
       b.addEventListener("click", () => makeProblem(i + 1));
       genLevelsEl.appendChild(b);
     });
+    genCountEl.disabled = !!genWaiting;
   }
   function finishGen(level, givens) {
     genWaiting = null;
     genBox.hidden = true;
+    genBestBtn.hidden = true;
     const d = new Date(), p2 = (n) => String(n).padStart(2, "0");
-    const base = `${genLevels[level - 1].label} ${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${p2(d.getMinutes())}`;
+    const n = [...givens].filter((c) => c !== "0").length;
+    const base = `${genLevels[level - 1].label}（${n}個） ${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${p2(d.getMinutes())}`;
     const list = loadAll();
     let name = base;
     for (let i = 2; list.some((q) => q.name === name); i++) name = `${base} (${i})`;
@@ -84,14 +116,35 @@
       }
     }
     const id = ++genSeq;
-    genWaiting = { id, level };
+    const target = level === 4 ? 0 : +genCountEl.value;
+    genWaiting = { id, level, target, start: Date.now(), best: null };
     genMsg.classList.remove("err");
+    genBestBtn.hidden = true;
     genMsg.textContent = level === 4
       ? "最難関の問題を作っています。見つかるまで時間がかかることがあります（この画面のままお待ちください）…"
-      : `${genLevels[level - 1].label}の問題を作っています…`;
+      : `${genLevels[level - 1].label}・数字${target}個の問題を作っています…`;
     drawGenLevels();
-    genWorker.postMessage(level === 4 ? { type: "hunt", on: true } : { type: "make", id, level });
+    genWorker.postMessage(level === 4 ? { type: "hunt", on: true } : { type: "make", id, level, target });
   }
+  // 数を指定して作っている間の様子（1秒ごと）。ちょうどの数が見つからないうちは、いちばん近い問題で始めるボタンを出す
+  genHandlers.push((m) => {
+    if (m.type !== "progress" || !genWaiting || m.id !== genWaiting.id) return;
+    const w = genWaiting, sec = Math.round((Date.now() - w.start) / 1000);
+    const time = sec >= 60 ? `${Math.floor(sec / 60)}分${sec % 60}秒` : `${sec}秒`;
+    genMsg.textContent = `${genLevels[w.level - 1].label}・数字${w.target}個の問題を作っています…（${time}・${m.tries}回試しました）`
+      + (m.bestN ? `\nまだ${w.target}個のものは見つかっていません。いちばん近いのは${m.bestN}個の問題です。` : "");
+    if (m.bestN && m.bestGivens) {
+      w.best = m.bestGivens;
+      genBestBtn.textContent = `${m.bestN}個の問題で始める`;
+      genBestBtn.hidden = false;
+    }
+  });
+  genBestBtn.addEventListener("click", () => {
+    const w = genWaiting;
+    if (!w || !w.best) return;
+    genWorker.postMessage({ type: "cancel", id: w.id });
+    finishGen(w.level, w.best);
+  });
   genHandlers.push((m) => {
     if (!genWaiting) return;
     if (m.type === "made" && m.id === genWaiting.id) return finishGen(m.level, m.givens);
@@ -105,6 +158,7 @@
     if (genWaiting && genWaiting.level !== 4) genWorker.postMessage({ type: "cancel", id: genWaiting.id });
     genWaiting = null;
     genMsg.textContent = "";
+    genBestBtn.hidden = true;
     genBox.hidden = true;
   }
   // 1段目: 自分で入力するか自動で作成するか。自動を選ぶと2段目でレベルを選ぶ
