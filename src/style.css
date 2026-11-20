@@ -340,7 +340,14 @@ button#done:focus-visible, button#edit:focus-visible, button#reset:focus-visible
 .gen-inner #gen-close { justify-self: center; }
 .gen-inner .gen-sub { margin: 0 0 8px; font-weight: 700; }
 #gen-step2 { display: grid; gap: 8px; }
-#gen-step1[hidden], #gen-step2[hidden] { display: none; }
+#gen-step3 { display: grid; gap: 8px; }
+#gen-step1[hidden], #gen-step2[hidden], #gen-step3[hidden] { display: none; }
+#gen-step2 .gen-help-open { justify-self: start; }
+#gen-step3 #gen-help-back { justify-self: center; }
+.gen-help { margin: 0; display: grid; gap: 4px; max-height: calc(100dvh - 220px); overflow-y: auto; }
+.gen-help dt { font-weight: 700; margin-top: 6px; }
+.gen-help dt:first-child { margin-top: 0; }
+.gen-help dd { margin: 0; font-size: 0.85rem; line-height: 1.6; color: var(--muted); }
 #gen-step2 #gen-backstep { justify-self: start; }
 .gen-inner #gen-msg { white-space: pre-line; }
 .gen-inner .msg:empty { display: none; }
