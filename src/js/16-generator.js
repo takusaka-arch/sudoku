@@ -31,12 +31,10 @@
   };
   function drawGenCountNote() {
     const n = +genCountEl.value;
-    const top = DIFFICULTIES[DIFFICULTIES.length - 1];
-    const slow = n <= 19 ? "19個以下はとても少なく、何分もかかったり見つからなかったりします。いちばん近い問題で始めることもできます。"
-      : n <= 21 ? "20〜21個は、作るのに数十秒〜数分かかることがあります。"
+    // 選択画面はかんたんに：時間がかかる数のときだけ一言出す（くわしくは「レベルの説明」）
+    genCountNote.textContent = n <= 19 ? "19個以下は、見つからないことがあります。"
+      : n <= 21 ? "20〜21個は、作るのに時間がかかることがあります。"
       : "";
-    const stock = n <= GEN_LOW_MAX ? `アプリを開いている間、${GEN_LOW_MAX}個以下の問題を裏で作り置きしています。ちょうどの数があればすぐに開きます。` : "";
-    genCountNote.textContent = `${slow}${stock}${top.label}はいつも${top.maxGivens}個以下です。`;
   }
   genCountEl.value = String(genCount());
   drawGenCountNote();
@@ -115,9 +113,6 @@
       const b = document.createElement("button");
       b.type = "button";
       b.textContent = lv.label;
-      const sm = document.createElement("small");
-      sm.textContent = lv.desc + (i === DIFFICULTIES.length - 1 ? `（作り置き ${genStock().length}問）` : lowSummary(i + 1));
-      b.appendChild(sm);
       b.disabled = !!genWaiting;
       if (genWaiting && genWaiting.level === i + 1) b.classList.add("busy");
       b.addEventListener("click", () => makeProblem(i + 1));
@@ -209,9 +204,23 @@
     genBox.hidden = true;
   }
   // 1段目: 自分で入力するか自動で作成するか。自動を選ぶと2段目でレベルを選ぶ
+  // レベルの説明（選択画面には名前だけを出し、くわしい説明はここにまとめる）
+  function drawGenHelp() {
+    const dl = document.getElementById("gen-help"), top = DIFFICULTIES[DIFFICULTIES.length - 1];
+    dl.textContent = "";
+    const add = (t, d) => {
+      const dt = document.createElement("dt"), dd = document.createElement("dd");
+      dt.textContent = t; dd.textContent = d;
+      dl.append(dt, dd);
+    };
+    genLevels.forEach((lv, i) => add(lv.label, lv.desc + (i === DIFFICULTIES.length - 1 ? `（作り置き ${genStock().length}問）` : lowSummary(i + 1))));
+    add("問題の数字の数", `${genLevels.slice(0, -1).map((l) => l.label).join("・")}は、問題の数字の数を${GEN_COUNT_MIN}〜${GEN_COUNT_MAX}個から選べます（はじめは${GEN_COUNT_DEFAULT}個）。22個以上なら数秒でできます。20〜21個は数十秒〜数分かかることがあり、19個以下はとても少ないので、見つからないときは作っている途中に出る「いちばん近い問題で始める」ボタンを使ってください。アプリを開いている間、${GEN_LOW_MAX}個以下の問題を裏で作り置きしていて、ちょうどの数があればすぐに開きます。${top.label}はいつも${top.maxGivens}個以下です。`);
+  }
   const genStep = (n) => {
     document.getElementById("gen-step1").hidden = n !== 1;
     document.getElementById("gen-step2").hidden = n !== 2;
+    document.getElementById("gen-step3").hidden = n !== 3;
+    if (n === 3) { drawGenHelp(); document.getElementById("gen-help-back").focus(); return; }
     (n === 1 ? document.getElementById("gen-self") : genLevelsEl.querySelector("button")).focus();
   };
   document.getElementById("gen-self").addEventListener("click", () => { closeGen(); startRegister(); });
@@ -224,6 +233,8 @@
     genStep(2);
   });
   document.getElementById("gen-close").addEventListener("click", closeGen);
+  document.getElementById("gen-help-open").addEventListener("click", () => genStep(3));
+  document.getElementById("gen-help-back").addEventListener("click", () => genStep(2));
   // アプリを開いている間は、最難関の作り置きを続ける（10問たまったら止める）
   genHunt();
   genHuntLow();
